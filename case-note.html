@@ -1419,6 +1419,159 @@
                 border: 1px solid #94a3b8;
             }
         }
+        /* ==========================================================================
+           UI 개편: 부드러운 톤 + 좌측 할 일 패널 + 죄명/범죄사실 표시
+           ========================================================================== */
+        :root {
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 20px;
+            --shadow-sm: 0 2px 8px rgba(99, 102, 241, 0.07);
+            --shadow-md: 0 8px 22px rgba(79, 70, 229, 0.12);
+            --border-light: #e6e9f5;
+        }
+        html, body {
+            background: linear-gradient(160deg, #f3f0ff 0%, #eaf4ff 50%, #e8fbf3 100%) !important;
+        }
+        .app-header {
+            background: linear-gradient(120deg, #4f46e5 0%, #0891b2 100%) !important;
+        }
+        .brand-text span { color: #e0f2fe !important; }
+        .stat-widget { border-radius: var(--radius-md); background: rgba(255,255,255,0.92); }
+        .list-toolbar { background: rgba(255,255,255,0.92); border-radius: var(--radius-md); }
+
+        .list-split {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            gap: 0.75rem;
+        }
+        .list-main {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .list-main .case-cards-grid {
+            grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+            gap: 0.7rem;
+        }
+
+        /* --- 좌측 할 일 패널 --- */
+        .todo-panel {
+            width: 350px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255,255,255,0.94);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+        }
+        .todo-panel-head {
+            padding: 0.8rem 0.95rem 0.55rem;
+            background: linear-gradient(135deg, #eef2ff 0%, #ecfeff 100%);
+            border-bottom: 1px solid var(--border-light);
+        }
+        .todo-panel-title {
+            display: flex; align-items: center; gap: 0.45rem;
+            font-size: 0.95rem; font-weight: 900; color: #3730a3;
+        }
+        .todo-panel-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.15rem; }
+        .priority-count-pill { background: #fb7185 !important; color: #fff !important; }
+        .todo-tabs { display: flex; gap: 0.35rem; margin-top: 0.55rem; align-items: center; }
+        .todo-tab {
+            border: 1px solid var(--border-light);
+            background: #fff; color: var(--text-secondary);
+            font-family: inherit; font-size: 0.75rem; font-weight: 800;
+            padding: 0.3rem 0.75rem; border-radius: 999px; cursor: pointer;
+            transition: all 0.14s ease;
+        }
+        .todo-tab:hover { background: #eef2ff; }
+        .todo-tab.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
+        .todo-tab b { margin-left: 0.25rem; opacity: 0.85; }
+        .todo-done-toggle { margin-left: auto; font-size: 0.7rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; cursor: pointer; }
+        .todo-scroll {
+            flex: 1; overflow-y: auto; padding: 0.6rem;
+            display: flex; flex-direction: column; gap: 0.45rem;
+        }
+        .todo-row {
+            display: flex; align-items: flex-start; gap: 0.45rem;
+            background: #fff;
+            border: 1px solid var(--border-light);
+            border-left: 4px solid #818cf8;
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 0.6rem;
+            cursor: pointer; transition: all 0.14s ease;
+            min-width: 0; max-width: none; flex-shrink: 0;
+        }
+        .todo-row:hover { background: #f5f7ff; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+        .todo-row.st-warrant { border-left-color: #a78bfa; }
+        .todo-row.st-hold { border-left-color: #fbbf24; }
+        .todo-row.done { opacity: 0.55; border-left-color: #6ee7b7; }
+        .todo-row.done .todo-text { text-decoration: line-through; }
+        .todo-check {
+            width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; margin-top: 1px;
+            border: 2px solid #818cf8; background: #eef2ff; color: #4f46e5;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 0.72rem; font-weight: 900; transition: all 0.14s ease;
+        }
+        .todo-check:hover { background: #10b981; border-color: #10b981; color: #fff; }
+        .todo-row.done .todo-check { background: #10b981; border-color: #10b981; color: #fff; }
+        .todo-body { flex: 1; min-width: 0; }
+        .todo-meta { display: flex; align-items: center; gap: 0.3rem; font-size: 0.68rem; font-weight: 800; color: #6366f1; margin-bottom: 0.15rem; min-width: 0; }
+        .todo-meta .todo-meta-num { font-family: var(--font-mono); flex-shrink: 0; }
+        .todo-text {
+            font-size: 0.82rem; font-weight: 700; color: var(--text-main); line-height: 1.35;
+            display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .todo-remain { font-size: 0.66rem; color: var(--text-muted); font-weight: 700; flex-shrink: 0; }
+        .todo-group {
+            border: 1px solid var(--border-light); border-radius: var(--radius-sm);
+            background: #fafbff; overflow: hidden; flex-shrink: 0;
+        }
+        .todo-group-head {
+            display: flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.6rem;
+            background: #eef2ff; cursor: pointer; font-size: 0.75rem; font-weight: 800; color: #3730a3;
+            min-width: 0;
+        }
+        .todo-group-head .tg-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .todo-group-head .tg-count { background: #fff; border-radius: 999px; padding: 0 0.45rem; font-size: 0.68rem; color: #6366f1; }
+        .todo-group-body { padding: 0.4rem; display: flex; flex-direction: column; gap: 0.35rem; }
+        .todo-group-body .todo-row { padding: 0.38rem 0.5rem; }
+        .todo-empty { text-align: center; padding: 1.5rem 0.5rem; font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; }
+
+        /* --- 사건 카드 --- */
+        .case-graphic-card { border-radius: var(--radius-lg); padding-top: 0.85rem; background: rgba(255,255,255,0.97); }
+        .case-graphic-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: var(--st, #818cf8);
+        }
+        .case-graphic-card.status-ing-card { --st: linear-gradient(90deg,#818cf8,#38bdf8); }
+        .case-graphic-card.status-warrant-card { --st: linear-gradient(90deg,#a78bfa,#f0abfc); }
+        .case-graphic-card.status-done-card { --st: linear-gradient(90deg,#34d399,#6ee7b7); }
+        .case-graphic-card.status-transfer-card { --st: linear-gradient(90deg,#38bdf8,#67e8f9); }
+        .case-graphic-card.status-hold-card { --st: linear-gradient(90deg,#fbbf24,#fdba74); }
+        .card-charge { margin-bottom: 0.25rem; }
+        .charge-chip {
+            display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            font-size: 0.72rem; font-weight: 900; color: #be123c; background: #ffe4e6;
+            border: 1px solid #fecdd3; border-radius: 999px; padding: 0.08rem 0.55rem;
+        }
+        .charge-chip.empty { color: var(--text-muted); background: #f1f5f9; border-color: #e2e8f0; font-weight: 700; }
+        .case-graphic-card .card-overview { -webkit-line-clamp: 2; }
+        .card-fact-label { font-weight: 800; color: #7c3aed; margin-right: 0.25rem; }
+
+        /* --- 상세: 죄명 입력 --- */
+        .inline-charge-input {
+            width: 150px; flex-shrink: 1; min-width: 90px; font-weight: 800; color: #be123c; background: #fff1f2;
+            border: 1px solid #fecdd3; border-radius: 999px; padding: 0.22rem 0.8rem; font-size: 0.8rem;
+        }
+        .inline-charge-input:focus { outline: none; border-color: #fb7185; }
+        .hero-meta-row { flex-wrap: nowrap; }
+        #saveStatusBadge, #detailUpdatedAt { white-space: nowrap; flex-shrink: 0; }
+
+        @media (max-width: 1100px) { .todo-panel { width: 280px; } }
     </style>
 </head>
 <body>
@@ -1550,18 +1703,26 @@
                 </div>
             </div>
 
-            <!-- 첫 화면 핵심: 사건별 당장 해야 할 일 (Next Action Queue) 전광판 -->
-            <div class="priority-todo-board">
-                <div class="priority-board-header">
-                    <div class="priority-board-title">
-                        <span>🎯 사건별 지금 바로 해야 할 일 (Next Action)</span>
-                        <span id="priorityTodoCount" class="priority-count-pill">0건</span>
+            <div class="list-split">
+                <!-- 좌측: 할 일 패널 (다음 할 일 / 전체 할 일) -->
+                <aside class="todo-panel">
+                    <div class="todo-panel-head">
+                        <div class="todo-panel-title">
+                            <span>🎯 오늘의 할 일</span>
+                            <span id="priorityTodoCount" class="priority-count-pill">0건</span>
+                        </div>
+                        <div class="todo-panel-sub">다음 할 일은 드래그(⠿)로 순서 변경 · 체크(✓)로 즉시 완료</div>
+                        <div class="todo-tabs">
+                            <button type="button" id="todoTabNext" class="todo-tab active" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
+                            <button type="button" id="todoTabAll" class="todo-tab" onclick="app.setTodoTab('all')">전체 할 일<b id="todoTabAllCount">0</b></button>
+                            <label id="todoDoneToggle" class="todo-done-toggle" style="display:none;"><input type="checkbox" onchange="app.toggleTodoShowDone(this.checked)"> 완료 포함</label>
+                        </div>
                     </div>
-                    <span style="font-size: 0.72rem; color: #94a3b8;">드래그(⠿)로 할 일 우선순위를 바꾸거나, 체크(✓)를 눌러 즉시 완료 처리하세요</span>
-                </div>
-                <div id="priorityTodoList" class="priority-cards-scroll"></div>
-            </div>
+                    <div id="priorityTodoList" class="todo-scroll"></div>
+                </aside>
 
+                <!-- 우측: 검색/필터 + 사건 카드 -->
+                <div class="list-main">
             <!-- 검색 · 필터 · 신규 사건 등록 툴바 -->
             <div class="list-toolbar">
                 <div class="search-filter-group">
@@ -1598,11 +1759,10 @@
                 </button>
             </div>
 
-            <!-- 그래픽 사건 카드 그리드 (한 페이지 15개 표시) -->
-            <div id="case-list-body" class="case-cards-grid"></div>
-
-            <!-- 페이지네이션 컨트롤 바 (15개 단위) -->
-            <div id="paginationBar" class="pagination-bar"></div>
+                    <div id="case-list-body" class="case-cards-grid"></div>
+                    <div id="paginationBar" class="pagination-bar"></div>
+                </div>
+            </div>
         </section>
 
         <!-- ======================================================================
@@ -1634,6 +1794,7 @@
                 <div class="hero-case-identity">
                     <div class="hero-meta-row">
                         <input type="text" id="detailCaseNumber" class="inline-case-num" placeholder="사건번호" oninput="app.updateCurrentCaseField('caseNumber', this.value)">
+                        <input type="text" id="detailCharge" class="inline-charge-input" placeholder="죄명 (예: 사기)" oninput="app.updateCurrentCaseField('charge', this.value)">
                         <select id="detailStatus" class="inline-status-select" onchange="app.updateCurrentCaseField('status', this.value)">
                             <option value="수사중">🔵 수사중</option>
                             <option value="영장신청">🟣 영장신청</option>
@@ -1674,8 +1835,26 @@
 
                 <!-- [1열] 사건개요 및 피해 현황 + 참고사항 + 비고 -->
                 <div class="bento-col">
-                    <!-- 사건개요 및 피해 현황 카드 -->
+                    <!-- 범죄사실 카드 -->
                     <div class="bento-card" style="flex: 1.2;">
+                        <div class="widget-header">
+                            <div class="widget-title">
+                                <div class="widget-icon-box" style="background: #ffe4e6; color: #be123c;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                                        <path d="M2 17l10 5 10-5"></path>
+                                        <path d="M2 12l10 5 10-5"></path>
+                                    </svg>
+                                </div>
+                                범죄사실
+                            </div>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="app.copyFieldText('crimeFact', '범죄사실')">📋 복사</button>
+                        </div>
+                        <textarea id="detailCrimeFact" class="widget-textarea" placeholder="범죄사실(죄명에 해당하는 구성요건 사실)을 기록하세요." oninput="app.updateCurrentCaseField('crimeFact', this.value)"></textarea>
+                    </div>
+
+                    <!-- 사건개요 및 피해 현황 카드 -->
+                    <div class="bento-card" style="flex: 1;">
                         <div class="widget-header">
                             <div class="widget-title">
                                 <div class="widget-icon-box" style="background: var(--primary-light); color: var(--primary);">
@@ -1824,7 +2003,7 @@
                     </div>
                 </div>
                 <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                    💡 본문 내 <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{참고사항}}</code>, <code>{{비고}}</code>는 복사 시 현재 사건 데이터로 자동 치환됩니다.
+                    💡 본문 내 <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{죄명}}</code>, <code>{{범죄사실}}</code>, <code>{{참고사항}}</code>, <code>{{비고}}</code>는 복사 시 현재 사건 데이터로 자동 치환됩니다.
                 </p>
                 <textarea id="activeFormContent" rows="13" style="font-size: 0.86rem; line-height: 1.6;" placeholder="영장 신청 필수 기재사항, 범죄사실 초안, 이송 사유 등을 입력하세요." oninput="app.updateActiveFormContent(this.value)"></textarea>
             </div>
@@ -2049,6 +2228,9 @@
             itemsPerPage: 15,
             draggedCaseId: null,
             draggedPriorityCaseId: null,
+            todoTab: 'next',
+            todoShowDone: false,
+            todoCollapsed: {},
 
             init() {
                 this.loadDatabase();
@@ -2088,6 +2270,10 @@
                 if (loadedFromEmbedded && Array.isArray(loadedFromEmbedded.cases) && loadedFromEmbedded.template) {
                     this.cases = loadedFromEmbedded.cases;
                     this.template = loadedFromEmbedded.template;
+                    this.cases.forEach(cs => {
+                        if (typeof cs.charge !== 'string') cs.charge = '';
+                        if (typeof cs.crimeFact !== 'string') cs.crimeFact = '';
+                    });
                     embeddedSavedAt = loadedFromEmbedded.savedAt || '';
                 } else {
                     this.template = getDefaultMasterTemplate();
@@ -2234,7 +2420,10 @@
                     'tplCustomFieldsList',
                     'tplChecklistList',
                     'tplFormsList',
-                    'toastContainer'
+                    'toastContainer',
+                    'priorityTodoCount',
+                    'todoTabNextCount',
+                    'todoTabAllCount'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -2437,6 +2626,8 @@
                         (c.caseNumber && c.caseNumber.toLowerCase().includes(query)) ||
                         (c.title && c.title.toLowerCase().includes(query)) ||
                         (c.overview && c.overview.toLowerCase().includes(query)) ||
+                        (c.charge && c.charge.toLowerCase().includes(query)) ||
+                        (c.crimeFact && c.crimeFact.toLowerCase().includes(query)) ||
                         (c.reference && c.reference.toLowerCase().includes(query)) ||
                         (c.remarks && c.remarks.toLowerCase().includes(query)) ||
                         (c.checklist && c.checklist.some(chk => chk.text && chk.text.toLowerCase().includes(query))) ||
@@ -2516,7 +2707,7 @@
                     }
 
                     return `
-                        <div class="case-graphic-card"
+                        <div class="case-graphic-card ${badgeClass}-card"
                              draggable="true"
                              data-case-id="${c.id}"
                              ondragstart="app.onCaseDragStart(event, '${c.id}')"
@@ -2545,7 +2736,8 @@
 
                                 <div class="card-title-group">
                                     <div class="card-title">${this.escapeHtml(c.title || '(제목 없는 사건)')}</div>
-                                    <div class="card-overview">${this.escapeHtml(c.overview || '사건개요 및 피해 현황을 입력하세요.')}</div>
+                                    <div class="card-charge">${c.charge ? `<span class="charge-chip" title="${this.escapeAttr(c.charge)}">⚖ ${this.escapeHtml(c.charge)}</span>` : '<span class="charge-chip empty">죄명 미입력</span>'}</div>
+                                    <div class="card-overview" title="${this.escapeAttr(c.crimeFact || c.overview || '')}">${c.crimeFact ? `<span class="card-fact-label">범죄사실</span>${this.escapeHtml(c.crimeFact)}` : this.escapeHtml(c.overview || '범죄사실을 입력하세요.')}</div>
                                     <div class="mini-step-dots">${dotsHtml}</div>
                                 </div>
                             </div>
@@ -2611,6 +2803,21 @@
             /**
              * 첫 화면 상단 '사건별 지금 바로 해야 할 일 (Next Action)' 전광판 렌더링 (드래그 순서 변경 지원)
              */
+            setTodoTab(tab) {
+                this.todoTab = tab;
+                this.renderPriorityTodoBoard();
+            },
+
+            toggleTodoShowDone(flag) {
+                this.todoShowDone = Boolean(flag);
+                this.renderPriorityTodoBoard();
+            },
+
+            toggleTodoGroup(caseId) {
+                this.todoCollapsed[caseId] = !this.todoCollapsed[caseId];
+                this.renderPriorityTodoBoard();
+            },
+
             renderPriorityTodoBoard() {
                 const listEl = document.getElementById('priorityTodoList');
                 const countEl = document.getElementById('priorityTodoCount');
@@ -2622,60 +2829,101 @@
                     const orderB = typeof b.priorityOrder === 'number' ? b.priorityOrder : this.cases.indexOf(b);
                     return orderA - orderB;
                 });
+                const isClosed = c => c.status === '송치완료' || c.status === '타관이송';
+                const stClass = c => c.status === '영장신청' ? 'st-warrant' : (c.status === '중지/각하' ? 'st-hold' : '');
+                const chargeChip = c => c.charge ? `<span class="charge-chip" style="font-size:0.64rem;">${this.escapeHtml(c.charge)}</span>` : '';
 
                 const nextActions = [];
+                let allPendingCount = 0;
                 orderedCases.forEach(c => {
-                    if (c.status === '송치완료' || c.status === '타관이송') return;
+                    if (isClosed(c)) return;
                     const chkList = c.checklist || [];
-                    const firstPendingIdx = chkList.findIndex(item => !item.done);
-                    if (firstPendingIdx !== -1) {
-                        nextActions.push({
-                            caseId: c.id,
-                            caseNumber: c.caseNumber || '미지정',
-                            caseTitle: c.title || '(제목 없음)',
-                            status: c.status || '수사중',
-                            taskIdx: firstPendingIdx,
-                            taskText: chkList[firstPendingIdx].text,
-                            remainingCount: chkList.filter(i => !i.done).length
-                        });
+                    allPendingCount += chkList.filter(i => !i.done).length;
+                    const idx = chkList.findIndex(item => !item.done);
+                    if (idx !== -1) {
+                        nextActions.push({ c, taskIdx: idx, remaining: chkList.filter(i => !i.done).length });
                     }
                 });
 
                 countEl.textContent = `${nextActions.length}건`;
+                const nc = document.getElementById('todoTabNextCount');
+                const ac = document.getElementById('todoTabAllCount');
+                if (nc) nc.textContent = String(nextActions.length);
+                if (ac) ac.textContent = String(allPendingCount);
+                const tabNext = document.getElementById('todoTabNext');
+                const tabAll = document.getElementById('todoTabAll');
+                if (tabNext) tabNext.classList.toggle('active', this.todoTab === 'next');
+                if (tabAll) tabAll.classList.toggle('active', this.todoTab === 'all');
+                const doneToggle = document.getElementById('todoDoneToggle');
+                if (doneToggle) doneToggle.style.display = this.todoTab === 'all' ? 'flex' : 'none';
 
-                if (nextActions.length === 0) {
-                    listEl.innerHTML = `
-                        <div style="font-size: 0.78rem; color: #cbd5e1; padding: 0.25rem 0;">
-                            🎉 현재 진행 중인 사건의 시급한 미완료 할 일이 모두 처리되었습니다!
-                        </div>
-                    `;
+                if (this.todoTab === 'next') {
+                    if (nextActions.length === 0) {
+                        listEl.innerHTML = '<div class="todo-empty">🎉 진행 중인 사건의 할 일이 모두 처리되었습니다!</div>';
+                        return;
+                    }
+                    listEl.innerHTML = nextActions.map(na => {
+                        const c = na.c;
+                        return `
+                        <div class="priority-action-chip todo-row ${stClass(c)}"
+                             draggable="true"
+                             data-prio-case-id="${c.id}"
+                             ondragstart="app.onPriorityDragStart(event, '${c.id}')"
+                             ondragover="app.onPriorityDragOver(event)"
+                             ondragleave="app.onPriorityDragLeave(event)"
+                             ondrop="app.onPriorityDrop(event, '${c.id}')"
+                             ondragend="app.onPriorityDragEnd(event)"
+                             onclick="app.openCaseDetail('${c.id}')"
+                             title="드래그하여 순서 변경 · 클릭하면 사건 상세로 이동">
+                            <span class="drag-handle-icon" title="드래그하여 순서 변경">⠿</span>
+                            <button type="button" class="todo-check" onclick="event.stopPropagation(); app.toggleTaskFromListView('${c.id}', ${na.taskIdx})" title="클릭 시 즉시 완료 처리">✓</button>
+                            <div class="todo-body">
+                                <div class="todo-meta">
+                                    <span class="todo-meta-num">${this.escapeHtml(c.caseNumber || '미지정')}</span>
+                                    ${chargeChip(c)}
+                                    <span class="todo-remain" style="margin-left:auto;">남은 ${na.remaining}</span>
+                                </div>
+                                <div class="todo-text" title="${this.escapeAttr(c.checklist[na.taskIdx].text)}">${this.escapeHtml(c.checklist[na.taskIdx].text)}</div>
+                            </div>
+                        </div>`;
+                    }).join('');
                     return;
                 }
 
-                listEl.innerHTML = nextActions.map(na => `
-                    <div class="priority-action-chip"
-                         draggable="true"
-                         data-prio-case-id="${na.caseId}"
-                         ondragstart="app.onPriorityDragStart(event, '${na.caseId}')"
-                         ondragover="app.onPriorityDragOver(event)"
-                         ondragleave="app.onPriorityDragLeave(event)"
-                         ondrop="app.onPriorityDrop(event, '${na.caseId}')"
-                         ondragend="app.onPriorityDragEnd(event)"
-                         onclick="app.openCaseDetail('${na.caseId}')"
-                         title="드래그하여 할 일 순서를 바꾸거나 클릭하여 상세 화면으로 이동">
-                        <span class="drag-handle-icon" style="color: #94a3b8;" title="드래그하여 할 일 순서 변경">⠿</span>
-                        <button type="button" class="priority-check-btn" onclick="event.stopPropagation(); app.toggleTaskFromListView('${na.caseId}', ${na.taskIdx})" title="클릭 시 즉시 완료 처리">
-                            ✓
-                        </button>
-                        <div class="priority-chip-body">
-                            <div class="priority-chip-meta">
-                                <span>[${this.escapeHtml(na.caseNumber)}]</span>
-                                <span style="color: #cbd5e1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${this.escapeHtml(na.caseTitle)}</span>
-                            </div>
-                            <div class="priority-chip-task">${this.escapeHtml(na.taskText)}</div>
+                // 전체 할 일: 사건별 그룹
+                const groups = [];
+                orderedCases.forEach(c => {
+                    if (isClosed(c) && !this.todoShowDone) return;
+                    const items = [];
+                    (c.checklist || []).forEach((it, idx) => {
+                        if (!it.done || this.todoShowDone) items.push({ it, idx });
+                    });
+                    if (items.length) groups.push({ c, items });
+                });
+                if (groups.length === 0) {
+                    listEl.innerHTML = '<div class="todo-empty">표시할 할 일이 없습니다.</div>';
+                    return;
+                }
+                listEl.innerHTML = groups.map(g => {
+                    const c = g.c;
+                    const collapsed = Boolean(this.todoCollapsed[c.id]);
+                    const pending = g.items.filter(x => !x.it.done).length;
+                    const rows = collapsed ? '' : `<div class="todo-group-body">${g.items.map(x => `
+                        <div class="todo-row ${stClass(c)} ${x.it.done ? 'done' : ''}" onclick="app.openCaseDetail('${c.id}')">
+                            <button type="button" class="todo-check" onclick="event.stopPropagation(); app.toggleTaskFromListView('${c.id}', ${x.idx})" title="${x.it.done ? '완료 취소' : '완료 처리'}">✓</button>
+                            <div class="todo-body"><div class="todo-text" title="${this.escapeAttr(x.it.text)}">${this.escapeHtml(x.it.text)}</div></div>
+                        </div>`).join('')}</div>`;
+                    return `
+                    <div class="todo-group">
+                        <div class="todo-group-head" onclick="app.toggleTodoGroup('${c.id}')" title="접기/펼치기">
+                            <span>${collapsed ? '▸' : '▾'}</span>
+                            <span class="tg-title">${this.escapeHtml(c.caseNumber || '미지정')}${c.charge ? ' · ' + this.escapeHtml(c.charge) : ''}</span>
+                            <span class="tg-count">${pending}</span>
+                            <span style="color:#6366f1;" onclick="event.stopPropagation(); app.openCaseDetail('${c.id}')" title="사건 상세">→</span>
                         </div>
-                    </div>
-                `).join('');
+                        ${rows}
+                    </div>`;
+                }).join('');
             },
 
             /* ======================================================================
@@ -2864,6 +3112,8 @@
                     status: '수사중',
                     title: '신규 배당 사건 (사건개요 및 피해 현황 요약 입력)',
                     overview: '',
+                    charge: '',
+                    crimeFact: '',
                     reference: '',
                     remarks: '',
                     createdAt: todayStr,
@@ -2919,6 +3169,8 @@
                 document.getElementById('detailCaseNumber').value = current.caseNumber || '';
                 document.getElementById('detailStatus').value = current.status || '수사중';
                 document.getElementById('detailTitle').value = current.title || '';
+                document.getElementById('detailCharge').value = current.charge || '';
+                document.getElementById('detailCrimeFact').value = current.crimeFact || '';
                 document.getElementById('detailOverview').value = current.overview || '';
                 document.getElementById('detailReference').value = current.reference || '';
                 document.getElementById('detailRemarks').value = current.remarks || '';
@@ -3260,6 +3512,8 @@
                     .replace(/\{\{사건번호\}\}/g, caseObj.caseNumber || '')
                     .replace(/\{\{제목\}\}/g, caseObj.title || '')
                     .replace(/\{\{사건개요\}\}/g, caseObj.overview || '')
+                    .replace(/\{\{죄명\}\}/g, caseObj.charge || '')
+                    .replace(/\{\{범죄사실\}\}/g, caseObj.crimeFact || '')
                     .replace(/\{\{참고사항\}\}/g, caseObj.reference || '')
                     .replace(/\{\{비고\}\}/g, caseObj.remarks || '');
             },
@@ -3364,7 +3618,11 @@
                     `====================================================`,
                     `[사건번호] ${c.caseNumber || ''} (${c.status || '수사중'})`,
                     `[제    목] ${c.title || ''}`,
+                    `[죄    명] ${c.charge || ''}`,
                     `====================================================`,
+                    ``,
+                    `■ 범죄사실`,
+                    `${c.crimeFact || '(미입력)'}`,
                     ``,
                     `■ 사건개요 및 피해 현황`,
                     `${c.overview || '(미입력)'}`,
@@ -3584,6 +3842,8 @@
                     status: this.normalizeImportedStatus(c.status),
                     title: c.title || '',
                     overview: c.overview || '',
+                    charge: c.charge || '',
+                    crimeFact: c.crimeFact || '',
                     reference: c.reference || '',
                     remarks: c.remarks || '',
                     updatedAt: c.updatedAt || this.getFormattedNow(),
