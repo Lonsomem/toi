@@ -1571,6 +1571,24 @@
         .hero-meta-row { flex-wrap: nowrap; }
         #saveStatusBadge, #detailUpdatedAt { white-space: nowrap; flex-shrink: 0; }
 
+        .star-btn {
+            border: none; background: transparent; cursor: pointer; flex-shrink: 0;
+            font-size: 1rem; line-height: 1; color: #cbd5e1; padding: 0 0.15rem; transition: all 0.12s ease;
+        }
+        .star-btn:hover { color: #f59e0b; transform: scale(1.18); }
+        .star-btn.on { color: #f59e0b; }
+        .star-btn.sm { font-size: 0.85rem; }
+        .today-badge { font-size: 0.62rem; font-weight: 900; background: #fef3c7; color: #b45309; border-radius: 999px; padding: 0 0.4rem; flex-shrink: 0; }
+        .todo-row.today-on { border-left-color: #f59e0b; background: #fffdf5; }
+        .overdue-box { border: 1px dashed #fbbf24; background: #fffbeb; border-radius: var(--radius-sm); padding: 0.45rem; flex-shrink: 0; }
+        .overdue-head { display: flex; align-items: center; gap: 0.4rem; font-size: 0.74rem; font-weight: 900; color: #b45309; margin-bottom: 0.35rem; }
+        .overdue-head button { margin-left: auto; }
+        .overdue-row { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.1rem; font-size: 0.76rem; font-weight: 700; color: var(--text-main); }
+        .overdue-row .od-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .overdue-row .od-case { font-family: var(--font-mono); font-size: 0.64rem; color: #92400e; flex-shrink: 0; }
+        .mini-act { border: 1px solid #fde68a; background: #fff; color: #b45309; font-family: inherit; font-size: 0.66rem; font-weight: 800; border-radius: 6px; padding: 0.1rem 0.4rem; cursor: pointer; flex-shrink: 0; }
+        .mini-act:hover { background: #fef3c7; }
+        .today-empty-btn { margin-top: 0.6rem; }
         @media (max-width: 1100px) { .todo-panel { width: 280px; } }
     </style>
 </head>
@@ -1619,6 +1637,9 @@
                     단일 HTML 다운로드
                 </button>
 
+                <button type="button" class="btn btn-header" style="background: rgba(139, 92, 246, 0.45); border-color: #c4b5fd;" onclick="app.openGlobalFormsModal()" title="한글(HWP) 등에서 복사한 공통 서식을 저장해두고 언제든 꺼내 씁니다.">
+                    📚 공통 서식 보관함 (한글 복붙)
+                </button>
                 <button type="button" class="btn btn-header" onclick="app.openTemplateModal()">
                     ⚙️ 템플릿 설정
                 </button>
@@ -1711,9 +1732,10 @@
                             <span>🎯 오늘의 할 일</span>
                             <span id="priorityTodoCount" class="priority-count-pill">0건</span>
                         </div>
-                        <div class="todo-panel-sub">다음 할 일은 드래그(⠿)로 순서 변경 · 체크(✓)로 즉시 완료</div>
+                        <div id="todoPanelSub" class="todo-panel-sub"></div>
                         <div class="todo-tabs">
-                            <button type="button" id="todoTabNext" class="todo-tab active" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
+                            <button type="button" id="todoTabToday" class="todo-tab active" onclick="app.setTodoTab('today')">★ 오늘<b id="todoTabTodayCount">0</b></button>
+                            <button type="button" id="todoTabNext" class="todo-tab" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
                             <button type="button" id="todoTabAll" class="todo-tab" onclick="app.setTodoTab('all')">전체 할 일<b id="todoTabAllCount">0</b></button>
                             <label id="todoDoneToggle" class="todo-done-toggle" style="display:none;"><input type="checkbox" onchange="app.toggleTodoShowDone(this.checked)"> 완료 포함</label>
                         </div>
@@ -1948,7 +1970,10 @@
                                 </div>
                                 서식 및 양식 퀵 런처 (원클릭 복사 / 편집)
                             </div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.addCaseFormTab()">+ 서식 추가</button>
+                            <div style="display:flex; gap:0.25rem;">
+                                <button type="button" class="btn btn-secondary btn-sm" style="color: var(--purple); border-color: #ddd6fe; background: var(--purple-bg);" onclick="app.openGlobalFormsModal()" title="공통 서식 보관함 열기">📚 공통서식함</button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="app.addCaseFormTab()">+ 서식 추가</button>
+                            </div>
                         </div>
                         <div id="boilerplateTabs" class="form-launcher-grid"></div>
                     </div>
@@ -2010,6 +2035,61 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="app.closeFormEditorModal()">닫기</button>
                 <button type="button" class="btn btn-primary" onclick="app.copyActiveFormContent()">📋 클립보드 복사</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 0-2: 📚 공통 서식 보관함 (한글 HWP 복붙 상용구 라이브러리)
+         ========================================================================== -->
+    <div id="globalFormsModal" class="modal-backdrop">
+        <div class="modal-dialog" style="max-width: 980px; height: 82vh;">
+            <div class="modal-header">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                    <h2>📚 공통 서식 보관함 (한글 HWP 서식 복붙 · 상용구 창고)</h2>
+                    <span id="globalFormsCountBadge" style="font-size:0.74rem; font-weight:800; background:var(--purple-bg); color:var(--purple); padding:0.15rem 0.55rem; border-radius:999px;">0건</span>
+                </div>
+                <button type="button" class="btn btn-ghost" onclick="app.closeGlobalFormsModal()">✕</button>
+            </div>
+            <div class="modal-body" style="display: grid; grid-template-columns: 300px 1fr; gap: 1rem; padding: 1rem; overflow: hidden;">
+                <!-- 좌측: 공통 서식 목록 및 검색/추가 -->
+                <div style="display: flex; flex-direction: column; gap: 0.55rem; border-right: 1px solid var(--border-light); padding-right: 0.85rem; min-height: 0;">
+                    <div style="display: flex; gap: 0.4rem;">
+                        <input type="search" id="globalFormSearchInput" placeholder="서식 제목 또는 본문 검색..." oninput="app.renderGlobalFormsList()">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="app.addGlobalFormItem()" title="새 공통 서식 만들기">+ 새 서식</button>
+                    </div>
+                    <div id="globalFormsListContainer" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem; padding-right: 0.2rem;"></div>
+                </div>
+
+                <!-- 우측: 선택된 공통 서식 상세 편집기 및 원클릭 액션 -->
+                <div style="display: flex; flex-direction: column; gap: 0.65rem; min-height: 0;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <div style="display: flex; gap: 0.4rem; flex: 1; min-width: 240px;">
+                            <input type="text" id="globalFormCategoryInput" style="width: 120px; font-weight: 700; background: var(--bg-subtle);" placeholder="분류 (예: 영장)" oninput="app.updateActiveGlobalForm('category', this.value)">
+                            <input type="text" id="globalFormTitleInput" style="flex: 1; font-weight: 800; font-size: 0.92rem;" placeholder="서식 제목을 입력하세요 (예: 금융계좌 압수수색영장 범죄사실)" oninput="app.updateActiveGlobalForm('title', this.value)">
+                        </div>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="app.deleteActiveGlobalForm()">🗑️ 삭제</button>
+                    </div>
+
+                    <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.45rem 0.7rem; font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.4rem;">
+                        <span>💡 한글(HWP)에서 복사한 양식을 아래에 붙여넣어 두세요. <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{죄명}}</code>, <code>{{범죄사실}}</code> 등을 넣으면 열려있는 사건 정보로 자동 치환 복사도 가능합니다.</span>
+                    </div>
+
+                    <textarea id="globalFormContentInput" style="flex: 1; width: 100%; font-size: 0.86rem; line-height: 1.6; padding: 0.75rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" placeholder="여기에 한글(HWP) 파일에서 복사한 서식 문구, 영장 신청 문구, 수사보고서 양식, 이송 사유 등을 그대로 붙여넣으세요 (Ctrl+V)..." oninput="app.updateActiveGlobalForm('content', this.value)"></textarea>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding-top: 0.25rem;">
+                        <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.insertGlobalFormToCaseField('crimeFact')" title="현재 열려있는 사건의 범죄사실란 끝에 이어붙이기">↪ 범죄사실에 삽입</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.insertGlobalFormToCaseField('overview')" title="현재 열려있는 사건의 사건개요란 끝에 이어붙이기">↪ 사건개요에 삽입</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.insertGlobalFormToCaseField('reference')" title="현재 열려있는 사건의 참고사항란 끝에 이어붙이기">↪ 참고사항에 삽입</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.cloneGlobalFormToCurrentCase()" title="현재 열려있는 사건의 개별 서식 카드로 추가">➕ 현재 사건 서식함에 복제</button>
+                        </div>
+                        <div style="display: flex; gap: 0.45rem;">
+                            <button type="button" class="btn btn-secondary" onclick="app.copyActiveGlobalForm(false)">📋 원문 그대로 복사</button>
+                            <button type="button" class="btn btn-primary" onclick="app.copyActiveGlobalForm(true)">⚡ 현재 사건정보 치환 복사</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -2181,6 +2261,32 @@
                         label: '영장 집행·회신 로그',
                         placeholder: '영장신청번호, 신청일, 대상 기관, 팩스 집행일, 회신 여부 및 분석 요약'
                     }
+                ],
+                globalForms: [
+                    {
+                        id: 'gf_1',
+                        category: '영장신청',
+                        title: '금융계좌 압수수색영장 필요성 (표준 상용구)',
+                        content: `[압수·수색의 필요성]\n본건은 불특정 다수를 상대로 한 온라인 사기 사건으로, 피해자가 송금한 피해금원이 입금된 피의자 명의 금융계좌의 개설정보(인적사항, 연락처) 및 입출금 거래내역, 접속 IP 등을 확인하지 아니하고는 피의자를 특정하거나 범행의 전모를 규명하기 어렵습니다.\n\n따라서 사건번호 {{사건번호}} ({{제목}}) 피의사건의 실체적 진실 발견을 위해 본건 계좌에 대한 압수·수색영장의 발부를 신청합니다.`
+                    },
+                    {
+                        id: 'gf_2',
+                        category: '통신영장',
+                        title: '통신사실확인자료 제공요청 사유 (가입자/발신기지국)',
+                        content: `[통신사실확인자료 제공요청의 사유 및 필요성]\n1. 사건번호: {{사건번호}}\n2. 피의자가 범행 당시 사용한 휴대전화번호의 가입자 인적사항, 통화내역 및 발신기지국 위치를 확인하여 피의자의 실거주지 및 소재지를 특정하고자 함.\n3. 보충성 요건: 다른 방법으로는 피의자의 소재 확인이 불가능하므로 본건 통신사실확인자료 제공요청에 이르렀음.`
+                    },
+                    {
+                        id: 'gf_3',
+                        category: '수사보고',
+                        title: '피해자 진술청취 및 증거자료 첨부 수사보고',
+                        content: `[수 사 보 고]\n\n1. 보고 취지\n본건 ({{사건번호}} {{제목}}) 고소인(피해자) 상대 피해 경위 진술을 청취하고, 피해자가 제출한 계좌이체내역서 및 대화내역 캡처 자료를 수사기록에 편철하고자 함.\n\n2. 진술 요지 및 피해 현황\n{{사건개요}}\n\n3. 향후 수사 계획\n피해금 입금 계좌에 대한 압수수색영장을 신청하여 피의자 인적사항을 특정하고자 함.`
+                    },
+                    {
+                        id: 'gf_4',
+                        category: '관할이송',
+                        title: '타관 이송 결정서 / 이송 사유 표준 문구',
+                        content: `[사건 이송 사유]\n본건({{사건번호}}) 계좌 압수수색영장 회신 및 주민조회 결과 특정된 피의자 OOO의 주민등록상 주소지 및 실거주지가 'OO시 OO구 OO로 00'으로 확인되는바, 피의자 주거지 관할 및 동종사건 병합 수사의 효율성을 고려하여 형사소송법 및 범죄수사규칙에 의거 피의자 주소지 관할 경찰서인 OO경찰서로 본건을 이송하고자 합니다.`
+                    }
                 ]
             };
         }
@@ -2228,13 +2334,18 @@
             itemsPerPage: 15,
             draggedCaseId: null,
             draggedPriorityCaseId: null,
-            todoTab: 'next',
+            activeGlobalFormIndex: 0,
+            todoTab: 'today',
             todoShowDone: false,
             todoCollapsed: {},
 
             init() {
                 this.loadDatabase();
                 this.setupKeyboardShortcuts();
+                document.addEventListener('visibilitychange', () => {
+                    const lv = document.getElementById('listView');
+                    if (!document.hidden && lv && lv.classList.contains('active')) this.renderCaseList();
+                });
                 this.renderCaseList();
                 this.updateCapacityIndicator();
             },
@@ -2249,6 +2360,7 @@
                         this.closeConfirmModal();
                         this.closeTemplateModal();
                         this.closeBackupModal();
+                        this.closeGlobalFormsModal();
                     }
                 });
             },
@@ -2270,9 +2382,14 @@
                 if (loadedFromEmbedded && Array.isArray(loadedFromEmbedded.cases) && loadedFromEmbedded.template) {
                     this.cases = loadedFromEmbedded.cases;
                     this.template = loadedFromEmbedded.template;
+                    if (!Array.isArray(this.template.globalForms)) {
+                        this.template.globalForms = getDefaultMasterTemplate().globalForms;
+                    }
                     this.cases.forEach(cs => {
                         if (typeof cs.charge !== 'string') cs.charge = '';
                         if (typeof cs.crimeFact !== 'string') cs.crimeFact = '';
+                        if (!Array.isArray(cs.checklist)) cs.checklist = [];
+                        cs.checklist.forEach((it, i) => { if (!it.id) it.id = 'chk_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000); });
                     });
                     embeddedSavedAt = loadedFromEmbedded.savedAt || '';
                 } else {
@@ -2421,8 +2538,11 @@
                     'tplChecklistList',
                     'tplFormsList',
                     'toastContainer',
+                    'globalFormsListContainer',
                     'priorityTodoCount',
                     'todoTabNextCount',
+                    'todoTabTodayCount',
+                    'todoPanelSub',
                     'todoTabAllCount'
                 ];
                 dynamicContainerIds.forEach(id => {
@@ -2682,6 +2802,7 @@
                         if (!item.done) pendingTasks.push({ item, originalIdx });
                     });
 
+                    pendingTasks.sort((a, b) => (this.isTodayItem(b.item) ? 1 : 0) - (this.isTodayItem(a.item) ? 1 : 0));
                     let todoItemsHtml = '';
                     if (pendingTasks.length === 0) {
                         todoItemsHtml = `
@@ -2691,14 +2812,15 @@
                         `;
                     } else {
                         todoItemsHtml = pendingTasks.slice(0, 2).map((pt, i) => `
-                            <div class="card-todo-item ${i === 0 ? 'next-up' : ''}" onclick="event.stopPropagation();">
+                            <div class="card-todo-item ${(i === 0 || this.isTodayItem(pt.item)) ? 'next-up' : ''}" onclick="event.stopPropagation();">
                                 <button type="button" class="inline-todo-check" onclick="event.stopPropagation(); app.toggleTaskFromListView('${c.id}', ${pt.originalIdx})" title="클릭하여 완료 처리">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10">
                                         <polyline points="20 6 9 17 4 12"></polyline>
                                     </svg>
                                 </button>
-                                ${i === 0 ? '<span class="next-badge-pill">우선</span>' : ''}
+                                ${this.isTodayItem(pt.item) ? '<span class="next-badge-pill" style="background:#fef3c7;color:#b45309;">오늘</span>' : (i === 0 ? '<span class="next-badge-pill">우선</span>' : '')}
                                 <span class="card-todo-text" onclick="app.openCaseDetail('${c.id}')" title="${this.escapeAttr(pt.item.text)}">${this.escapeHtml(pt.item.text)}</span>
+                                <button type="button" class="star-btn sm ${this.isTodayItem(pt.item) ? 'on' : ''}" onclick="event.stopPropagation(); app.toggleTaskToday('${c.id}', ${pt.originalIdx})" title="오늘 할 일로 지정/해제">${this.isTodayItem(pt.item) ? '★' : '☆'}</button>
                             </div>
                         `).join('');
                         if (pendingTasks.length > 2) {
@@ -2803,6 +2925,119 @@
             /**
              * 첫 화면 상단 '사건별 지금 바로 해야 할 일 (Next Action)' 전광판 렌더링 (드래그 순서 변경 지원)
              */
+            getTodayStr() {
+                return this.getFormattedNow().split(' ')[0];
+            },
+
+            findTaskById(caseId, itemId) {
+                const c = this.cases.find(x => x.id === caseId);
+                if (!c) return null;
+                const idx = (c.checklist || []).findIndex(i => i.id === itemId);
+                return idx === -1 ? null : { c, idx, it: c.checklist[idx] };
+            },
+
+            getTodayItems() {
+                const today = this.getTodayStr();
+                const out = [];
+                this.cases.forEach(c => (c.checklist || []).forEach((it, idx) => {
+                    if (it.todayDate === today) out.push({ c, idx, it });
+                }));
+                out.sort((a, b) => (a.it.todayOrder || 0) - (b.it.todayOrder || 0));
+                return out;
+            },
+
+            getOverdueItems() {
+                const today = this.getTodayStr();
+                const out = [];
+                this.cases.forEach(c => (c.checklist || []).forEach((it, idx) => {
+                    if (it.todayDate && it.todayDate < today && !it.done) out.push({ c, idx, it });
+                }));
+                return out;
+            },
+
+            isTodayItem(it) {
+                return Boolean(it && it.todayDate === this.getTodayStr());
+            },
+
+            setTaskToday(caseId, idx, flag) {
+                const c = this.cases.find(x => x.id === caseId);
+                if (!c || !c.checklist || !c.checklist[idx]) return;
+                const it = c.checklist[idx];
+                if (flag) {
+                    const maxOrder = this.getTodayItems().reduce((m, x) => Math.max(m, x.it.todayOrder || 0), 0);
+                    it.todayDate = this.getTodayStr();
+                    it.todayOrder = maxOrder + 1;
+                } else {
+                    it.todayDate = '';
+                    it.todayOrder = 0;
+                }
+                this.onStateChanged();
+                if (this.currentCaseId && document.getElementById('detailView').classList.contains('active')) {
+                    this.renderDetailChecklist();
+                } else {
+                    this.renderCaseList();
+                }
+            },
+
+            toggleTaskToday(caseId, idx) {
+                const c = this.cases.find(x => x.id === caseId);
+                if (!c || !c.checklist || !c.checklist[idx]) return;
+                this.setTaskToday(caseId, idx, !this.isTodayItem(c.checklist[idx]));
+            },
+
+            moveAllOverdueToToday() {
+                this.getOverdueItems().forEach(x => this.setTaskTodayQuiet(x.c, x.it));
+                this.onStateChanged();
+                this.renderCaseList();
+                this.showToast('지난 미완료 항목을 모두 오늘로 올렸습니다.');
+            },
+
+            setTaskTodayQuiet(c, it) {
+                const maxOrder = this.getTodayItems().reduce((m, x) => Math.max(m, x.it.todayOrder || 0), 0);
+                it.todayDate = this.getTodayStr();
+                it.todayOrder = maxOrder + 1;
+            },
+
+            onTodayDragStart(event, key) {
+                event.stopPropagation();
+                this.draggedTodayKey = key;
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', key);
+                setTimeout(() => { if (event.target && event.target.classList) event.target.classList.add('dragging-item'); }, 0);
+            },
+            onTodayDragOver(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.dataTransfer.dropEffect = 'move';
+                const el = event.currentTarget;
+                if (el && el.dataset.todayKey !== this.draggedTodayKey) el.classList.add('drag-over-target');
+            },
+            onTodayDragLeave(event) {
+                if (event.currentTarget) event.currentTarget.classList.remove('drag-over-target');
+            },
+            onTodayDrop(event, targetKey) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (event.currentTarget) event.currentTarget.classList.remove('drag-over-target');
+                const srcKey = this.draggedTodayKey;
+                this.draggedTodayKey = null;
+                if (!srcKey || srcKey === targetKey) return;
+                const items = this.getTodayItems();
+                const keyOf = x => x.c.id + '|' + x.it.id;
+                const from = items.findIndex(x => keyOf(x) === srcKey);
+                const to = items.findIndex(x => keyOf(x) === targetKey);
+                if (from === -1 || to === -1) return;
+                const [moved] = items.splice(from, 1);
+                items.splice(to, 0, moved);
+                items.forEach((x, i) => { x.it.todayOrder = i + 1; });
+                this.onStateChanged();
+                this.renderPriorityTodoBoard();
+            },
+            onTodayDragEnd() {
+                this.draggedTodayKey = null;
+                document.querySelectorAll('.today-drag-row').forEach(el => el.classList.remove('dragging-item', 'drag-over-target'));
+            },
+
             setTodoTab(tab) {
                 this.todoTab = tab;
                 this.renderPriorityTodoBoard();
@@ -2845,7 +3080,25 @@
                     }
                 });
 
-                countEl.textContent = `${nextActions.length}건`;
+                const todayItems = this.getTodayItems();
+                const todayPending = todayItems.filter(x => !x.it.done).length;
+                const overdueItems = this.getOverdueItems();
+                countEl.textContent = `${todayPending}건`;
+                const tc = document.getElementById('todoTabTodayCount');
+                if (tc) tc.textContent = String(todayPending);
+                const tabToday = document.getElementById('todoTabToday');
+                if (tabToday) tabToday.classList.toggle('active', this.todoTab === 'today');
+                const subEl = document.getElementById('todoPanelSub');
+                if (subEl) {
+                    const d = new Date();
+                    const dn = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+                    const subMap = {
+                        today: `${d.getMonth() + 1}/${d.getDate()} (${dn}) · 직접 고른 오늘 할 일 · 드래그(⠿)로 순서 변경`,
+                        next: '사건별 첫 미완료 할 일 · ☆로 오늘 할 일에 추가',
+                        all: '모든 미완료 할 일 · ☆로 오늘 할 일에 추가'
+                    };
+                    subEl.textContent = subMap[this.todoTab] || '';
+                }
                 const nc = document.getElementById('todoTabNextCount');
                 const ac = document.getElementById('todoTabAllCount');
                 if (nc) nc.textContent = String(nextActions.length);
@@ -2856,6 +3109,54 @@
                 if (tabAll) tabAll.classList.toggle('active', this.todoTab === 'all');
                 const doneToggle = document.getElementById('todoDoneToggle');
                 if (doneToggle) doneToggle.style.display = this.todoTab === 'all' ? 'flex' : 'none';
+
+                if (this.todoTab === 'today') {
+                    let html = '';
+                    if (overdueItems.length) {
+                        html += `<div class="overdue-box">
+                            <div class="overdue-head">⏰ 지난 날짜에 지정했지만 못 끝낸 일 ${overdueItems.length}건
+                                <button type="button" class="mini-act" onclick="app.moveAllOverdueToToday()">모두 오늘로</button></div>
+                            ${overdueItems.map(x => `<div class="overdue-row">
+                                <span class="od-case">${this.escapeHtml(x.c.caseNumber || '')}</span>
+                                <span class="od-text" title="${this.escapeAttr(x.it.text)}" onclick="app.openCaseDetail('${x.c.id}')" style="cursor:pointer;">${this.escapeHtml(x.it.text)}</span>
+                                <button type="button" class="mini-act" onclick="app.setTaskToday('${x.c.id}', ${x.idx}, true)">오늘로</button>
+                                <button type="button" class="mini-act" onclick="app.setTaskToday('${x.c.id}', ${x.idx}, false)" title="지정 해제">✕</button>
+                            </div>`).join('')}
+                        </div>`;
+                    }
+                    if (todayItems.length === 0) {
+                        html += `<div class="todo-empty">오늘 할 일로 지정한 항목이 없습니다.<br>할 일 옆의 <b style="color:#f59e0b;">☆</b>를 눌러 추가하세요.<br>
+                            <button type="button" class="btn btn-secondary btn-sm today-empty-btn" onclick="app.setTodoTab('all')">전체 할 일 보기</button></div>`;
+                    } else {
+                        html += todayItems.map(x => {
+                            const c = x.c;
+                            const key = c.id + '|' + x.it.id;
+                            return `
+                            <div class="todo-row today-on today-drag-row ${stClass(c)} ${x.it.done ? 'done' : ''}"
+                                 draggable="true" data-today-key="${this.escapeAttr(key)}"
+                                 ondragstart="app.onTodayDragStart(event, this.dataset.todayKey)"
+                                 ondragover="app.onTodayDragOver(event)"
+                                 ondragleave="app.onTodayDragLeave(event)"
+                                 ondrop="app.onTodayDrop(event, this.dataset.todayKey)"
+                                 ondragend="app.onTodayDragEnd(event)"
+                                 onclick="app.openCaseDetail('${c.id}')"
+                                 title="드래그하여 순서 변경 · 클릭하면 사건 상세로 이동">
+                                <span class="drag-handle-icon">⠿</span>
+                                <button type="button" class="todo-check" onclick="event.stopPropagation(); app.toggleTaskFromListView('${c.id}', ${x.idx})" title="${x.it.done ? '완료 취소' : '완료 처리'}">✓</button>
+                                <div class="todo-body">
+                                    <div class="todo-meta">
+                                        <span class="todo-meta-num">${this.escapeHtml(c.caseNumber || '미지정')}</span>
+                                        ${chargeChip(c)}
+                                    </div>
+                                    <div class="todo-text" title="${this.escapeAttr(x.it.text)}">${this.escapeHtml(x.it.text)}</div>
+                                </div>
+                                <button type="button" class="star-btn on" onclick="event.stopPropagation(); app.setTaskToday('${c.id}', ${x.idx}, false)" title="오늘 할 일에서 빼기">★</button>
+                            </div>`;
+                        }).join('');
+                    }
+                    listEl.innerHTML = html;
+                    return;
+                }
 
                 if (this.todoTab === 'next') {
                     if (nextActions.length === 0) {
@@ -2885,6 +3186,7 @@
                                 </div>
                                 <div class="todo-text" title="${this.escapeAttr(c.checklist[na.taskIdx].text)}">${this.escapeHtml(c.checklist[na.taskIdx].text)}</div>
                             </div>
+                            <button type="button" class="star-btn ${this.isTodayItem(c.checklist[na.taskIdx]) ? 'on' : ''}" onclick="event.stopPropagation(); app.toggleTaskToday('${c.id}', ${na.taskIdx})" title="오늘 할 일로 지정/해제">${this.isTodayItem(c.checklist[na.taskIdx]) ? '★' : '☆'}</button>
                         </div>`;
                     }).join('');
                     return;
@@ -2912,6 +3214,7 @@
                         <div class="todo-row ${stClass(c)} ${x.it.done ? 'done' : ''}" onclick="app.openCaseDetail('${c.id}')">
                             <button type="button" class="todo-check" onclick="event.stopPropagation(); app.toggleTaskFromListView('${c.id}', ${x.idx})" title="${x.it.done ? '완료 취소' : '완료 처리'}">✓</button>
                             <div class="todo-body"><div class="todo-text" title="${this.escapeAttr(x.it.text)}">${this.escapeHtml(x.it.text)}</div></div>
+                            ${x.it.done ? '' : `<button type="button" class="star-btn ${this.isTodayItem(x.it) ? 'on' : ''}" onclick="event.stopPropagation(); app.toggleTaskToday('${c.id}', ${x.idx})" title="오늘 할 일로 지정/해제">${this.isTodayItem(x.it) ? '★' : '☆'}</button>`}
                         </div>`).join('')}</div>`;
                     return `
                     <div class="todo-group">
@@ -3273,6 +3576,7 @@
                         </button>
                         <input type="text" class="tile-text-input" value="${this.escapeAttr(item.text)}" oninput="app.editChecklistItemText(${idx}, this.value)">
                         ${item.date ? `<span class="tile-date-badge">${this.escapeHtml(item.date)}</span>` : ''}
+                        ${item.done ? '' : `<button type="button" class="star-btn ${this.isTodayItem(item) ? 'on' : ''}" onclick="app.toggleTaskToday('${current.id}', ${idx})" title="오늘 할 일로 지정/해제">${this.isTodayItem(item) ? '★' : '☆'}</button>`}
                         <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 4px;" onclick="app.moveChecklistItem(${idx}, -1)" title="위로">▲</button>
                         <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 4px;" onclick="app.moveChecklistItem(${idx}, 1)" title="아래로">▼</button>
                         <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger); padding:2px 4px;" onclick="app.removeChecklistItem(${idx})" title="삭제">✕</button>
@@ -3539,6 +3843,224 @@
                 this.copyToClipboard(resolved, `[${form.title}] 서식 내용이 복사되었습니다.`);
             },
 
+            ensureGlobalForms() {
+                if (!this.template) this.template = getDefaultMasterTemplate();
+                if (!Array.isArray(this.template.globalForms)) {
+                    this.template.globalForms = getDefaultMasterTemplate().globalForms;
+                }
+                return this.template.globalForms;
+            },
+
+            openGlobalFormsModal() {
+                const list = this.ensureGlobalForms();
+                if (this.activeGlobalFormIndex >= list.length) {
+                    this.activeGlobalFormIndex = Math.max(0, list.length - 1);
+                }
+                this.renderGlobalFormsList();
+                this.renderActiveGlobalFormEditor();
+                document.getElementById('globalFormsModal').classList.add('open');
+            },
+
+            closeGlobalFormsModal() {
+                document.getElementById('globalFormsModal').classList.remove('open');
+            },
+
+            renderGlobalFormsList() {
+                const list = this.ensureGlobalForms();
+                const countBadge = document.getElementById('globalFormsCountBadge');
+                if (countBadge) countBadge.textContent = `${list.length}건`;
+
+                const query = (document.getElementById('globalFormSearchInput')?.value || '').trim().toLowerCase();
+                const container = document.getElementById('globalFormsListContainer');
+                if (!container) return;
+
+                const filtered = list
+                    .map((item, idx) => ({ item, idx }))
+                    .filter(({ item }) => {
+                        if (!query) return true;
+                        return (
+                            (item.title && item.title.toLowerCase().includes(query)) ||
+                            (item.category && item.category.toLowerCase().includes(query)) ||
+                            (item.content && item.content.toLowerCase().includes(query))
+                        );
+                    });
+
+                if (filtered.length === 0) {
+                    container.innerHTML = `<div style="padding: 1.5rem 0.5rem; text-align: center; color: var(--text-muted); font-size: 0.78rem;">일치하는 공통 서식이 없습니다.<br>[+ 새 서식] 버튼을 눌러 추가하세요.</div>`;
+                    return;
+                }
+
+                container.innerHTML = filtered.map(({ item, idx }) => {
+                    const isActive = idx === this.activeGlobalFormIndex;
+                    const cat = item.category || '일반';
+                    const preview = (item.content || '').replace(/\n+/g, ' ').slice(0, 38);
+                    return `
+                        <div onclick="app.selectGlobalFormItem(${idx})"
+                             style="padding: 0.55rem 0.65rem; border-radius: var(--radius-sm); border: 1px solid ${isActive ? 'var(--primary)' : 'var(--border-light)'}; background: ${isActive ? 'var(--primary-light)' : 'var(--bg-subtle)'}; cursor: pointer; display: flex; flex-direction: column; gap: 0.25rem; transition: all 0.14s ease;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.35rem;">
+                                <span style="font-size: 0.66rem; font-weight: 800; padding: 0.08rem 0.4rem; border-radius: 4px; background: #ede9fe; color: var(--purple);">${this.escapeHtml(cat)}</span>
+                                <button type="button" class="tile-action-pill" onclick="event.stopPropagation(); app.quickCopyGlobalFormByIndex(${idx})" title="이 서식을 즉시 클립보드에 복사">📋 즉시복사</button>
+                            </div>
+                            <div style="font-size: 0.8rem; font-weight: 800; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${this.escapeHtml(item.title || '(제목 없음)')}
+                            </div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                ${this.escapeHtml(preview || '내용 없음')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            selectGlobalFormItem(idx) {
+                this.activeGlobalFormIndex = idx;
+                this.renderGlobalFormsList();
+                this.renderActiveGlobalFormEditor();
+            },
+
+            renderActiveGlobalFormEditor() {
+                const list = this.ensureGlobalForms();
+                const catEl = document.getElementById('globalFormCategoryInput');
+                const titleEl = document.getElementById('globalFormTitleInput');
+                const contentEl = document.getElementById('globalFormContentInput');
+                if (!catEl || !titleEl || !contentEl) return;
+
+                const active = list[this.activeGlobalFormIndex];
+                if (!active) {
+                    catEl.value = '';
+                    titleEl.value = '';
+                    contentEl.value = '';
+                    catEl.disabled = true;
+                    titleEl.disabled = true;
+                    contentEl.disabled = true;
+                    return;
+                }
+
+                catEl.disabled = false;
+                titleEl.disabled = false;
+                contentEl.disabled = false;
+                catEl.value = active.category || '';
+                titleEl.value = active.title || '';
+                contentEl.value = active.content || '';
+            },
+
+            addGlobalFormItem() {
+                const list = this.ensureGlobalForms();
+                list.unshift({
+                    id: 'gf_' + Date.now(),
+                    category: '한글서식',
+                    title: '새 공통 서식 (한글에서 복사한 내용 붙여넣기)',
+                    content: ''
+                });
+                this.activeGlobalFormIndex = 0;
+                const searchEl = document.getElementById('globalFormSearchInput');
+                if (searchEl) searchEl.value = '';
+                this.onStateChanged();
+                this.renderGlobalFormsList();
+                this.renderActiveGlobalFormEditor();
+                setTimeout(() => {
+                    const contentEl = document.getElementById('globalFormContentInput');
+                    if (contentEl) contentEl.focus();
+                }, 50);
+                this.showToast('새 공통 서식이 생성되었습니다. 한글(HWP) 내용을 붙여넣으세요.');
+            },
+
+            updateActiveGlobalForm(key, val) {
+                const list = this.ensureGlobalForms();
+                const active = list[this.activeGlobalFormIndex];
+                if (!active) return;
+                active[key] = val;
+                this.onStateChanged();
+                if (key === 'title' || key === 'category') {
+                    this.renderGlobalFormsList();
+                }
+            },
+
+            deleteActiveGlobalForm() {
+                const list = this.ensureGlobalForms();
+                const active = list[this.activeGlobalFormIndex];
+                if (!active) return;
+
+                this.openConfirmModal(
+                    '공통 서식 삭제',
+                    `[${active.title}] 공통 서식을 보관함에서 삭제하시겠습니까?`,
+                    () => {
+                        list.splice(this.activeGlobalFormIndex, 1);
+                        this.activeGlobalFormIndex = Math.max(0, this.activeGlobalFormIndex - 1);
+                        this.onStateChanged();
+                        this.renderGlobalFormsList();
+                        this.renderActiveGlobalFormEditor();
+                        this.showToast('공통 서식이 삭제되었습니다.');
+                    }
+                );
+            },
+
+            quickCopyGlobalFormByIndex(idx) {
+                const list = this.ensureGlobalForms();
+                const item = list[idx];
+                if (!item) return;
+                const current = this.getCurrentCase();
+                const textToCopy = current ? this.resolveVariables(item.content || '', current) : (item.content || '');
+                this.copyToClipboard(textToCopy, `[${item.title}] 공통 서식이 복사되었습니다!`);
+            },
+
+            copyActiveGlobalForm(withVariableReplace) {
+                const list = this.ensureGlobalForms();
+                const active = list[this.activeGlobalFormIndex];
+                if (!active) return;
+
+                const current = this.getCurrentCase();
+                if (withVariableReplace && current) {
+                    const resolved = this.resolveVariables(active.content || '', current);
+                    this.copyToClipboard(resolved, `[${active.title}] 현재 사건 정보가 반영되어 복사되었습니다!`);
+                } else {
+                    this.copyToClipboard(active.content || '', `[${active.title}] 원문이 그대로 복사되었습니다!`);
+                }
+            },
+
+            insertGlobalFormToCaseField(fieldKey) {
+                const current = this.getCurrentCase();
+                if (!current) {
+                    this.showToast('먼저 사건 상세 화면을 연 상태에서 삽입 기능을 사용할 수 있습니다.');
+                    return;
+                }
+                const list = this.ensureGlobalForms();
+                const active = list[this.activeGlobalFormIndex];
+                if (!active) return;
+
+                const resolved = this.resolveVariables(active.content || '', current);
+                const prev = (current[fieldKey] || '').trim();
+                current[fieldKey] = prev ? `${prev}\n\n${resolved}` : resolved;
+                current.updatedAt = this.getFormattedNow();
+
+                this.onStateChanged();
+                this.renderCaseDetail();
+                const labelMap = { overview: '사건개요', crimeFact: '범죄사실', reference: '참고사항', remarks: '비고' };
+                this.showToast(`현재 사건의 [${labelMap[fieldKey] || fieldKey}]란에 서식이 삽입되었습니다.`);
+            },
+
+            cloneGlobalFormToCurrentCase() {
+                const current = this.getCurrentCase();
+                if (!current) {
+                    this.showToast('먼저 사건 상세 화면을 연 상태에서 복제할 수 있습니다.');
+                    return;
+                }
+                const list = this.ensureGlobalForms();
+                const active = list[this.activeGlobalFormIndex];
+                if (!active) return;
+
+                if (!current.forms) current.forms = [];
+                current.forms.push({
+                    id: 'form_' + Date.now(),
+                    title: active.title || '공통서식 복제본',
+                    content: active.content || ''
+                });
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+                this.renderDetailForms();
+                this.showToast(`[${active.title}] 서식이 현재 사건의 개별 서식함에 추가되었습니다.`);
+            },
+
             /* --- 3열 하단: 마스터 템플릿 공통 항목 탭 전환 위젯 --- */
             renderDetailCustomFields() {
                 const current = this.getCurrentCase();
@@ -3779,7 +4301,9 @@
                     '기본 템플릿 복원',
                     '기본 템플릿 설정을 초기값으로 되돌리시겠습니까? (기존 사건 데이터는 유지됩니다)',
                     () => {
+                        const keepGlobal = this.template && this.template.globalForms;
                         this.template = getDefaultMasterTemplate();
+                        if (Array.isArray(keepGlobal)) this.template.globalForms = keepGlobal;
                         this.onStateChanged();
                         this.renderTemplateModalContent();
                         this.showToast('기본 템플릿이 초기화되었습니다.');
@@ -3831,7 +4355,12 @@
                     .map((f, i) => ({ id: f.id || ('cf_imp_' + Date.now() + '_' + i), label: String(f.label || ''), placeholder: String(f.placeholder || '') }));
                 const chk = (Array.isArray(t.checklist) ? t.checklist : [])
                     .map(x => typeof x === 'string' ? x : (x && x.text) || '').filter(Boolean);
-                return { checklist: chk, forms, customFields: cfs };
+                const out = { checklist: chk, forms, customFields: cfs };
+                if (Array.isArray(t.globalForms)) {
+                    out.globalForms = t.globalForms.filter(f => f && typeof f === 'object')
+                        .map((f, i) => ({ id: f.id || ('gf_imp_' + Date.now() + '_' + i), category: String(f.category || ''), title: String(f.title || ''), content: String(f.content || '') }));
+                }
+                return out;
             },
 
             normalizeImportedCase(c, idx) {
@@ -3851,7 +4380,9 @@
                         id: (it && it.id) || ('chk_imp_' + stamp + '_' + i),
                         text: (it && it.text) || '',
                         done: Boolean(it && it.done),
-                        date: (it && it.date) || ''
+                        date: (it && it.date) || '',
+                        todayDate: (it && it.todayDate) || '',
+                        todayOrder: (it && typeof it.todayOrder === 'number') ? it.todayOrder : 0
                     })),
                     forms: Array.isArray(c.forms) ? c.forms : [],
                     customValues: (c.customValues && typeof c.customValues === 'object') ? c.customValues : {}
@@ -3881,7 +4412,10 @@
                         const apply = () => {
                             if (mode === 'replace') {
                                 if (hasCases) this.cases = incomingCases;
-                                if (incomingTpl) this.template = incomingTpl;
+                                if (incomingTpl) {
+                                    if (!incomingTpl.globalForms) incomingTpl.globalForms = (this.template && this.template.globalForms) || [];
+                                    this.template = incomingTpl;
+                                }
                                 this.showToast(`덮어쓰기 완료: 사건 ${this.cases.length}건`);
                             } else {
                                 let addedCases = 0, skippedCases = 0, addedTpl = 0;
@@ -3898,6 +4432,16 @@
                                             t.forms.push(f); addedTpl++;
                                         }
                                     });
+                                    if (Array.isArray(incomingTpl.globalForms)) {
+                                        if (!Array.isArray(t.globalForms)) t.globalForms = [];
+                                        incomingTpl.globalForms.forEach(f => {
+                                            const dup = t.globalForms.some(o => o.id === f.id || (o.title === f.title && o.content === f.content));
+                                            if (!dup) {
+                                                if (t.globalForms.some(o => o.id === f.id)) f.id += '_' + Date.now();
+                                                t.globalForms.push(f); addedTpl++;
+                                            }
+                                        });
+                                    }
                                     incomingTpl.customFields.forEach(f => {
                                         if (!t.customFields.some(o => o.id === f.id)) { t.customFields.push(f); addedTpl++; }
                                     });
