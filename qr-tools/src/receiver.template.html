@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>QR 파일 수신기 (오프라인)</title>
+<style>
+:root{--bg:#f1f4fb;--panel:#fff;--ink:#0f172a;--sub:#64748b;--line:#e2e8f0;--pri:#4f46e5;--pri2:#0891b2;--ok:#10b981;--warn:#f59e0b;--bad:#ef4444;--r:14px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Malgun Gothic','맑은 고딕',-apple-system,'Segoe UI',Roboto,sans-serif;background:linear-gradient(160deg,#f3f0ff,#eaf4ff 55%,#e8fbf3);color:var(--ink);font-size:15px;padding-bottom:2rem}
+header{background:linear-gradient(120deg,var(--pri),var(--pri2));color:#fff;padding:.8rem 1rem}
+header h1{font-size:1.1rem}header span{font-size:.75rem;opacity:.85}
+.wrap{max-width:720px;margin:0 auto;padding:.8rem;display:flex;flex-direction:column;gap:.8rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:.9rem;box-shadow:0 4px 14px rgba(79,70,229,.08)}
+h2{font-size:.95rem;color:#3730a3;margin-bottom:.5rem}
+.cam{position:relative;background:#0b1020;border-radius:12px;overflow:hidden;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+.cam video{width:100%;height:100%;object-fit:contain}
+.cam .ph{position:absolute;color:#94a3b8;text-align:center;padding:1rem;font-size:.85rem;line-height:1.6}
+.cam.on .ph{display:none}
+.btn{border:none;border-radius:11px;padding:.7rem 1rem;font-family:inherit;font-weight:800;font-size:.95rem;cursor:pointer;background:var(--pri);color:#fff}
+.btn:disabled{opacity:.4}.btn.sec{background:#e0e7ff;color:#3730a3}.btn.ok{background:var(--ok)}.btn.bad{background:#fee2e2;color:#b91c1c}
+.row{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin:.55rem 0}
+.bar{height:12px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--pri),var(--pri2));transition:width .2s}
+.stat{display:grid;grid-template-columns:1fr 1fr;gap:.3rem .8rem;font-size:.84rem;margin:.55rem 0;color:#334155}
+.stat b{color:#3730a3}
+#segGrid{display:flex;flex-wrap:wrap;gap:3px;margin:.5rem 0}
+#segGrid span{width:18px;height:18px;border-radius:4px;background:#e2e8f0;position:relative;overflow:hidden;display:block}
+#segGrid span i{position:absolute;left:0;right:0;bottom:0;background:#818cf8}
+#segGrid span.done{background:var(--ok)}#segGrid span.done i{display:none}
+#segGrid.small span{width:10px;height:10px;border-radius:2px}
+.msg{font-size:.85rem;padding:.6rem .75rem;border-radius:10px;background:#f5f7ff;border:1px solid #c7d2fe;line-height:1.6}
+.msg.warn{background:#fffbeb;border-color:#fde68a;color:#92400e}
+.msg.bad{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+.msg.ok{background:#ecfdf5;border-color:#a7f3d0;color:#065f46}
+.files{list-style:none;display:flex;flex-direction:column;gap:.45rem;margin:.5rem 0}
+.files li{display:flex;align-items:center;gap:.5rem;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:.5rem .65rem;flex-wrap:wrap}
+.files .nm{flex:1;min-width:140px;word-break:break-all;font-weight:700;font-size:.88rem}
+.files .sz{color:var(--sub);font-size:.78rem}
+.files button{padding:.45rem .7rem;font-size:.82rem}
+select{padding:.45rem;border:1px solid #cbd5e1;border-radius:8px;font-family:inherit;font-size:.9rem;background:#fff}
+.hint{font-size:.78rem;color:var(--sub);line-height:1.6}
+.hidden{display:none!important}
+#log{font-size:.72rem;color:#475569;max-height:90px;overflow:auto;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:.4rem;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<header><h1>📱 QR 파일 수신기</h1><span>카메라로 연속 QR을 받아 자동으로 복원 · 외부 통신 없음</span></header>
+<div class="wrap">
+
+  <div class="card">
+    <h2>1. 카메라로 수신</h2>
+    <div class="cam" id="cam"><video id="video" playsinline muted></video><div class="ph" id="camPh">[카메라 시작]을 누르고<br>송신 화면의 QR 전체가 보이게 맞추세요</div></div>
+    <div class="row">
+      <button class="btn" id="btnStart">📷 카메라 시작</button>
+      <button class="btn sec" id="btnStop" disabled>■ 중지</button>
+      <button class="btn sec" id="btnTorch" disabled>🔦 손전등</button>
+    </div>
+    <div class="row">
+      <label class="hint">인식 엔진
+        <select id="engine"><option value="auto" selected>자동</option><option value="js">jsQR (소프트웨어)</option><option value="bd">내장 BarcodeDetector</option></select></label>
+    </div>
+    <div class="msg hidden" id="camMsg"></div>
+  </div>
+
+  <div class="card">
+    <h2>2. 수신 상태</h2>
+    <div class="msg" id="stateMsg">대기 중 — 송신기가 재생되는 화면을 비추세요.</div>
+    <div class="bar" style="margin-top:.6rem"><i id="totalBar"></i></div>
+    <div class="stat">
+      <div>세션: <b id="sSid">-</b></div><div>총 크기: <b id="sTotal">-</b></div>
+      <div>완료 구간: <b id="sSegs">-</b></div><div>예상 남은 시간: <b id="sEta">-</b></div>
+      <div>수신 프레임: <b id="sFrames">0</b></div><div>오류 프레임: <b id="sBad">0</b></div>
+    </div>
+    <div id="segGrid"></div>
+    <div class="msg warn hidden" id="otherMsg"></div>
+    <ul class="files" id="peekList"></ul>
+    <div class="row"><button class="btn bad" id="btnReset">수신 초기화</button></div>
+  </div>
+
+  <div class="card hidden" id="resultCard">
+    <h2>3. 수신 완료 · 파일 받기</h2>
+    <div class="msg ok" id="verifyMsg"></div>
+    <ul class="files" id="resultList"></ul>
+    <div class="row"><button class="btn ok" id="btnZip">📦 전체를 ZIP으로 받기</button></div>
+    <p class="hint">모든 파일은 전송 전 원본과 바이트 단위로 동일합니다(SHA-256·CRC32 검증). 한글 파일명은 그대로 복원됩니다.</p>
+  </div>
+
+  <div class="card">
+    <h2>카메라를 쓸 수 없을 때: 영상 파일로 수신</h2>
+    <p class="hint">폰 기본 카메라앱으로 송신 화면을 <b>동영상 촬영</b>한 뒤 아래에서 그 영상을 선택하면 같은 방식으로 복원합니다.</p>
+    <div class="row">
+      <input type="file" id="videoFile" accept="video/*">
+    </div>
+    <div class="row">
+      <label class="hint">재생 속도
+        <select id="vrate"><option value="1">1배</option><option value="0.5" selected>0.5배 (권장)</option><option value="0.25">0.25배 (정확)</option></select></label>
+      <button class="btn sec" id="btnVideoStop" disabled>중지</button>
+    </div>
+    <video id="vplay" playsinline muted style="width:100%;max-height:200px;background:#000;border-radius:8px;display:none"></video>
+    <div class="msg hidden" id="vMsg"></div>
+  </div>
+
+  <div class="card"><h2>진단 로그</h2><div id="log"></div></div>
+</div>
+
+<script>
+/*@@CORE@@*/
+</script>
+<script>
+/* ---------------------------------------------------------------------------
+   jsQR v1.4.0 — Copyright (c) Cosmo Wolfe — Apache License 2.0
+   https://github.com/cozmo/jsQR  (원문 그대로 포함, 수정 없음)
+   Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
+   --------------------------------------------------------------------------- */
+/*@@JSQR@@*/
+</script>
+<script>
+/*@@UI@@*/
+</script>
+</body>
+</html>
