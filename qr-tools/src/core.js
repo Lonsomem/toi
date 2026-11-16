@@ -665,9 +665,9 @@ QX.buildZip = function (files) {
 // 메타  : [ver=1][type=0][sid u32][total u32][segSize u32][B u16][segCount u16][flags u8][sha256 32][crc32 u32] (55바이트)
 QX.FRAME_OVERHEAD = 16;
 
-QX.makeDataFrame = function (sid, seg, sym, payload) {
+QX.makeDataFrame = function (sid, seg, sym, payload, layered) {
     const B = payload.length, f = new Uint8Array(B + 16), v = new DataView(f.buffer);
-    f[0] = 1; f[1] = 1; v.setUint32(2, sid, false); v.setUint16(6, seg, false); v.setUint32(8, sym, false);
+    f[0] = layered ? 0x81 : 1; f[1] = 1; v.setUint32(2, sid, false); v.setUint16(6, seg, false); v.setUint32(8, sym, false);
     f.set(payload, 12);
     v.setUint32(12 + B, QX.crc32(f, 0, 12 + B), false);
     return f;
@@ -675,7 +675,7 @@ QX.makeDataFrame = function (sid, seg, sym, payload) {
 
 QX.makeMetaFrame = function (m) {
     const f = new Uint8Array(55), v = new DataView(f.buffer);
-    f[0] = 1; f[1] = 0; v.setUint32(2, m.sid, false); v.setUint32(6, m.total, false); v.setUint32(10, m.segSize, false);
+    f[0] = m.layered ? 0x81 : 1; f[1] = 0; v.setUint32(2, m.sid, false); v.setUint32(6, m.total, false); v.setUint32(10, m.segSize, false);
     v.setUint16(14, m.B, false); v.setUint16(16, m.segCount, false); f[18] = m.flags || 0;
     f.set(m.sha, 19);
     v.setUint32(51, QX.crc32(f, 0, 51), false);
@@ -683,13 +683,14 @@ QX.makeMetaFrame = function (m) {
 };
 
 QX.parseFrame = function (f) {
-    if (!f || f.length < 20 || f[0] !== 1) return null;
+    if (!f || f.length < 20 || (f[0] & 0x7F) !== 1) return null;
+    const layered = (f[0] & 0x80) !== 0; // RGB 3층 전송 중인 프레임인지
     const v = new DataView(f.buffer, f.byteOffset, f.byteLength);
     if (f[1] === 0) {
         if (f.length !== 55) return null;
         if (v.getUint32(51, false) !== QX.crc32(f, 0, 51)) return null;
         return {
-            type: 'meta', sid: v.getUint32(2, false), total: v.getUint32(6, false), segSize: v.getUint32(10, false),
+            type: 'meta', layered: layered, sid: v.getUint32(2, false), total: v.getUint32(6, false), segSize: v.getUint32(10, false),
             B: v.getUint16(14, false), segCount: v.getUint16(16, false), flags: f[18], sha: f.slice(19, 51)
         };
     }
@@ -697,9 +698,50 @@ QX.parseFrame = function (f) {
         const B = f.length - 16;
         if (B < 1) return null;
         if (v.getUint32(12 + B, false) !== QX.crc32(f, 0, 12 + B)) return null;
-        return { type: 'data', sid: v.getUint32(2, false), seg: v.getUint16(6, false), sym: v.getUint32(8, false), payload: f.subarray(12, 12 + B) };
+        return { type: 'data', layered: layered, sid: v.getUint32(2, false), seg: v.getUint16(6, false), sym: v.getUint32(8, false), payload: f.subarray(12, 12 + B) };
+    }
+    if (f[1] === 2) { // 속도 보정 테스트 프레임
+        if (v.getUint32(f.length - 4, false) !== QX.crc32(f, 0, f.length - 4)) return null;
+        return { type: 'calib', layered: f[5] === 1, ver: f[2], fps: f[3], ecl: f[4], mode: f[5], seq: v.getUint16(6, false), len: f.length };
     }
     return null;
+};
+
+// 보정 프레임: [1][2][ver][fps][ecl 0=L 1=M][mode 0=흑백 1=RGB][seq u16][패딩...][crc32]  (총 F바이트)
+QX.makeCalibFrame = function (F, ver, fps, ecl, mode, seq) {
+    const f = new Uint8Array(F), v = new DataView(f.buffer);
+    f[0] = 1; f[1] = 2; f[2] = ver; f[3] = fps; f[4] = ecl; f[5] = mode; v.setUint16(6, seq, false);
+    for (let i = 8; i < F - 4; i++) f[i] = QX.fmix32(Math.imul(seq + 1, 0x9E3779B1) ^ Math.imul(i, 0x85EBCA6B)) & 255;
+    v.setUint32(F - 4, QX.crc32(f, 0, F - 4), false);
+    return f;
+};
+
+// 수신 측 보정 통계: 레벨(모드·버전·ECC·fps)별 수신율과 실효 속도
+QX.CalibStats = function () { this.map = {}; };
+QX.CalibStats.prototype.add = function (c) {
+    const key = c.mode + '|' + c.ver + '|' + c.ecl + '|' + c.fps;
+    let e = this.map[key];
+    if (!e) e = this.map[key] = { mode: c.mode, ver: c.ver, ecl: c.ecl, fps: c.fps, len: c.len, first: c.seq, last: c.seq, seen: {}, n: 0 };
+    if (e.seen[c.seq]) return;
+    e.seen[c.seq] = 1; e.n++;
+    if (c.seq < e.first) e.first = c.seq;
+    if (c.seq > e.last) e.last = c.seq;
+};
+QX.CalibStats.prototype.report = function () {
+    const rows = [];
+    for (const k in this.map) {
+        const e = this.map[k], layers = e.mode === 1 ? 3 : 1;
+        const expected = e.last - e.first + 1;
+        if (e.n < 6) continue;
+        const ratio = e.n / expected;
+        const seconds = (expected / layers) / e.fps;
+        const payload = e.len - QX.FRAME_OVERHEAD;
+        rows.push({ mode: e.mode, ver: e.ver, ecl: e.ecl, fps: e.fps, ratio: ratio, payload: payload, kbps: (e.n * payload / seconds) / 1024, n: e.n });
+    }
+    rows.sort(function (a, b) { return a.mode - b.mode || a.ver - b.ver || a.fps - b.fps; });
+    let best = null;
+    rows.forEach(function (r) { if (r.ratio >= 0.5 && (!best || r.kbps > best.kbps)) best = r; });
+    return { rows: rows, best: best };
 };
 
 /* QR 에 실을 문자열/바이트 변환 */
@@ -849,19 +891,24 @@ QX.SegmentDecoder.prototype.complete = function () { return this.count === this.
 QX.SegmentDecoder.prototype.getData = function () { return this.blocks.slice(0, this.segLen); };
 
 /* ----------------------------------------------- 송신: 프레임 공급기 */
+// 스케줄: 1회차는 구간마다 K/(1-예상손실)+3 프레임(원본 K개 + 여유 복구조각),
+//        2회차부터는 구간마다 0.15K+4 프레임의 새 복구조각만 보충 (복구조각은 어느 것이든 유효하므로 낭비 없음)
 QX.FrameSource = function (archive, opts) {
     this.archive = archive;
     this.sid = opts.sid >>> 0;
     this.sha = opts.sha;
     this.B = opts.B;
     this.segSize = opts.segSize;
-    this.mult = opts.mult || 1.6;
+    this.loss = (opts.loss === undefined) ? 0.1 : opts.loss;
     this.manual = !!opts.manual;
     this.loopAll = opts.loopAll !== false;
-    this.metaEvery = opts.metaEvery || 25;
+    this.metaEvery = opts.metaEvery || 40;
+    this.layered = !!opts.layered;
     this.segCount = Math.max(1, Math.ceil(archive.length / this.segSize));
     this.segNext = new Array(this.segCount).fill(0);
-    this.cur = 0; this.visitSent = 0; this.sinceMeta = 1e9; this.finished = false; this.loops = 0;
+    this.order = null;       // 재생할 구간 목록(null = 전체)
+    this.oi = 0;
+    this.cur = 0; this.visitSent = 0; this.sinceMeta = 1e9; this.finished = false; this.loops = 0; this.pass = 0;
     this._segCache = null;
 };
 QX.FrameSource.prototype.segLen = function (s) {
@@ -869,7 +916,10 @@ QX.FrameSource.prototype.segLen = function (s) {
 };
 QX.FrameSource.prototype.K = function (s) { return Math.max(1, Math.ceil(this.segLen(s) / this.B)); };
 QX.FrameSource.prototype.visitTarget = function (s) {
-    return this.manual ? Infinity : Math.ceil(this.K(s) * this.mult);
+    if (this.manual) return Infinity;
+    const K = this.K(s);
+    if (this.pass === 0) return Math.ceil(K / (1 - Math.min(0.9, this.loss))) + 3;
+    return Math.ceil(K * 0.15) + 4;
 };
 QX.FrameSource.prototype.segData = function (s) {
     if (!this._segCache || this._segCache.s !== s) {
@@ -878,16 +928,36 @@ QX.FrameSource.prototype.segData = function (s) {
     }
     return this._segCache.d;
 };
+QX.FrameSource.prototype.list = function () {
+    if (this.order && this.order.length) return this.order;
+    const all = [];
+    for (let i = 0; i < this.segCount; i++) all.push(i);
+    return all;
+};
+// 특정 구간만 재전송 (빈 배열/null = 전체)
+QX.FrameSource.prototype.setPlaylist = function (arr) {
+    const ok = {};
+    const out = [];
+    (arr || []).forEach(function (x) { if (x >= 0 && x < this.segCount && !ok[x]) { ok[x] = 1; out.push(x); } }, this);
+    out.sort(function (a, b) { return a - b; });
+    this.order = out.length ? out : null;
+    if (this.order) this.pass = Math.max(this.pass, 1);
+    this.oi = 0;
+    this.jump(this.list()[0]);
+};
 QX.FrameSource.prototype.jump = function (s) {
     this.cur = Math.max(0, Math.min(this.segCount - 1, s));
+    const idx = this.list().indexOf(this.cur);
+    if (idx >= 0) this.oi = idx;
     this.visitSent = 0; this.sinceMeta = 1e9; this.finished = false;
 };
 QX.FrameSource.prototype.nextSegment = function () {
-    if (this.cur + 1 < this.segCount) { this.jump(this.cur + 1); return; }
-    if (this.loopAll) { this.loops++; this.jump(0); } else this.finished = true;
+    const l = this.list();
+    if (this.oi + 1 < l.length) { this.oi++; this.jump(l[this.oi]); return; }
+    if (this.loopAll) { this.loops++; this.pass++; this.oi = 0; this.jump(l[0]); } else this.finished = true;
 };
 QX.FrameSource.prototype.meta = function () {
-    return QX.makeMetaFrame({ sid: this.sid, total: this.archive.length, segSize: this.segSize, B: this.B, segCount: this.segCount, flags: 0, sha: this.sha });
+    return QX.makeMetaFrame({ sid: this.sid, total: this.archive.length, segSize: this.segSize, B: this.B, segCount: this.segCount, flags: 0, sha: this.sha, layered: this.layered });
 };
 QX.FrameSource.prototype.next = function () {
     if (this.finished) return null;
@@ -902,14 +972,17 @@ QX.FrameSource.prototype.next = function () {
     const s = this.cur, K = this.K(s), id = this.segNext[s]++;
     const payload = QX.makeSymbol(this.segData(s), this.B, K, s, id);
     this.visitSent++; this.sinceMeta++;
-    return { kind: 'data', bytes: QX.makeDataFrame(this.sid, s, id, payload), seg: s, sym: id, K };
+    return { kind: 'data', bytes: QX.makeDataFrame(this.sid, s, id, payload, this.layered), seg: s, sym: id, K };
 };
 QX.FrameSource.prototype.estimateFrames = function () {
     let total = 0;
+    const saved = this.pass;
+    this.pass = 0;
     for (let s = 0; s < this.segCount; s++) {
-        const n = Math.ceil(this.K(s) * this.mult);
+        const n = this.visitTarget(s);
         total += n + Math.ceil(n / this.metaEvery) + 1;
     }
+    this.pass = saved;
     return total;
 };
 
@@ -944,13 +1017,19 @@ QX.Assembler.prototype.restoreSegment = function (s, data) {
 };
 // 반환: {kind:'meta'|'sym'|'segdone'|'dup'|'wait'|'other'|'bad'}
 QX.Assembler.prototype.ingest = function (frameBytes) {
+    const r = this._ingest(frameBytes);
+    if (r.layered === undefined && frameBytes && frameBytes.length > 0 && r.kind !== 'bad') r.layered = (frameBytes[0] & 0x80) !== 0;
+    return r;
+};
+QX.Assembler.prototype._ingest = function (frameBytes) {
     const f = QX.parseFrame(frameBytes);
     if (!f) { this.badFrames++; return { kind: 'bad' }; }
+    if (f.type === 'calib') return { kind: 'calib', calib: f, layered: f.layered };
     this.frames++;
     if (f.type === 'meta') {
-        if (!this.meta) { this.setMeta(f); return { kind: 'meta', first: true }; }
+        if (!this.meta) { this.setMeta(f); return { kind: 'meta', first: true, layered: f.layered }; }
         if (f.sid !== this.meta.sid) { this.otherSid = f.sid; this.otherCount++; return { kind: 'other', sid: f.sid }; }
-        return { kind: 'meta', first: false };
+        return { kind: 'meta', first: false, layered: f.layered };
     }
     if (!this.meta) return { kind: 'wait' };
     if (f.sid !== this.meta.sid) { this.otherSid = f.sid; this.otherCount++; return { kind: 'other', sid: f.sid }; }
@@ -969,6 +1048,33 @@ QX.Assembler.prototype.ingest = function (frameBytes) {
         return { kind: 'segdone', seg: f.seg };
     }
     return { kind: 'sym', seg: f.seg };
+};
+// 미완료 구간을 사람이 읽는 범위 문자열로 (1부터 시작): "3,5-7"
+QX.Assembler.prototype.missingText = function () {
+    if (!this.meta) return '';
+    const out = [];
+    let i = 0;
+    const n = this.meta.segCount;
+    while (i < n) {
+        if (this.done[i]) { i++; continue; }
+        let j = i;
+        while (j + 1 < n && !this.done[j + 1]) j++;
+        out.push(i === j ? String(i + 1) : (i + 1) + '-' + (j + 1));
+        i = j + 1;
+    }
+    return out.join(',');
+};
+// "3,5-7" → [2,4,5,6]  (0부터)
+QX.parseSegList = function (text, max) {
+    const out = [];
+    String(text || '').split(/[\s,;]+/).forEach(function (tok) {
+        if (!tok) return;
+        const m = tok.match(/^(\d+)(?:-(\d+))?$/);
+        if (!m) return;
+        const a = parseInt(m[1], 10), b = m[2] ? parseInt(m[2], 10) : a;
+        for (let x = Math.min(a, b); x <= Math.max(a, b) && x <= max; x++) if (x >= 1) out.push(x - 1);
+    });
+    return out;
 };
 QX.Assembler.prototype.isComplete = function () {
     return !!this.meta && this.completed === this.meta.segCount;

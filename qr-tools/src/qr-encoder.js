@@ -309,3 +309,36 @@ QX.drawQR = function (canvas, qr, boxPx) {
     }
     ctx.putImageData(img, 0, 0);
 };
+
+/* RGB 3층: 서로 다른 QR 3개를 R/G/B 채널에 각각 싣는다. (모듈이 어두우면 해당 채널=0, 밝으면 255)
+   세 층의 파인더/타이밍 패턴 위치가 같아 검은색으로 겹쳐 보인다. */
+QX.drawQR3 = function (canvas, qrs, boxPx) {
+    const size = qrs[0].size, q = 4, n = size + q * 2;
+    const scale = Math.max(2, Math.floor(boxPx / n));
+    const px = n * scale;
+    if (canvas.width !== px || canvas.height !== px) { canvas.width = px; canvas.height = px; }
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(px, px), d = img.data;
+    d.fill(255);
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const i = y * size + x;
+            const r = qrs[0].modules[i] ? 0 : 255, g = qrs[1].modules[i] ? 0 : 255, b = qrs[2].modules[i] ? 0 : 255;
+            if (r === 255 && g === 255 && b === 255) continue;
+            for (let yy = 0; yy < scale; yy++) {
+                let o = (((y + q) * scale + yy) * px + (x + q) * scale) * 4;
+                for (let xx = 0; xx < scale; xx++, o += 4) { d[o] = r; d[o + 1] = g; d[o + 2] = b; }
+            }
+        }
+    }
+    ctx.putImageData(img, 0, 0);
+};
+
+/* 수신 측: RGBA 이미지에서 채널 c(0/1/2)만 뽑아 jsQR 이 읽을 수 있는 회색조 RGBA 로 변환 */
+QX.channelToGray = function (src, dst, c) {
+    for (let i = 0, n = src.length; i < n; i += 4) {
+        const v = src[i + c];
+        dst[i] = v; dst[i + 1] = v; dst[i + 2] = v; dst[i + 3] = 255;
+    }
+    return dst;
+};

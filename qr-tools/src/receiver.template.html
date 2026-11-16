@@ -42,6 +42,7 @@ select{padding:.45rem;border:1px solid #cbd5e1;border-radius:8px;font-family:inh
 .hint{font-size:.78rem;color:var(--sub);line-height:1.6}
 .hidden{display:none!important}
 #log{font-size:.72rem;color:#475569;max-height:90px;overflow:auto;background:#f8fafc;border:1px solid var(--line);border-radius:8px;padding:.4rem;white-space:pre-wrap}
+table td,table th{border-bottom:1px solid var(--line);padding:.3rem .4rem;text-align:center}table tr.best{background:#ecfdf5;font-weight:800}
 </style>
 </head>
 <body>
@@ -57,6 +58,8 @@ select{padding:.45rem;border:1px solid #cbd5e1;border-radius:8px;font-family:inh
       <button class="btn sec" id="btnTorch" disabled>🔦 손전등</button>
     </div>
     <div class="row">
+      <label class="hint">색상 모드
+        <select id="colorMode"><option value="auto" selected>자동</option><option value="mono">흑백</option><option value="rgb">RGB 3층</option></select></label>
       <label class="hint">인식 엔진
         <select id="engine"><option value="auto" selected>자동</option><option value="js">jsQR (소프트웨어)</option><option value="bd">내장 BarcodeDetector</option></select></label>
     </div>
@@ -74,8 +77,16 @@ select{padding:.45rem;border:1px solid #cbd5e1;border-radius:8px;font-family:inh
     </div>
     <div id="segGrid"></div>
     <div class="msg warn hidden" id="otherMsg"></div>
+    <div class="msg hidden" id="missing"></div>
     <ul class="files" id="peekList"></ul>
     <div class="row"><button class="btn bad" id="btnReset">수신 초기화</button></div>
+  </div>
+
+  <div class="card hidden" id="calibCard">
+    <h2>📶 속도 측정 결과 (보정 테스트)</h2>
+    <div class="msg ok" id="calibBest"></div>
+    <div style="overflow-x:auto"><table id="calibTable" style="width:100%;border-collapse:collapse;font-size:.8rem;margin-top:.5rem"></table></div>
+    <p class="hint">실효 속도 = 폰이 실제로 받은 유효 프레임 기준입니다. 놓친 프레임은 새 복구 조각으로 보충되므로, 수신율이 낮아도 실효 속도가 가장 높은 설정이 가장 빠릅니다.</p>
   </div>
 
   <div class="card hidden" id="resultCard">

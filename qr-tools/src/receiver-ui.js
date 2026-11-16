@@ -4,7 +4,8 @@
     var R = {
         asm: new QX.Assembler(), stream: null, running: false, busy: false, bd: null, missCount: 0,
         key: '', startedAt: 0, validSyms: 0, lastSec: 0, secCount: 0, fps: 0, torchOn: false,
-        wake: null, finishing: false, files: null, videoMode: false, workCanvas: null, workCtx: null
+        wake: null, finishing: false, files: null, videoMode: false, workCanvas: null, workCtx: null,
+        calib: new QX.CalibStats(), detected: null, misses: 0, alt: 0, gray: null
     };
 
     function log(s) {
@@ -94,6 +95,8 @@
     function onFrame(bytes) {
         var a = R.asm;
         var r = a.ingest(bytes);
+        if (r.layered !== undefined && $('colorMode').value === 'auto') R.detected = r.layered ? 'rgb' : 'mono'; // 프레임 헤더 플래그로 확정
+        if (r.kind === 'calib') { R.calib.add(r.calib); R.secCount++; return; }
         if (r.kind === 'meta' && r.first) {
             R.key = sessKey(a.meta);
             R.startedAt = Date.now(); R.validSyms = 0;
@@ -141,7 +144,23 @@
         }
     }
 
+    function renderCalib() {
+        var rep = R.calib.report();
+        if (!rep.rows.length) return;
+        $('calibCard').className = 'card';
+        var html = '<tr><th>모드</th><th>QR</th><th>ECC</th><th>fps</th><th>수신율</th><th>실효 KB/s</th></tr>';
+        rep.rows.forEach(function (r) {
+            html += '<tr' + (rep.best === r ? ' class="best"' : '') + '><td>' + (r.mode ? 'RGB' : '흑백') + '</td><td>V' + r.ver + '</td><td>' + (r.ecl ? 'M' : 'L') + '</td><td>' + r.fps + '</td><td>' +
+                Math.round(r.ratio * 100) + '%</td><td>' + r.kbps.toFixed(1) + (rep.best === r ? ' ★' : '') + '</td></tr>';
+        });
+        $('calibTable').innerHTML = html;
+        $('calibBest').textContent = rep.best
+            ? ('추천: ' + (rep.best.mode ? 'RGB 3층 · ' : '흑백 · ') + 'V' + rep.best.ver + ' · ECC ' + (rep.best.ecl ? 'M' : 'L') + ' · ' + rep.best.fps + 'fps  (실효 약 ' + rep.best.kbps.toFixed(1) + ' KB/s) → 송신기에서 이 설정을 선택하세요.')
+            : '아직 신뢰할 만한 측정값이 없습니다. 테스트가 끝날 때까지 계속 비추세요.';
+    }
+
     function refresh() {
+        renderCalib();
         var a = R.asm, m = a.meta;
         $('sFrames').textContent = a.frames;
         $('sBad').textContent = a.badFrames;
@@ -163,6 +182,10 @@
             var rate = (doneBytes + partial) / Math.max(1, el);
             $('sEta').textContent = fmtTime((m.total - doneBytes - partial) / rate);
         } else $('sEta').textContent = a.isComplete() ? '완료' : '-';
+        var miss = a.missingText();
+        var mEl = $('missing');
+        if (a.completed > 0 && !a.isComplete()) { mEl.className = 'msg'; mEl.textContent = '미완료 구간(송신기 [재전송할 구간]에 입력): ' + miss; }
+        else mEl.className = 'msg hidden';
         if (!a.isComplete() && R.running) {
             setMsg('stateMsg', '수신 중… ' + (frac * 100).toFixed(1) + '% · ' + R.fps + '프레임/초 인식', '');
         }
@@ -240,38 +263,85 @@
     function ensureCanvas() {
         if (!R.workCanvas) { R.workCanvas = document.createElement('canvas'); R.workCtx = R.workCanvas.getContext('2d', { willReadFrequently: true }) || R.workCanvas.getContext('2d'); }
     }
-    function decodeJs(src, w, h) {
+    function grab(src, w, h, maxW) {
         ensureCanvas();
-        var maxW = 1280, sc = w > maxW ? maxW / w : 1;
+        var sc = w > maxW ? maxW / w : 1;
         var cw = Math.round(w * sc), ch = Math.round(h * sc);
         if (R.workCanvas.width !== cw) R.workCanvas.width = cw;
         if (R.workCanvas.height !== ch) R.workCanvas.height = ch;
         R.workCtx.drawImage(src, 0, 0, cw, ch);
-        var img = R.workCtx.getImageData(0, 0, cw, ch);
-        var r = jsQR(img.data, cw, ch, { inversionAttempts: 'dontInvert' });
-        if (!r) return null;
-        return QX.decodeScanned(r.data, r.binaryData);
+        return R.workCtx.getImageData(0, 0, cw, ch);
     }
-    function scan(src, w, h) {
+    function decodeMonoJs(img) {
+        var r = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+        if (!r) return [];
+        var fr = QX.decodeScanned(r.data, r.binaryData);
+        return fr ? [fr] : [];
+    }
+    function decodeRgbJs(img) {
+        var out = [];
+        if (!R.gray || R.gray.length !== img.data.length) R.gray = new Uint8ClampedArray(img.data.length);
+        for (var c = 0; c < 3; c++) {
+            QX.channelToGray(img.data, R.gray, c);
+            var r = jsQR(R.gray, img.width, img.height, { inversionAttempts: 'dontInvert' });
+            if (r) { var fr = QX.decodeScanned(r.data, r.binaryData); if (fr) out.push(fr); }
+        }
+        return out;
+    }
+    function monoPath(src, w, h, maxW) {
         var mode = $('engine').value;
         var useBd = (mode === 'bd' || mode === 'auto') && R.bd;
-        var p = Promise.resolve(null);
+        var p = Promise.resolve([]);
         if (useBd) {
             p = R.bd.detect(src).then(function (res) {
                 for (var i = 0; i < res.length; i++) {
                     var v = res[i].rawValue;
-                    if (v && v.charCodeAt(0) === 0x51 && v.charCodeAt(1) === 0x58) return QX.decodeScanned(v, null);
+                    if (v && v.charCodeAt(0) === 0x51 && v.charCodeAt(1) === 0x58) { var fr = QX.decodeScanned(v, null); if (fr) return [fr]; }
                 }
-                return null;
-            }).catch(function () { return null; });
+                return [];
+            }).catch(function () { return []; });
         }
-        return p.then(function (fr) {
-            if (fr) { R.missCount = 0; return fr; }
-            if (mode === 'bd') return null;
+        return p.then(function (frs) {
+            if (frs.length) { R.missCount = 0; return frs; }
+            if (mode === 'bd') return [];
             R.missCount++;
-            if (useBd && R.missCount % 3 !== 0) return null; // BD가 있으면 jsQR 은 3회에 1번만 보조 사용
-            try { return decodeJs(src, w, h); } catch (e) { return null; }
+            if (useBd && R.missCount % 3 !== 0) return []; // BD가 있으면 jsQR 은 3회에 1번만 보조
+            try { return decodeMonoJs(grab(src, w, h, maxW)); } catch (e) { return []; }
         });
+    }
+    function rgbPath(src, w, h, maxW) {
+        try { return Promise.resolve(decodeRgbJs(grab(src, w, h, maxW))); } catch (e) { return Promise.resolve([]); }
+    }
+    // 반환: 프레임 바이트 배열 (흑백 0~1개, RGB 0~3개)
+    function scan(src, w, h) {
+        var cm = $('colorMode').value;
+        var maxW = (R.misses > 0 && R.misses % 5 === 4) ? 1920 : 1280; // 연속 실패 시 고해상도 재시도
+        var order;
+        if (cm === 'mono') order = ['mono'];
+        else if (cm === 'rgb') order = ['rgb'];
+        else {
+            if (R.detected) order = [R.detected];
+            else order = (R.alt++ % 2) ? ['rgb'] : ['mono'];
+            if (R.misses >= 8) order = (R.alt++ % 2) ? ['rgb', 'mono'] : ['mono', 'rgb'];
+        }
+        var idx = 0;
+        function tryNext() {
+            if (idx >= order.length) {
+                R.misses++;
+                if (R.detected && R.misses > 30) R.detected = null;
+                return Promise.resolve([]);
+            }
+            var which = order[idx++];
+            return (which === 'rgb' ? rgbPath(src, w, h, maxW) : monoPath(src, w, h, maxW)).then(function (frs) {
+                if (frs.length) {
+                    R.misses = 0;
+                    if (cm === 'auto') R.detected = which;
+                    return frs;
+                }
+                return tryNext();
+            });
+        }
+        return tryNext();
     }
 
     /* ---------- 카메라 ---------- */
@@ -329,8 +399,8 @@
         var v = $('video');
         if (R.busy || v.readyState < 2 || !v.videoWidth) { nextTick(loopCamera); return; }
         R.busy = true;
-        scan(v, v.videoWidth, v.videoHeight).then(function (fr) {
-            if (fr) onFrame(fr);
+        scan(v, v.videoWidth, v.videoHeight).then(function (frs) {
+            for (var i = 0; i < frs.length; i++) onFrame(frs[i]);
         }).catch(function (e) { log('스캔 오류 ' + e); }).then(function () {
             R.busy = false;
             nextTick(loopCamera);
@@ -374,8 +444,8 @@
         };
         if (R.busy || v.readyState < 2 || !v.videoWidth) { again(); return; }
         R.busy = true;
-        scan(v, v.videoWidth, v.videoHeight).then(function (fr) {
-            if (fr) onFrame(fr);
+        scan(v, v.videoWidth, v.videoHeight).then(function (frs) {
+            for (var i = 0; i < frs.length; i++) onFrame(frs[i]);
             if (v.duration) setMsg('vMsg', '영상 분석 중… ' + Math.round(v.currentTime / v.duration * 100) + '%', '');
         }).catch(function () { }).then(function () { R.busy = false; again(); });
     }
@@ -385,7 +455,8 @@
         stopCamera(); stopVideo();
         var key = R.key;
         R.asm.reset();
-        R.files = null; R.finishing = false; R.key = ''; R.startedAt = 0;
+        R.files = null; R.finishing = false; R.key = ''; R.startedAt = 0; R.calib = new QX.CalibStats(); R.detected = null; R.misses = 0;
+        $('calibCard').className = 'card hidden';
         $('segGrid').innerHTML = ''; $('peekList').innerHTML = ''; $('resultList').innerHTML = '';
         $('resultCard').className = 'card hidden';
         $('totalBar').style.width = '0';

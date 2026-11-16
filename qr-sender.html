@@ -47,6 +47,14 @@ select,input[type=number]{padding:.35rem .5rem;border:1px solid #cbd5e1;border-r
 .stage:fullscreen{background:#fff;border:none;border-radius:0}
 #status{font-size:.82rem;color:#334155;min-height:1.3rem}
 .hint{font-size:.74rem;color:var(--sub);line-height:1.6}
+#fileList .th{width:34px;height:34px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+#fileList label.rd{display:flex;align-items:center;gap:.25rem;font-size:.72rem;color:#3730a3;white-space:nowrap;cursor:pointer}
+.opt{border:1px solid #c7d2fe;background:#f5f7ff;border-radius:10px;padding:.5rem .7rem;margin:.4rem 0;font-size:.78rem}
+.opt summary{cursor:pointer;font-weight:800;color:#3730a3}
+.opt .g2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.4rem;margin:.5rem 0}
+.opt .g2 label{display:flex;flex-direction:column;font-size:.72rem;color:var(--sub);gap:.2rem;font-weight:700}
+.opt .note{color:#92400e;line-height:1.55;margin-top:.3rem}
+input[type=text]{padding:.35rem .5rem;border:1px solid #cbd5e1;border-radius:8px;font-family:inherit;font-size:.85rem;background:#fff;color:var(--ink);width:100%}
 @media (max-width:900px){.layout{grid-template-columns:1fr}}
 </style>
 </head>
@@ -57,6 +65,19 @@ select,input[type=number]{padding:.35rem .5rem;border:1px solid #cbd5e1;border-r
     <h2>1. 보낼 파일 (여러 개, 형식 무관)</h2>
     <div class="drop" id="drop">파일을 끌어다 놓거나 클릭해서 선택하세요<br><small>한글 파일명·PDF 등 모든 파일은 바이트 그대로 전송됩니다</small>
       <input type="file" id="fileInput" multiple style="display:none"></div>
+    <details class="opt" id="imgOpt">
+      <summary>🖼 사진 전송용 축소 (선택 · 용량 대폭 감소)</summary>
+      <div class="g2">
+        <label>최대 크기(긴 변)
+          <select id="imgMax"><option value="1280">1280 px</option><option value="1600" selected>1600 px</option><option value="2048">2048 px</option><option value="2560">2560 px</option></select></label>
+        <label>화질
+          <select id="imgQ"><option value="0.6">60 (작게)</option><option value="0.75">75</option><option value="0.82" selected>82 (권장)</option><option value="0.92">92 (고화질)</option></select></label>
+        <label>형식
+          <select id="imgFmt"><option value="image/jpeg" selected>JPEG</option><option value="image/webp">WebP (더 작음)</option></select></label>
+      </div>
+      <div class="row" style="margin:.2rem 0"><button class="btn sec" id="btnImgAll" style="padding:.35rem .7rem;font-size:.78rem">이미지 모두 선택</button><button class="btn sec" id="btnImgNone" style="padding:.35rem .7rem;font-size:.78rem">모두 해제</button></div>
+      <div class="note">⚠ 축소한 사진은 <b>원본이 아닙니다</b>(EXIF 촬영일시·GPS 제거, 해시 변경). 증거 원본은 체크하지 마세요. 원본 파일은 건드리지 않으며, 수신 파일명에 <b>(축소)</b>가 붙습니다. 준비 후 작은 미리보기로 사진 방향을 확인하세요. HEIC 형식은 축소할 수 없습니다.</div>
+    </details>
     <ul id="fileList"></ul>
     <div class="sum" id="fileSum">선택된 파일 없음</div>
 
@@ -83,16 +104,19 @@ select,input[type=number]{padding:.35rem .5rem;border:1px solid #cbd5e1;border-r
         <input type="number" id="fps" min="1" max="30" value="10"></label>
       <label>구간 크기
         <select id="segSize"><option value="262144">256 KB</option><option value="524288" selected>512 KB</option><option value="1048576">1 MB</option></select></label>
-      <label>구간당 전송 배수
-        <select id="mult"><option value="1.3">1.3배 (빠름)</option><option value="1.6" selected>1.6배 (권장)</option><option value="2">2배</option><option value="3">3배 (안전)</option></select></label>
+      <label>예상 손실률 (1회차 여유분)
+        <select id="loss"><option value="0.05">5% (좋은 환경)</option><option value="0.1" selected>10% (권장)</option><option value="0.15">15%</option><option value="0.25">25%</option><option value="0.35">35% (나쁜 환경)</option></select></label>
       <label>구간 전환
-        <select id="advance"><option value="auto" selected>자동 (배수 채우면 다음 구간)</option><option value="manual">수동 (▶ 버튼으로 직접 넘김)</option></select></label>
-      <label class="wide"><input type="checkbox" id="loopAll" checked> 전체 구간 끝나면 처음부터 반복 (놓친 구간 보충)</label>
+        <select id="advance"><option value="auto" selected>자동 (여유분 전송 후 다음 구간)</option><option value="manual">수동 (▶ 버튼으로 직접 넘김)</option></select></label>
+      <label class="wide"><input type="checkbox" id="rgb"> 🌈 RGB 3층 모드 (실험 · 이론상 3배 · 수신기 색상 모드 '자동')</label>
+      <label class="wide"><input type="checkbox" id="loopAll" checked> 전체 구간 끝나면 반복 (놓친 구간을 새 조각으로 보충)</label>
+      <label class="wide">재전송할 구간만 (수신기의 '미완료 구간' 입력, 예: 3,5-7)
+        <input type="text" id="playlist" placeholder="비우면 전체"></label>
     </div>
     <div class="est" id="est">파일을 준비하면 예상 시간이 표시됩니다.</div>
     <div class="warn" id="warn"></div>
-    <button class="btn ok" id="btnPlay" disabled>▶ 재생 시작</button>
-    <p class="hint" style="margin-top:.7rem">※ 수신 폰이 가까이서 QR 전체가 화면에 들어오도록 맞추세요. 재생 중에는 이 탭을 숨기지 마세요(백그라운드 탭은 재생이 멈춥니다).</p>
+    <div class="row"><button class="btn ok" id="btnPlay" disabled>▶ 재생 시작</button><button class="btn sec" id="btnCalib" title="파일 없이 여러 속도 단계를 순서대로 재생합니다. 폰 수신기에 최적 설정이 표시됩니다.">📶 속도 보정 테스트</button></div>
+    <p class="hint" style="margin-top:.7rem">※ 수신 폰이 가까이서 QR 전체가 화면에 들어오도록 맞추세요. 재생 중에는 이 탭을 숨기지 마세요(백그라운드 탭은 재생이 멈춥니다). <span id="hzInfo"></span></p>
   </section>
 
   <section class="panel right">
@@ -783,9 +807,9 @@ QX.buildZip = function (files) {
 // 메타  : [ver=1][type=0][sid u32][total u32][segSize u32][B u16][segCount u16][flags u8][sha256 32][crc32 u32] (55바이트)
 QX.FRAME_OVERHEAD = 16;
 
-QX.makeDataFrame = function (sid, seg, sym, payload) {
+QX.makeDataFrame = function (sid, seg, sym, payload, layered) {
     const B = payload.length, f = new Uint8Array(B + 16), v = new DataView(f.buffer);
-    f[0] = 1; f[1] = 1; v.setUint32(2, sid, false); v.setUint16(6, seg, false); v.setUint32(8, sym, false);
+    f[0] = layered ? 0x81 : 1; f[1] = 1; v.setUint32(2, sid, false); v.setUint16(6, seg, false); v.setUint32(8, sym, false);
     f.set(payload, 12);
     v.setUint32(12 + B, QX.crc32(f, 0, 12 + B), false);
     return f;
@@ -793,7 +817,7 @@ QX.makeDataFrame = function (sid, seg, sym, payload) {
 
 QX.makeMetaFrame = function (m) {
     const f = new Uint8Array(55), v = new DataView(f.buffer);
-    f[0] = 1; f[1] = 0; v.setUint32(2, m.sid, false); v.setUint32(6, m.total, false); v.setUint32(10, m.segSize, false);
+    f[0] = m.layered ? 0x81 : 1; f[1] = 0; v.setUint32(2, m.sid, false); v.setUint32(6, m.total, false); v.setUint32(10, m.segSize, false);
     v.setUint16(14, m.B, false); v.setUint16(16, m.segCount, false); f[18] = m.flags || 0;
     f.set(m.sha, 19);
     v.setUint32(51, QX.crc32(f, 0, 51), false);
@@ -801,13 +825,14 @@ QX.makeMetaFrame = function (m) {
 };
 
 QX.parseFrame = function (f) {
-    if (!f || f.length < 20 || f[0] !== 1) return null;
+    if (!f || f.length < 20 || (f[0] & 0x7F) !== 1) return null;
+    const layered = (f[0] & 0x80) !== 0; // RGB 3층 전송 중인 프레임인지
     const v = new DataView(f.buffer, f.byteOffset, f.byteLength);
     if (f[1] === 0) {
         if (f.length !== 55) return null;
         if (v.getUint32(51, false) !== QX.crc32(f, 0, 51)) return null;
         return {
-            type: 'meta', sid: v.getUint32(2, false), total: v.getUint32(6, false), segSize: v.getUint32(10, false),
+            type: 'meta', layered: layered, sid: v.getUint32(2, false), total: v.getUint32(6, false), segSize: v.getUint32(10, false),
             B: v.getUint16(14, false), segCount: v.getUint16(16, false), flags: f[18], sha: f.slice(19, 51)
         };
     }
@@ -815,9 +840,50 @@ QX.parseFrame = function (f) {
         const B = f.length - 16;
         if (B < 1) return null;
         if (v.getUint32(12 + B, false) !== QX.crc32(f, 0, 12 + B)) return null;
-        return { type: 'data', sid: v.getUint32(2, false), seg: v.getUint16(6, false), sym: v.getUint32(8, false), payload: f.subarray(12, 12 + B) };
+        return { type: 'data', layered: layered, sid: v.getUint32(2, false), seg: v.getUint16(6, false), sym: v.getUint32(8, false), payload: f.subarray(12, 12 + B) };
+    }
+    if (f[1] === 2) { // 속도 보정 테스트 프레임
+        if (v.getUint32(f.length - 4, false) !== QX.crc32(f, 0, f.length - 4)) return null;
+        return { type: 'calib', layered: f[5] === 1, ver: f[2], fps: f[3], ecl: f[4], mode: f[5], seq: v.getUint16(6, false), len: f.length };
     }
     return null;
+};
+
+// 보정 프레임: [1][2][ver][fps][ecl 0=L 1=M][mode 0=흑백 1=RGB][seq u16][패딩...][crc32]  (총 F바이트)
+QX.makeCalibFrame = function (F, ver, fps, ecl, mode, seq) {
+    const f = new Uint8Array(F), v = new DataView(f.buffer);
+    f[0] = 1; f[1] = 2; f[2] = ver; f[3] = fps; f[4] = ecl; f[5] = mode; v.setUint16(6, seq, false);
+    for (let i = 8; i < F - 4; i++) f[i] = QX.fmix32(Math.imul(seq + 1, 0x9E3779B1) ^ Math.imul(i, 0x85EBCA6B)) & 255;
+    v.setUint32(F - 4, QX.crc32(f, 0, F - 4), false);
+    return f;
+};
+
+// 수신 측 보정 통계: 레벨(모드·버전·ECC·fps)별 수신율과 실효 속도
+QX.CalibStats = function () { this.map = {}; };
+QX.CalibStats.prototype.add = function (c) {
+    const key = c.mode + '|' + c.ver + '|' + c.ecl + '|' + c.fps;
+    let e = this.map[key];
+    if (!e) e = this.map[key] = { mode: c.mode, ver: c.ver, ecl: c.ecl, fps: c.fps, len: c.len, first: c.seq, last: c.seq, seen: {}, n: 0 };
+    if (e.seen[c.seq]) return;
+    e.seen[c.seq] = 1; e.n++;
+    if (c.seq < e.first) e.first = c.seq;
+    if (c.seq > e.last) e.last = c.seq;
+};
+QX.CalibStats.prototype.report = function () {
+    const rows = [];
+    for (const k in this.map) {
+        const e = this.map[k], layers = e.mode === 1 ? 3 : 1;
+        const expected = e.last - e.first + 1;
+        if (e.n < 6) continue;
+        const ratio = e.n / expected;
+        const seconds = (expected / layers) / e.fps;
+        const payload = e.len - QX.FRAME_OVERHEAD;
+        rows.push({ mode: e.mode, ver: e.ver, ecl: e.ecl, fps: e.fps, ratio: ratio, payload: payload, kbps: (e.n * payload / seconds) / 1024, n: e.n });
+    }
+    rows.sort(function (a, b) { return a.mode - b.mode || a.ver - b.ver || a.fps - b.fps; });
+    let best = null;
+    rows.forEach(function (r) { if (r.ratio >= 0.5 && (!best || r.kbps > best.kbps)) best = r; });
+    return { rows: rows, best: best };
 };
 
 /* QR 에 실을 문자열/바이트 변환 */
@@ -967,19 +1033,24 @@ QX.SegmentDecoder.prototype.complete = function () { return this.count === this.
 QX.SegmentDecoder.prototype.getData = function () { return this.blocks.slice(0, this.segLen); };
 
 /* ----------------------------------------------- 송신: 프레임 공급기 */
+// 스케줄: 1회차는 구간마다 K/(1-예상손실)+3 프레임(원본 K개 + 여유 복구조각),
+//        2회차부터는 구간마다 0.15K+4 프레임의 새 복구조각만 보충 (복구조각은 어느 것이든 유효하므로 낭비 없음)
 QX.FrameSource = function (archive, opts) {
     this.archive = archive;
     this.sid = opts.sid >>> 0;
     this.sha = opts.sha;
     this.B = opts.B;
     this.segSize = opts.segSize;
-    this.mult = opts.mult || 1.6;
+    this.loss = (opts.loss === undefined) ? 0.1 : opts.loss;
     this.manual = !!opts.manual;
     this.loopAll = opts.loopAll !== false;
-    this.metaEvery = opts.metaEvery || 25;
+    this.metaEvery = opts.metaEvery || 40;
+    this.layered = !!opts.layered;
     this.segCount = Math.max(1, Math.ceil(archive.length / this.segSize));
     this.segNext = new Array(this.segCount).fill(0);
-    this.cur = 0; this.visitSent = 0; this.sinceMeta = 1e9; this.finished = false; this.loops = 0;
+    this.order = null;       // 재생할 구간 목록(null = 전체)
+    this.oi = 0;
+    this.cur = 0; this.visitSent = 0; this.sinceMeta = 1e9; this.finished = false; this.loops = 0; this.pass = 0;
     this._segCache = null;
 };
 QX.FrameSource.prototype.segLen = function (s) {
@@ -987,7 +1058,10 @@ QX.FrameSource.prototype.segLen = function (s) {
 };
 QX.FrameSource.prototype.K = function (s) { return Math.max(1, Math.ceil(this.segLen(s) / this.B)); };
 QX.FrameSource.prototype.visitTarget = function (s) {
-    return this.manual ? Infinity : Math.ceil(this.K(s) * this.mult);
+    if (this.manual) return Infinity;
+    const K = this.K(s);
+    if (this.pass === 0) return Math.ceil(K / (1 - Math.min(0.9, this.loss))) + 3;
+    return Math.ceil(K * 0.15) + 4;
 };
 QX.FrameSource.prototype.segData = function (s) {
     if (!this._segCache || this._segCache.s !== s) {
@@ -996,16 +1070,36 @@ QX.FrameSource.prototype.segData = function (s) {
     }
     return this._segCache.d;
 };
+QX.FrameSource.prototype.list = function () {
+    if (this.order && this.order.length) return this.order;
+    const all = [];
+    for (let i = 0; i < this.segCount; i++) all.push(i);
+    return all;
+};
+// 특정 구간만 재전송 (빈 배열/null = 전체)
+QX.FrameSource.prototype.setPlaylist = function (arr) {
+    const ok = {};
+    const out = [];
+    (arr || []).forEach(function (x) { if (x >= 0 && x < this.segCount && !ok[x]) { ok[x] = 1; out.push(x); } }, this);
+    out.sort(function (a, b) { return a - b; });
+    this.order = out.length ? out : null;
+    if (this.order) this.pass = Math.max(this.pass, 1);
+    this.oi = 0;
+    this.jump(this.list()[0]);
+};
 QX.FrameSource.prototype.jump = function (s) {
     this.cur = Math.max(0, Math.min(this.segCount - 1, s));
+    const idx = this.list().indexOf(this.cur);
+    if (idx >= 0) this.oi = idx;
     this.visitSent = 0; this.sinceMeta = 1e9; this.finished = false;
 };
 QX.FrameSource.prototype.nextSegment = function () {
-    if (this.cur + 1 < this.segCount) { this.jump(this.cur + 1); return; }
-    if (this.loopAll) { this.loops++; this.jump(0); } else this.finished = true;
+    const l = this.list();
+    if (this.oi + 1 < l.length) { this.oi++; this.jump(l[this.oi]); return; }
+    if (this.loopAll) { this.loops++; this.pass++; this.oi = 0; this.jump(l[0]); } else this.finished = true;
 };
 QX.FrameSource.prototype.meta = function () {
-    return QX.makeMetaFrame({ sid: this.sid, total: this.archive.length, segSize: this.segSize, B: this.B, segCount: this.segCount, flags: 0, sha: this.sha });
+    return QX.makeMetaFrame({ sid: this.sid, total: this.archive.length, segSize: this.segSize, B: this.B, segCount: this.segCount, flags: 0, sha: this.sha, layered: this.layered });
 };
 QX.FrameSource.prototype.next = function () {
     if (this.finished) return null;
@@ -1020,14 +1114,17 @@ QX.FrameSource.prototype.next = function () {
     const s = this.cur, K = this.K(s), id = this.segNext[s]++;
     const payload = QX.makeSymbol(this.segData(s), this.B, K, s, id);
     this.visitSent++; this.sinceMeta++;
-    return { kind: 'data', bytes: QX.makeDataFrame(this.sid, s, id, payload), seg: s, sym: id, K };
+    return { kind: 'data', bytes: QX.makeDataFrame(this.sid, s, id, payload, this.layered), seg: s, sym: id, K };
 };
 QX.FrameSource.prototype.estimateFrames = function () {
     let total = 0;
+    const saved = this.pass;
+    this.pass = 0;
     for (let s = 0; s < this.segCount; s++) {
-        const n = Math.ceil(this.K(s) * this.mult);
+        const n = this.visitTarget(s);
         total += n + Math.ceil(n / this.metaEvery) + 1;
     }
+    this.pass = saved;
     return total;
 };
 
@@ -1062,13 +1159,19 @@ QX.Assembler.prototype.restoreSegment = function (s, data) {
 };
 // 반환: {kind:'meta'|'sym'|'segdone'|'dup'|'wait'|'other'|'bad'}
 QX.Assembler.prototype.ingest = function (frameBytes) {
+    const r = this._ingest(frameBytes);
+    if (r.layered === undefined && frameBytes && frameBytes.length > 0 && r.kind !== 'bad') r.layered = (frameBytes[0] & 0x80) !== 0;
+    return r;
+};
+QX.Assembler.prototype._ingest = function (frameBytes) {
     const f = QX.parseFrame(frameBytes);
     if (!f) { this.badFrames++; return { kind: 'bad' }; }
+    if (f.type === 'calib') return { kind: 'calib', calib: f, layered: f.layered };
     this.frames++;
     if (f.type === 'meta') {
-        if (!this.meta) { this.setMeta(f); return { kind: 'meta', first: true }; }
+        if (!this.meta) { this.setMeta(f); return { kind: 'meta', first: true, layered: f.layered }; }
         if (f.sid !== this.meta.sid) { this.otherSid = f.sid; this.otherCount++; return { kind: 'other', sid: f.sid }; }
-        return { kind: 'meta', first: false };
+        return { kind: 'meta', first: false, layered: f.layered };
     }
     if (!this.meta) return { kind: 'wait' };
     if (f.sid !== this.meta.sid) { this.otherSid = f.sid; this.otherCount++; return { kind: 'other', sid: f.sid }; }
@@ -1087,6 +1190,33 @@ QX.Assembler.prototype.ingest = function (frameBytes) {
         return { kind: 'segdone', seg: f.seg };
     }
     return { kind: 'sym', seg: f.seg };
+};
+// 미완료 구간을 사람이 읽는 범위 문자열로 (1부터 시작): "3,5-7"
+QX.Assembler.prototype.missingText = function () {
+    if (!this.meta) return '';
+    const out = [];
+    let i = 0;
+    const n = this.meta.segCount;
+    while (i < n) {
+        if (this.done[i]) { i++; continue; }
+        let j = i;
+        while (j + 1 < n && !this.done[j + 1]) j++;
+        out.push(i === j ? String(i + 1) : (i + 1) + '-' + (j + 1));
+        i = j + 1;
+    }
+    return out.join(',');
+};
+// "3,5-7" → [2,4,5,6]  (0부터)
+QX.parseSegList = function (text, max) {
+    const out = [];
+    String(text || '').split(/[\s,;]+/).forEach(function (tok) {
+        if (!tok) return;
+        const m = tok.match(/^(\d+)(?:-(\d+))?$/);
+        if (!m) return;
+        const a = parseInt(m[1], 10), b = m[2] ? parseInt(m[2], 10) : a;
+        for (let x = Math.min(a, b); x <= Math.max(a, b) && x <= max; x++) if (x >= 1) out.push(x - 1);
+    });
+    return out;
 };
 QX.Assembler.prototype.isComplete = function () {
     return !!this.meta && this.completed === this.meta.segCount;
@@ -1447,6 +1577,39 @@ QX.drawQR = function (canvas, qr, boxPx) {
     ctx.putImageData(img, 0, 0);
 };
 
+/* RGB 3층: 서로 다른 QR 3개를 R/G/B 채널에 각각 싣는다. (모듈이 어두우면 해당 채널=0, 밝으면 255)
+   세 층의 파인더/타이밍 패턴 위치가 같아 검은색으로 겹쳐 보인다. */
+QX.drawQR3 = function (canvas, qrs, boxPx) {
+    const size = qrs[0].size, q = 4, n = size + q * 2;
+    const scale = Math.max(2, Math.floor(boxPx / n));
+    const px = n * scale;
+    if (canvas.width !== px || canvas.height !== px) { canvas.width = px; canvas.height = px; }
+    const ctx = canvas.getContext('2d');
+    const img = ctx.createImageData(px, px), d = img.data;
+    d.fill(255);
+    for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+            const i = y * size + x;
+            const r = qrs[0].modules[i] ? 0 : 255, g = qrs[1].modules[i] ? 0 : 255, b = qrs[2].modules[i] ? 0 : 255;
+            if (r === 255 && g === 255 && b === 255) continue;
+            for (let yy = 0; yy < scale; yy++) {
+                let o = (((y + q) * scale + yy) * px + (x + q) * scale) * 4;
+                for (let xx = 0; xx < scale; xx++, o += 4) { d[o] = r; d[o + 1] = g; d[o + 2] = b; }
+            }
+        }
+    }
+    ctx.putImageData(img, 0, 0);
+};
+
+/* 수신 측: RGBA 이미지에서 채널 c(0/1/2)만 뽑아 jsQR 이 읽을 수 있는 회색조 RGBA 로 변환 */
+QX.channelToGray = function (src, dst, c) {
+    for (let i = 0, n = src.length; i < n; i += 4) {
+        const v = src[i + c];
+        dst[i] = v; dst[i + 1] = v; dst[i + 2] = v; dst[i + 3] = 255;
+    }
+    return dst;
+};
+
 </script>
 <script>
 /* ===================== 송신기 UI (구형 Chrome/Edge 호환 문법만 사용) ===================== */
@@ -1454,10 +1617,12 @@ QX.drawQR = function (canvas, qr, boxPx) {
     var $ = function (id) { return document.getElementById(id); };
     var S = {
         files: [], entries: null, archive: null, sha: null, sid: 0,
-        src: null, playing: false, paused: false, lastTs: 0, sentFrames: 0, lastRender: null,
-        preparing: false, cfg: null
+        src: null, playing: false, paused: false, sentFrames: 0, lastRender: null,
+        preparing: false, cfg: null, mode: 'send', calib: null,
+        hz: 60, tc: 0, curTicks: 6, maskCache: {}, thumbs: {}
     };
 
+    /* ---------- 유틸 ---------- */
     function fmtSize(n) {
         if (n < 1024) return n + ' B';
         if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
@@ -1473,27 +1638,58 @@ QX.drawQR = function (canvas, qr, boxPx) {
     function esc(s) {
         return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
     }
+    function isImage(f) {
+        return /^image\/(jpeg|png|webp|bmp|gif)$/i.test(f.type || '') || /\.(jpe?g|png|webp|bmp|gif)$/i.test(f.name);
+    }
+
+    /* ---------- 주사율 측정 → 프레임 타이밍을 모니터 갱신 주기의 정수배로 맞춤 ---------- */
+    function measureHz() {
+        var ts = [];
+        function step(t) {
+            ts.push(t);
+            if (ts.length < 45) { requestAnimationFrame(step); return; }
+            var d = [];
+            for (var i = 6; i < ts.length; i++) d.push(ts[i] - ts[i - 1]);
+            d.sort(function (a, b) { return a - b; });
+            var med = d[Math.floor(d.length / 2)];
+            var hz = Math.round(1000 / med);
+            if (hz >= 30 && hz <= 360) S.hz = hz;
+            $('hzInfo').textContent = '(모니터 ' + S.hz + 'Hz 감지 — 프레임 간격을 갱신 주기의 정수배로 맞춥니다)';
+            updateEstimate();
+        }
+        requestAnimationFrame(step);
+    }
+    function ticksFor(fps) { return Math.max(1, Math.round(S.hz / fps)); }
+    function effFps(fps) { return S.hz / ticksFor(fps); }
 
     /* ---------- 파일 목록 ---------- */
     function addFiles(list) {
-        for (var i = 0; i < list.length; i++) S.files.push({ file: list[i], state: '' });
+        for (var i = 0; i < list.length; i++) S.files.push({ file: list[i], state: '', reduce: false, thumb: '' });
         invalidate();
         renderFiles();
     }
     function renderFiles() {
         var ul = $('fileList');
         ul.innerHTML = '';
-        var total = 0;
+        var total = 0, imgCount = 0;
         S.files.forEach(function (f, i) {
             total += f.file.size;
             var li = document.createElement('li');
-            li.innerHTML = '<span class="nm" title="' + esc(f.file.name) + '">' + esc(f.file.name) + '</span><span class="sz">' + fmtSize(f.file.size) + '</span><span class="st">' + esc(f.state) + '</span><button title="제거">✕</button>';
+            var img = isImage(f.file);
+            if (img) imgCount++;
+            li.innerHTML = (f.thumb ? '<img class="th" src="' + f.thumb + '">' : '') +
+                '<span class="nm" title="' + esc(f.file.name) + '">' + esc(f.file.name) + '</span>' +
+                (img ? '<label class="rd" title="전송용으로 축소(원본 아님)"><input type="checkbox"' + (f.reduce ? ' checked' : '') + '> 축소</label>' : '') +
+                '<span class="sz">' + fmtSize(f.file.size) + '</span><span class="st">' + esc(f.state) + '</span><button title="제거">✕</button>';
             li.querySelector('button').onclick = function () { if (S.preparing) return; S.files.splice(i, 1); invalidate(); renderFiles(); };
+            var cb = li.querySelector('input[type=checkbox]');
+            if (cb) cb.onchange = function () { f.reduce = cb.checked; invalidate(); };
             ul.appendChild(li);
         });
         $('fileSum').textContent = S.files.length ? ('파일 ' + S.files.length + '개 · 원본 합계 ' + fmtSize(total)) : '선택된 파일 없음';
         $('btnPrepare').disabled = !S.files.length || S.preparing;
         $('btnClear').disabled = !S.files.length || S.preparing;
+        if (imgCount && !$('imgOpt').open && !S.optHinted) { $('imgOpt').open = true; S.optHinted = true; }
     }
     function invalidate() {
         stopPlay(true);
@@ -1513,6 +1709,62 @@ QX.drawQR = function (canvas, qr, boxPx) {
         });
     }
 
+    /* ---------- 사진 전송용 축소 ---------- */
+    function loadBitmap(file) {
+        function viaImg() {
+            return new Promise(function (res, rej) {
+                var url = URL.createObjectURL(file), img = new Image();
+                img.onload = function () { res(img); setTimeout(function () { URL.revokeObjectURL(url); }, 2000); };
+                img.onerror = function () { rej(new Error('이미지를 열 수 없습니다(HEIC 등 미지원 형식)')); };
+                img.src = url;
+            });
+        }
+        if (window.createImageBitmap) {
+            return createImageBitmap(file, { imageOrientation: 'from-image' })
+                .catch(function () { return createImageBitmap(file); })
+                .catch(viaImg);
+        }
+        return viaImg();
+    }
+    function canvasToU8(canvas, type, q) {
+        return new Promise(function (resolve, reject) {
+            function fromBlob(blob) {
+                var fr = new FileReader();
+                fr.onload = function () { resolve({ u8: new Uint8Array(fr.result), type: blob.type }); };
+                fr.onerror = reject;
+                fr.readAsArrayBuffer(blob);
+            }
+            if (canvas.toBlob) canvas.toBlob(function (b) { if (b) fromBlob(b); else reject(new Error('인코딩 실패')); }, type, q);
+            else {
+                var d = canvas.toDataURL(type, q), bin = atob(d.split(',')[1]), u8 = new Uint8Array(bin.length);
+                for (var i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+                resolve({ u8: u8, type: type });
+            }
+        });
+    }
+    function reduceImage(file) {
+        var maxEdge = parseInt($('imgMax').value, 10), q = parseFloat($('imgQ').value), want = $('imgFmt').value;
+        return loadBitmap(file).then(function (bmp) {
+            var w = bmp.width || bmp.naturalWidth, h = bmp.height || bmp.naturalHeight;
+            var scale = Math.min(1, maxEdge / Math.max(w, h));
+            var cw = Math.max(1, Math.round(w * scale)), ch = Math.max(1, Math.round(h * scale));
+            var c = document.createElement('canvas');
+            c.width = cw; c.height = ch;
+            var ctx = c.getContext('2d');
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cw, ch);
+            ctx.drawImage(bmp, 0, 0, cw, ch);
+            if (bmp.close) try { bmp.close(); } catch (e) { }
+            var th = document.createElement('canvas'), tr = 34 / Math.max(cw, ch);
+            th.width = Math.max(1, Math.round(cw * tr)); th.height = Math.max(1, Math.round(ch * tr));
+            th.getContext('2d').drawImage(c, 0, 0, th.width, th.height);
+            return canvasToU8(c, want, q).then(function (r) {
+                var type = r.type === want ? want : 'image/jpeg';
+                if (type !== r.type) return canvasToU8(c, 'image/jpeg', q).then(function (r2) { return { r: r2, type: 'image/jpeg', cw: cw, ch: ch, scale: scale, thumb: th.toDataURL('image/jpeg', 0.6) }; });
+                return { r: r, type: type, cw: cw, ch: ch, scale: scale, thumb: th.toDataURL('image/jpeg', 0.6) };
+            });
+        });
+    }
+
     /* ---------- 압축·준비 ---------- */
     function prepare() {
         if (S.preparing || !S.files.length) return Promise.resolve();
@@ -1522,18 +1774,36 @@ QX.drawQR = function (canvas, qr, boxPx) {
         var chain = Promise.resolve();
         S.files.forEach(function (f, i) {
             chain = chain.then(function () {
-                f.state = '읽는 중'; renderFiles();
-                return readFile(f.file);
-            }).then(function (u8) {
-                f.state = '압축 중';
+                f.state = '읽는 중'; f.thumb = ''; f.note = ''; renderFiles();
+                if (f.reduce && isImage(f.file)) {
+                    f.state = '사진 축소 중';
+                    renderFiles();
+                    return reduceImage(f.file).then(function (res) {
+                        var ext = res.type === 'image/webp' ? '.webp' : '.jpg';
+                        var base = f.file.name.replace(/\.[^.\/\\]+$/, '');
+                        if (res.r.u8.length >= f.file.size * 0.9 && res.scale >= 1) {
+                            f.note = '축소 효과 없음 → 원본 유지';
+                            return readFile(f.file).then(function (u8) { return { u8: u8, name: f.file.name, reduced: false }; });
+                        }
+                        f.thumb = res.thumb;
+                        f.note = '축소 ' + fmtSize(f.file.size) + '→' + fmtSize(res.r.u8.length) + ' (' + res.cw + '×' + res.ch + ')';
+                        return { u8: res.r.u8, name: base + '(축소)' + ext, reduced: true };
+                    }).catch(function (e) {
+                        f.note = '축소 실패 → 원본 사용 (' + (e && e.message ? e.message : e) + ')';
+                        return readFile(f.file).then(function (u8) { return { u8: u8, name: f.file.name, reduced: false }; });
+                    });
+                }
+                return readFile(f.file).then(function (u8) { return { u8: u8, name: f.file.name, reduced: false }; });
+            }).then(function (item) {
+                f.state = f.note || '압축 판단 중';
                 renderFiles();
-                return QX.packFile(f.file.name, u8, f.file.lastModified || 0, function (p) {
+                return QX.packFile(item.name, item.u8, f.file.lastModified || 0, function (p) {
                     $('prepBar').style.width = ((i + p) / n * 100).toFixed(1) + '%';
-                    $('prepMsg').textContent = '[' + (i + 1) + '/' + n + '] ' + f.file.name + ' 압축 ' + Math.round(p * 100) + '%';
+                    $('prepMsg').textContent = '[' + (i + 1) + '/' + n + '] ' + item.name + ' 압축 ' + Math.round(p * 100) + '%';
                 });
             }).then(function (ent) {
                 entries.push(ent);
-                f.state = ent.method ? ('압축 ' + fmtSize(ent.data.length)) : '원본 그대로';
+                f.state = f.note || (ent.method ? ('압축 ' + fmtSize(ent.data.length)) : '원본 그대로');
                 $('prepBar').style.width = ((i + 1) / n * 100).toFixed(1) + '%';
                 renderFiles();
             });
@@ -1571,91 +1841,172 @@ QX.drawQR = function (canvas, qr, boxPx) {
         var B = frameBytes - QX.FRAME_OVERHEAD;
         var fps = Math.max(1, Math.min(30, parseInt($('fps').value, 10) || 10));
         return {
-            ver: ver, ecl: ecl, B: B, frameBytes: frameBytes, fps: fps,
-            segSize: parseInt($('segSize').value, 10), mult: parseFloat($('mult').value),
-            manual: $('advance').value === 'manual', loopAll: $('loopAll').checked
+            ver: ver, ecl: ecl, B: B, frameBytes: frameBytes, fps: fps, eff: effFps(fps),
+            segSize: parseInt($('segSize').value, 10), loss: parseFloat($('loss').value),
+            manual: $('advance').value === 'manual', loopAll: $('loopAll').checked,
+            rgb: $('rgb').checked, layers: $('rgb').checked ? 3 : 1
         };
     }
     function makeSource(cfg) {
-        return new QX.FrameSource(S.archive, {
-            sid: S.sid, sha: S.sha, B: cfg.B, segSize: cfg.segSize, mult: cfg.mult,
-            manual: cfg.manual, loopAll: cfg.loopAll, metaEvery: 25
+        var src = new QX.FrameSource(S.archive, {
+            sid: S.sid, sha: S.sha, B: cfg.B, segSize: cfg.segSize, loss: cfg.loss,
+            manual: cfg.manual, loopAll: cfg.loopAll, metaEvery: 40, layered: cfg.rgb
         });
+        var pl = QX.parseSegList($('playlist').value, src.segCount);
+        if (pl.length) src.setPlaylist(pl);
+        return src;
     }
     function updateEstimate() {
         var cfg = getCfg();
         $('verInput').disabled = $('preset').value !== 'custom';
-        if (!S.archive) {
-            $('est').innerHTML = 'QR 버전 <b>V' + cfg.ver + '</b> · 프레임당 데이터 <b>' + cfg.B + ' B</b> · 이론 속도 <b>' + (cfg.B * cfg.fps / 1024).toFixed(1) + ' KB/s</b>';
-            return;
-        }
-        var src = makeSource(cfg);
-        var frames = src.estimateFrames();
-        var sec = frames / cfg.fps;
-        $('est').innerHTML =
-            'QR 버전 <b>V' + cfg.ver + '</b> · 프레임당 데이터 <b>' + cfg.B + ' B</b> · 유효 속도 약 <b>' + (cfg.B * cfg.fps / 1024 / cfg.mult).toFixed(1) + ' KB/s</b><br>' +
-            '전송 데이터 <b>' + fmtSize(S.archive.length) + '</b> · 구간 <b>' + src.segCount + '</b>개 · 총 프레임 약 <b>' + frames.toLocaleString() + '</b>개<br>' +
-            '예상 소요 시간(1회 통과): <b>' + fmtTime(sec) + '</b>';
+        var perSec = cfg.B * cfg.layers * cfg.eff * (1 - cfg.loss) / 1024;
+        var base = 'QR 버전 <b>V' + cfg.ver + '</b> · 프레임당 <b>' + cfg.B + ' B</b>' + (cfg.rgb ? ' × 3층' : '') +
+            ' · 실제 <b>' + cfg.eff.toFixed(1) + ' fps</b> · 유효 속도 약 <b>' + perSec.toFixed(1) + ' KB/s</b>';
         var w = [];
-        if (S.archive.length > 10 * 1048576) w.push('전송 데이터가 10MB를 넘습니다. 예상 시간이 길어(' + fmtTime(sec) + ') 중간에 끊겨도 완료된 구간은 폰에 저장되고, 같은 파일을 다시 보내면 이어받습니다.');
-        if (S.archive.length > 34000 * 1024) w.push('34,000KB(약 33MB)를 넘는 데이터입니다. 파일을 나눠 보내는 것을 권장합니다.');
-        if (cfg.ver >= 24) w.push('V' + cfg.ver + ' 이상은 QR이 매우 촘촘합니다. 수신 폰 카메라 해상도·거리에 따라 인식이 어려울 수 있습니다.');
-        if (cfg.fps > 12) w.push('초당 ' + cfg.fps + '프레임은 폰 카메라가 놓칠 수 있습니다. 수신이 불안정하면 8~10으로 낮추세요.');
+        if (!S.archive) {
+            $('est').innerHTML = base;
+        } else {
+            var src = makeSource(cfg);
+            var frames = src.estimateFrames();
+            var sec = frames / (cfg.layers * cfg.eff);
+            $('est').innerHTML = base + '<br>전송 데이터 <b>' + fmtSize(S.archive.length) + '</b> · 구간 <b>' + src.segCount + '</b>개 · 총 프레임 약 <b>' + frames.toLocaleString() + '</b>개<br>예상 소요 시간(1회차): <b>' + fmtTime(sec) + '</b>';
+            if (S.archive.length > 10 * 1048576) w.push('전송 데이터가 10MB를 넘습니다(예상 ' + fmtTime(sec) + '). 중간에 끊겨도 완료된 구간은 폰에 저장되고 같은 파일을 다시 보내면 이어받습니다.');
+            if (S.archive.length > 34000 * 1024) w.push('34,000KB(약 33MB)를 넘는 데이터입니다. 파일을 나눠 보내는 것을 권장합니다.');
+        }
+        if (cfg.ver >= 24) w.push('V' + cfg.ver + ' 이상은 QR이 매우 촘촘합니다. [📶 속도 보정 테스트]로 폰에서 실제로 읽히는 최적 설정을 먼저 확인하세요.');
+        if (cfg.rgb) w.push('RGB 3층은 실험 기능입니다. 폰 수신기의 색상 모드는 [자동] 또는 [RGB]로 두세요. 인식이 불안하면 끄세요.');
+        if (cfg.fps > 15) w.push('초당 ' + cfg.fps + '프레임은 폰 카메라가 놓칠 수 있습니다. 보정 테스트로 확인하세요.');
         var wb = $('warn');
         wb.innerHTML = w.map(esc).join('<br>');
         wb.className = 'warn' + (w.length ? ' on' : '');
     }
 
-    /* ---------- 재생 ---------- */
+    /* ---------- QR 렌더링 ---------- */
     function stageBox() {
         var st = $('stage');
         var dpr = window.devicePixelRatio || 1;
         return Math.max(200, Math.floor(Math.min(st.clientWidth, st.clientHeight - 24) * dpr));
     }
-    function renderFrame(fr) {
-        var cfg = S.cfg;
-        var text = QX.frameToText(fr.bytes);
-        var qr = QX.QR.encode(text, { mode: 'alnum', ver: cfg.ver, ecl: cfg.ecl });
-        QX.drawQR($('qr'), qr, stageBox());
-        S.lastRender = fr;
+    function encodeQR(bytes, ver, ecl) {
+        var key = ver + ecl;
+        var mc = S.maskCache[key] || (S.maskCache[key] = { mask: undefined, n: 0 });
+        var opts = { mode: 'alnum', ver: ver, ecl: ecl };
+        // 마스크 평가(8회 패널티 계산)는 비싸므로 20프레임마다 한 번만 하고 나머지는 재사용
+        if (mc.mask !== undefined && mc.n % 20 !== 0) opts.mask = mc.mask;
+        var qr = QX.QR.encode(QX.frameToText(bytes), opts);
+        mc.mask = qr.mask; mc.n++;
+        return qr;
     }
+    function drawFrames(frames, ver, ecl) {
+        var qrs = frames.map(function (b) { return encodeQR(b, ver, ecl); });
+        if (qrs.length === 3) QX.drawQR3($('qr'), qrs, stageBox());
+        else QX.drawQR($('qr'), qrs[0], stageBox());
+    }
+
+    /* ---------- 일반 전송 ---------- */
     function updateStatus(fr) {
         var src = S.src;
         if (!src) return;
         var target = src.visitTarget(src.cur);
         var tStr = isFinite(target) ? target : '∞';
         var kind = fr && fr.kind === 'meta' ? '(헤더)' : '';
-        var overall = (src.cur + Math.min(1, isFinite(target) ? src.visitSent / target : 0)) / src.segCount;
-        $('playBar').style.width = (overall * 100).toFixed(1) + '%';
+        var overall = (src.oi + Math.min(1, isFinite(target) ? src.visitSent / target : 0)) / src.list().length;
+        $('playBar').style.width = (Math.min(1, overall) * 100).toFixed(1) + '%';
         var txt = '세션 ' + S.sid.toString(16).toUpperCase() + ' · 구간 ' + (src.cur + 1) + '/' + src.segCount +
-            ' · 프레임 ' + src.visitSent + '/' + tStr + ' ' + kind + ' · 반복 ' + (src.loops + 1) + '회차 · 누적 ' + S.sentFrames.toLocaleString() + '프레임';
+            ' · 프레임 ' + src.visitSent + '/' + tStr + ' ' + kind + ' · ' + (src.pass + 1) + '회차' + (src.order ? ' (지정 구간만)' : '') + ' · 누적 ' + S.sentFrames.toLocaleString();
         $('status').textContent = (S.paused ? '⏸ 일시정지 · ' : '▶ ') + txt;
         $('stageInfo').textContent = txt;
         $('jumpSeg').max = src.segCount;
     }
-    function tick(ts) {
+    function sendStep() {
+        var layers = S.cfg.layers, frames = [], last = null;
+        for (var i = 0; i < layers; i++) {
+            var fr = S.src.next();
+            if (!fr) {
+                if (i === 0) {
+                    S.playing = false;
+                    $('status').textContent = '✅ 전송 완료 (모든 구간 1회 통과). 수신기에서 미완료 구간이 있으면 [재전송할 구간]에 입력하세요.';
+                    $('btnPause').disabled = true;
+                    return;
+                }
+                frames.push(S.src.meta());
+                continue;
+            }
+            frames.push(fr.bytes); last = fr; S.sentFrames++;
+        }
+        drawFrames(frames, S.cfg.ver, S.cfg.ecl);
+        S.lastRender = { frames: frames, ver: S.cfg.ver, ecl: S.cfg.ecl };
+        updateStatus(last);
+    }
+
+    /* ---------- 속도 보정 테스트 ---------- */
+    var CAL_LEVELS = [
+        { m: 0, v: 12, f: 10, e: 'L' }, { m: 0, v: 18, f: 10, e: 'L' }, { m: 0, v: 18, f: 15, e: 'L' },
+        { m: 0, v: 24, f: 10, e: 'L' }, { m: 0, v: 24, f: 15, e: 'L' }, { m: 0, v: 30, f: 10, e: 'L' },
+        { m: 0, v: 30, f: 15, e: 'L' }, { m: 0, v: 24, f: 10, e: 'M' },
+        { m: 1, v: 18, f: 10, e: 'L' }, { m: 1, v: 24, f: 10, e: 'L' }, { m: 1, v: 24, f: 15, e: 'L' }
+    ];
+    var CAL_SECONDS = 7;
+    function startCalib() {
+        stopPlay(false);
+        S.mode = 'calib';
+        S.calib = { idx: 0, tickInLevel: 0, seq: 0, ticksPerLevel: 0 };
+        enterLevel(0);
+        S.paused = false; S.playing = true; S.tc = 1e9;
+        $('stage').className = 'stage live';
+        ['btnPause', 'btnFull'].forEach(function (id) { $(id).disabled = false; });
+        ['btnPrev', 'btnNext', 'btnJump', 'btnFocus'].forEach(function (id) { $(id).disabled = true; });
+        $('btnPause').textContent = '⏸ 일시정지';
+        requestAnimationFrame(tick);
+    }
+    function enterLevel(i) {
+        var L = CAL_LEVELS[i], c = S.calib;
+        c.idx = i; c.seq = 0; c.tickInLevel = 0;
+        c.F = QX.QR.maxFrameBytes(L.v, L.e, false);
+        c.ticks = ticksFor(L.f);
+        c.eff = S.hz / c.ticks;
+        c.shows = Math.max(8, Math.round(CAL_SECONDS * c.eff));
+        S.curTicks = c.ticks;
+    }
+    function calibStep() {
+        var c = S.calib, L = CAL_LEVELS[c.idx];
+        if (c.tickInLevel >= c.shows) {
+            if (c.idx + 1 >= CAL_LEVELS.length) {
+                S.playing = false;
+                $('status').textContent = '✅ 보정 테스트 완료. 폰 수신기의 [속도 측정 결과]에서 추천 설정을 확인한 뒤, 이 화면에서 그 설정을 선택하세요.';
+                $('playBar').style.width = '100%';
+                return;
+            }
+            enterLevel(c.idx + 1); c = S.calib; L = CAL_LEVELS[c.idx];
+        }
+        var layers = L.m === 1 ? 3 : 1, frames = [];
+        for (var i = 0; i < layers; i++) frames.push(QX.makeCalibFrame(c.F, L.v, Math.round(c.eff), L.e === 'M' ? 1 : 0, L.m, c.seq++ & 0xFFFF));
+        drawFrames(frames, L.v, L.e);
+        c.tickInLevel++;
+        var done = c.idx * 1.0 + c.tickInLevel / c.shows;
+        $('playBar').style.width = (done / CAL_LEVELS.length * 100).toFixed(1) + '%';
+        var txt = '📶 보정 테스트 ' + (c.idx + 1) + '/' + CAL_LEVELS.length + ' · V' + L.v + ' · ' + c.eff.toFixed(1) + 'fps · ' + (L.m ? 'RGB 3층' : '흑백') + (L.e === 'M' ? ' · ECC M' : '');
+        $('status').textContent = (S.paused ? '⏸ 일시정지 · ' : '▶ ') + txt + ' — 폰으로 이 화면을 비추세요';
+        $('stageInfo').textContent = txt;
+    }
+
+    /* ---------- 재생 루프 (주사율 정수배 타이밍) ---------- */
+    function tick() {
         if (!S.playing) return;
         requestAnimationFrame(tick);
-        if (S.paused) { S.lastTs = ts; return; }
-        var interval = 1000 / S.cfg.fps;
-        if (ts - S.lastTs < interval - 2) return;
-        S.lastTs = ts;
-        var fr = S.src.next();
-        if (!fr) {
-            S.playing = false;
-            $('status').textContent = '✅ 전송 완료 (모든 구간 1회 통과). 다시 보내려면 [재생 시작]을 누르세요.';
-            $('btnPause').disabled = true;
-            return;
-        }
-        S.sentFrames++;
-        renderFrame(fr);
-        updateStatus(fr);
+        if (S.paused) return;
+        S.tc++;
+        if (S.tc < S.curTicks) return;
+        S.tc = 0;
+        if (S.mode === 'calib') calibStep(); else sendStep();
     }
     function play() {
         if (!S.archive) return;
+        S.mode = 'send';
         S.cfg = getCfg();
+        S.curTicks = ticksFor(S.cfg.fps);
         S.src = makeSource(S.cfg);
-        S.sentFrames = 0; S.paused = false; S.playing = true; S.lastTs = 0;
+        S.sentFrames = 0; S.paused = false; S.playing = true; S.tc = 1e9;
         $('stage').className = 'stage live';
         ['btnPause', 'btnPrev', 'btnNext', 'btnJump', 'btnFocus', 'btnFull'].forEach(function (id) { $(id).disabled = false; });
         $('btnPause').textContent = '⏸ 일시정지';
@@ -1670,29 +2021,32 @@ QX.drawQR = function (canvas, qr, boxPx) {
         $('playBar').style.width = '0';
     }
     function togglePause() {
+        if (S.mode === 'calib') { S.paused = !S.paused; $('btnPause').textContent = S.paused ? '▶ 재개' : '⏸ 일시정지'; return; }
         if (!S.src) return;
-        if (!S.playing) { // 종료 후 재시작
-            S.src.finished = false; S.src.jump(0); S.playing = true; S.paused = false; requestAnimationFrame(tick);
+        if (!S.playing) {
+            S.src.finished = false; S.src.jump(S.src.list()[0]); S.playing = true; S.paused = false; S.tc = 1e9; requestAnimationFrame(tick);
             $('btnPause').disabled = false;
         } else S.paused = !S.paused;
         $('btnPause').textContent = S.paused ? '▶ 재개' : '⏸ 일시정지';
-        updateStatus(S.lastRender);
+        updateStatus(null);
     }
     function segMove(d) {
-        if (!S.src) return;
+        if (!S.src || S.mode === 'calib') return;
         var t = S.src.cur + d;
         if (t < 0) t = 0;
         if (t >= S.src.segCount) { if (S.src.loopAll) t = 0; else t = S.src.segCount - 1; }
         S.src.jump(t);
-        if (!S.playing) { S.playing = true; requestAnimationFrame(tick); }
-        updateStatus(S.lastRender);
+        if (!S.playing) { S.playing = true; S.tc = 1e9; requestAnimationFrame(tick); }
+        updateStatus(null);
     }
     function focusTest() {
         if (!S.src) return;
         S.paused = true;
         $('btnPause').textContent = '▶ 재개';
-        renderFrame({ kind: 'meta', bytes: S.src.meta(), seg: S.src.cur });
-        $('status').textContent = '🔍 초점 테스트: 헤더 프레임 한 장을 고정 표시 중입니다. 폰이 이 QR을 바로 읽는지 확인한 뒤 [재개]를 누르세요.';
+        var layers = S.cfg.layers, fr = [];
+        for (var i = 0; i < layers; i++) fr.push(S.src.meta());
+        drawFrames(fr, S.cfg.ver, S.cfg.ecl);
+        $('status').textContent = '🔍 초점 테스트: 헤더 프레임을 고정 표시 중입니다. 폰이 이 QR을 바로 읽는지 확인한 뒤 [재개]를 누르세요.';
     }
     function fullscreen() {
         var st = $('stage');
@@ -1712,33 +2066,41 @@ QX.drawQR = function (canvas, qr, boxPx) {
     $('btnPrepare').onclick = prepare;
     $('btnClear').onclick = function () { S.files = []; invalidate(); renderFiles(); };
     $('btnPlay').onclick = play;
+    $('btnCalib').onclick = startCalib;
     $('btnPause').onclick = togglePause;
     $('btnPrev').onclick = function () { segMove(-1); };
     $('btnNext').onclick = function () { segMove(1); };
-    $('btnJump').onclick = function () { if (S.src) { S.src.jump(parseInt($('jumpSeg').value, 10) - 1); if (!S.playing) { S.playing = true; requestAnimationFrame(tick); } updateStatus(S.lastRender); } };
+    $('btnJump').onclick = function () { if (S.src) { S.src.jump(parseInt($('jumpSeg').value, 10) - 1); if (!S.playing) { S.playing = true; S.tc = 1e9; requestAnimationFrame(tick); } updateStatus(null); } };
     $('btnFocus').onclick = focusTest;
     $('btnFull').onclick = fullscreen;
-    ['preset', 'verInput', 'ecl', 'fps', 'segSize', 'mult', 'advance', 'loopAll'].forEach(function (id) {
+    $('btnImgAll').onclick = function () { S.files.forEach(function (f) { if (isImage(f.file)) f.reduce = true; }); invalidate(); renderFiles(); };
+    $('btnImgNone').onclick = function () { S.files.forEach(function (f) { f.reduce = false; }); invalidate(); renderFiles(); };
+    ['imgMax', 'imgQ', 'imgFmt'].forEach(function (id) { $(id).addEventListener('change', function () { if (S.archive) invalidate(); }); });
+    ['preset', 'verInput', 'ecl', 'fps', 'segSize', 'loss', 'advance', 'loopAll', 'rgb', 'playlist'].forEach(function (id) {
         $(id).addEventListener('change', function () {
             updateEstimate();
-            if (S.src && S.playing && id !== 'preset' && id !== 'verInput' && id !== 'ecl' && id !== 'segSize') {
-                // 재생 중 즉시 반영 가능한 항목
-                S.cfg.fps = getCfg().fps; S.src.mult = parseFloat($('mult').value);
-                S.src.manual = $('advance').value === 'manual'; S.src.loopAll = $('loopAll').checked;
+            if (S.src && S.playing && S.mode === 'send') {
+                var c = getCfg();
+                if (id === 'fps') { S.cfg.fps = c.fps; S.cfg.eff = c.eff; S.curTicks = ticksFor(c.fps); }
+                if (id === 'loss') S.src.loss = c.loss;
+                if (id === 'advance') S.src.manual = c.manual;
+                if (id === 'loopAll') S.src.loopAll = c.loopAll;
+                if (id === 'rgb') { S.cfg.rgb = c.rgb; S.cfg.layers = c.layers; S.src.layered = c.rgb; }
+                if (id === 'playlist') { S.src.setPlaylist(QX.parseSegList($('playlist').value, S.src.segCount)); }
             }
         });
     });
     window.addEventListener('keydown', function (e) {
         var tag = (e.target && e.target.tagName) || '';
-        if (tag === 'INPUT' || tag === 'SELECT') return;
+        if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
         if (e.key === ' ') { e.preventDefault(); togglePause(); }
         else if (e.key === 'ArrowRight') segMove(1);
         else if (e.key === 'ArrowLeft') segMove(-1);
         else if (e.key === 'f' || e.key === 'F') fullscreen();
     });
-    window.addEventListener('resize', function () { if (S.lastRender && S.playing === false && S.cfg) renderFrame(S.lastRender); });
 
     updateEstimate();
+    measureHz();
     window.__qrxSender = S; // 테스트 후크
 })();
 
