@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""pdf-tools/src 의 조각 + vendor 의 PDF.js(압축·Base64)를 합쳐 단일 HTML(pdf-manual-search.html)을 만든다.
+"""pdf-tools/src 의 조각 + vendor 의 PDF.js(압축·Base64) + qr-tools 의 core.js/qr-encoder.js 를 합쳐 단일 HTML(pdf-manual-search.html)을 만든다.
 사용: python3 pdf-tools/build.py"""
 import os, json, zlib, base64, glob
 base = os.path.dirname(os.path.abspath(__file__))
@@ -29,8 +29,10 @@ repl = {
     'PDFJS_WORKER': slot(rb(V, 'pdf.worker.min.js')),
     'PDFJS_CMAPS': slot(json.dumps(cm).encode('ascii')),
     'ZLIB': safe(open(os.path.join(root, 'qr-tools', 'src', 'core.js'), encoding='utf-8').read()),
+    'QRENC': safe(open(os.path.join(root, 'qr-tools', 'src', 'qr-encoder.js'), encoding='utf-8').read()),
     'LAYOUT': safe(rd('src', 'layout.js')),
     'ENGINE': safe(rd('src', 'engine.js')),
+    'QRSEND': safe(rd('src', 'qrsend.js')),
     'APP': safe(app_js),
 }
 for k, v in repl.items():

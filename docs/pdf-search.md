@@ -10,9 +10,10 @@ pdf-tools/src/layout.js       PL: 좌표 기반 줄 재구성 · 선 표 격자/
 pdf-tools/src/engine.js       PDFENGINE: 내장 PDF.js/워커/CMap 로드 (압축 슬롯 해제, 외부 통신 없음)
 pdf-tools/src/app.js          app: 저장(IndexedDB)·추출 파이프라인·검색·리더·보고서·내보내기
 pdf-tools/src/samples.js      원본의 샘플 문서 2권
+pdf-tools/src/qrsend.js       QR 전송 모듈(검색기 내장; 상세는 docs/qr-transfer.md)
 pdf-tools/vendor/pdfjs-3.11.174/  pdf.min.js + pdf.worker.min.js (legacy 빌드, Apache-2.0, LICENSE 포함) + 한글 CMap 24개
 pdf-tools/build.py            조립: PDF.js 등을 raw deflate+Base64 로 슬롯에 삽입, qr-tools/src/core.js(QX: inflate/deflate) 포함
-pdf-tools/tests/              gen_pdfs.py(합성 PDF) · extract.test.js(Node) · e2e.test.js · e2e-extra.test.js(Playwright)
+pdf-tools/tests/              gen_pdfs.py(합성 PDF) · extract.test.js(Node) · e2e.test.js · e2e-extra.test.js · e2e-transfer.test.js · e2e-transfer-video.test.js(Playwright)
 ```
 - 외부 스크립트/CDN/Base64 붙여넣기 단계 **없음**. PDF.js·워커·CMap 은 HTML 안에 압축 내장(`<script type="text/plain" id="pdfjs-main-z|pdfjs-worker-z|pdfjs-cmaps-z">`, 형식 `"<원본크기>:<Base64(raw deflate)>"`). 부팅 시 `QX.inflate` 로 풀어 `<script id="pdfjs-injected">` 주입, 워커는 Blob URL.
 - 파일 크기 ≈ 0.9MB (+ 저장 시 색인).
@@ -77,3 +78,13 @@ LANG=C.UTF-8 NODE_PATH=... node pdf-tools/tests/e2e-extra.test.js <PDF폴더>   
 - 글자 매핑이 깨진 PDF(ToUnicode 없는 폰트, 사설영역 글자)는 추출 불가 → 보고서 경고 → 원본 뷰어 복붙.
 - 줄바꿈이 어절 중간인 PDF 는 셀/문단에서 공백이 들어갈 수 있으나 검색은 공백 무시라 영향 적음.
 - 향후 후보: 머리글·바닥글(반복 줄) 제거, OCR, 쪽별 재추출 버튼, 추출 옵션 문서별 기억.
+
+## 9. QR 전송 (내장) — 2026-11-17 추가
+- 헤더 **[📡 QR로 전송]** → 모달이 열리며 체크된 매뉴얼을 전송용 JSON 으로 만들어 압축하고 **자동으로 QR 재생 시작**. 받는 쪽은 `qr-receiver.html`(폰 또는 웹캠 PC)이 복원해 **자동 저장**. 외부에서는 그 JSON 을 검색기의 **[JSON 불러오기]**(드롭/선택, 병합)로 열거나 그대로 파이썬 등에서 사용.
+- **전송 JSON(슬림, 수신기가 그대로 저장)**: `{"v":2,"kind":"pdf-manual-index","exportedAt":"YYYY-MM-DD HH:mm","docs":[{id,fileName,numPages,pages:[{pageNum,text,st?,err?}],bl:[빈 쪽 번호…],im:[이미지 쪽 번호…],report?}]}` (minified).
+  - 목차(`toc`)·검색 캐시·체크 상태는 제외 → 불러올 때 `normalizeDoc` 가 목차를 재생성하고 `bl`/`im` 을 `{pageNum,text:'',st:'blank'|'img'}` 로 **복원(쪽 번호 유지)**. 글 쪽의 텍스트는 원본과 완전 동일(표 표식 `\u241E/\u241F` 포함, 한글 UTF-8).
+  - 기존 `exportJsonIndex`(전체 백업, `{v:2,docs}` 에 toc 포함)와 같은 가져오기 경로를 쓰며 서로 호환.
+- **검색기 포함 옵션**(`#qrViewer`, 기본 끔): `app.buildHtmlString({index:false, engine:false})` → PDF.js 슬롯 3개와 색인을 비운 **검색 전용 HTML**(≈0.2MB). 열면 `PDFENGINE.state.viewerOnly` → 배지 "🔎 검색 전용 모드", PDF 파싱은 불가(복붙 파싱만), JSON 불러오기·검색·열람은 정상. `downloadEmbeddedHtml` 은 같은 함수를 전체(엔진+색인)로 호출.
+- 구현: `app.slimDoc`, `app.buildTransferFiles`, `app.buildHtmlString`, `engine.js`(슬롯 비면 viewerOnly), `qrsend.js`.
+- 테스트(2026-11-17, 전부 통과): `e2e-transfer.test.js` — 표 PDF + 1300쪽을 등록하고 체크 해제한 샘플 2권은 제외, 20% 프레임 손실로 수신 → 자동 다운로드(222KB), 깨끗한 브라우저에서 불러오기: 쪽 번호·빈/이미지 쪽·본문 텍스트 동일, 목차 재생성, 검색·1300쪽 이동 정상; 검색기 포함 시 파일 2개, 검색 전용 HTML 212KB 로 열려 JSON 불러오기·검색 정상; 외부 요청 0건. `e2e-transfer-video.test.js` — 송신 화면을 녹화한 영상으로도 복원·자동 저장.
+- 주의: 테스트 도구가 `addScriptTag` 로 주입한 jsQR 이 복제본에 섞이므로 검색 전용 HTML 크기를 잴 때 제외해야 한다(앱 코드 아님).

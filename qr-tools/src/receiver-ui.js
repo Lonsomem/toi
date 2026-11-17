@@ -229,9 +229,23 @@
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
     }
 
+    function describeFile(f) {
+        // 전송용 JSON 이면 매뉴얼 수·쪽 수를 요약해 보여준다
+        if (!/\.json$/i.test(f.name) || f.size > 80 * 1048576) return '';
+        try {
+            var o = JSON.parse(QX.utf8.dec(f.data));
+            if (o && Array.isArray(o.docs)) {
+                var pages = 0;
+                o.docs.forEach(function (d) { pages += d.numPages || (d.pages ? d.pages.length : 0); });
+                return ' (매뉴얼 ' + o.docs.length + '권 · ' + pages + '쪽)';
+            }
+        } catch (e) { }
+        return '';
+    }
     function showResults(files) {
         $('resultCard').className = 'card';
-        $('verifyMsg').textContent = '✅ SHA-256 · CRC32 검증 통과 · 파일 ' + files.length + '개 (원본과 바이트 단위 동일)';
+        var extra = files.length === 1 ? describeFile(files[0]) : '';
+        $('verifyMsg').textContent = '✅ 수신·검증 완료 (SHA-256·CRC32 통과) · 파일 ' + files.length + '개' + extra + (files.length === 1 ? ' — 자동 저장됨(다운로드 폴더 확인)' : ' — 아래 [다운로드]로 받으세요');
         var ul = $('resultList');
         ul.innerHTML = '';
         files.forEach(function (f) {
@@ -257,6 +271,9 @@
             ul.appendChild(li);
         });
         $('resultCard').scrollIntoView();
+        if (files.length === 1) {   // 파일이 하나면 바로 저장 (절차 최소화)
+            try { downloadBlob(new Blob([files[0].data], { type: 'application/octet-stream' }), files[0].name); } catch (e) { log('자동 저장 실패: ' + e); }
+        }
     }
 
     /* ---------- 디코딩 ---------- */

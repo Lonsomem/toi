@@ -79,7 +79,10 @@ var app = {
     refreshEngineBadge: function () {
         var b = document.getElementById('engineBadge');
         var st = PDFENGINE.state;
-        if (st.ready) {
+        if (st.viewerOnly) {
+            b.className = 'engine-pill';
+            b.textContent = '🔎 검색 전용 모드 (PDF 파싱 엔진 미포함) · 클릭: 보고서';
+        } else if (st.ready) {
             b.className = 'engine-pill ready';
             b.textContent = '🛠️ PDF 엔진 내장 (오프라인) · 클릭: 추출 보고서';
         } else {
@@ -227,6 +230,15 @@ var app = {
     normalizeDoc: function (d) {
         if (typeof d.checked !== 'boolean') d.checked = true;
         if (!Array.isArray(d.pages)) d.pages = [];
+        // 전송용 슬림 JSON: 빈 쪽(bl)·이미지 쪽(im)은 쪽 번호 목록으로만 실려 오므로 목록에 되살린다(쪽 번호 유지)
+        if (Array.isArray(d.bl) || Array.isArray(d.im)) {
+            var have = {};
+            d.pages.forEach(function (p) { have[p.pageNum] = true; });
+            (d.bl || []).forEach(function (n) { if (!have[n]) { d.pages.push({ pageNum: n, text: '', st: 'blank' }); have[n] = true; } });
+            (d.im || []).forEach(function (n) { if (!have[n]) { d.pages.push({ pageNum: n, text: '', st: 'img' }); have[n] = true; } });
+            d.pages.sort(function (x, y) { return x.pageNum - y.pageNum; });
+            delete d.bl; delete d.im;
+        }
         if (!d.numPages) {
             var mx = 0;
             d.pages.forEach(function (p) { if (p.pageNum > mx) mx = p.pageNum; });
@@ -299,6 +311,7 @@ var app = {
         // PDF
         self.prepareNativePdfViewerFile(file);
         if (!PDFENGINE.state.ready) {
+            if (PDFENGINE.state.viewerOnly) self.showToast('검색 전용 HTML 에는 PDF 파싱 엔진이 없습니다. 원본 뷰어 복붙 파싱만 가능합니다(전체 검색기에서 PDF 를 파싱하세요).');
             self.openPdfInNativeBrowserViewer(file);
             return Promise.resolve();
         }
@@ -1099,35 +1112,98 @@ var app = {
         setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
     },
 
-    downloadEmbeddedHtml: function () {
+    // 단일 HTML 문자열 생성. opts.index=false → 색인 비움, opts.engine=false → PDF 엔진(약 0.9MB) 제외(검색 전용)
+    buildHtmlString: function (opts) {
+        opts = opts || {};
+        var withIndex = opts.index !== false, withEngine = opts.engine !== false;
         var self = this;
-        this.showToast('저장 파일을 만드는 중입니다… (문서가 많으면 잠시 걸립니다)');
-        return this.encodeIndex(this.docs).then(function (idx) {
+        var idxP = withIndex ? this.encodeIndex(this.docs) : Promise.resolve('');
+        return idxP.then(function (idx) {
             var clone = document.documentElement.cloneNode(true);
             var slot = clone.querySelector('#embedded-pdf-index-b64');
             if (slot) slot.textContent = idx;
             var injected = clone.querySelector('#pdfjs-injected');
             if (injected && injected.parentNode) injected.parentNode.removeChild(injected);
-            ['docList', 'resultList', 'toastContainer', 'tocDrawerBox', 'confirmDeleteFileList', 'reportBody', 'parseStat', 'parseFile'].forEach(function (id) {
+            if (!withEngine) {
+                ['pdfjs-main-z', 'pdfjs-worker-z', 'pdfjs-cmaps-z'].forEach(function (id) {
+                    var el = clone.querySelector('#' + id);
+                    if (el) el.textContent = '';
+                });
+            }
+            ['docList', 'resultList', 'toastContainer', 'tocDrawerBox', 'confirmDeleteFileList', 'reportBody', 'parseStat', 'parseFile', 'qrSummary', 'qrHint', 'qrEstimate', 'qrStatus', 'qrStageInfo'].forEach(function (id) {
                 var el = clone.querySelector('#' + id);
                 if (el) el.innerHTML = '';
             });
             var rb = clone.querySelector('#readerBox');
             if (rb) rb.innerHTML = '검색 결과 카드를 클릭하면 해당 페이지 전체 원문이 표시됩니다.';
             clone.querySelectorAll('.modal-backdrop.open').forEach(function (m) { m.classList.remove('open'); });
+            var qs = clone.querySelector('#qrStage'); if (qs) qs.className = 'qr-stage';
             var wrap = clone.querySelector('#nativePdfWrap');
             if (wrap) wrap.classList.remove('active');
             var iframe = clone.querySelector('#nativePdfIframe');
             if (iframe) iframe.removeAttribute('src');
             clone.querySelectorAll('input[type="search"], input[type="number"], input[type="text"], textarea').forEach(function (el) { el.removeAttribute('value'); if (el.tagName === 'TEXTAREA') el.textContent = ''; });
-            var html = '<!DOCTYPE html>\n' + clone.outerHTML;
-            var blob = new Blob(['﻿', html], { type: 'text/html;charset=utf-8' });
+            return '<!DOCTYPE html>\n' + clone.outerHTML;
+        });
+    },
+
+    downloadEmbeddedHtml: function () {
+        var self = this;
+        this.showToast('저장 파일을 만드는 중입니다… (문서가 많으면 잠시 걸립니다)');
+        return this.buildHtmlString({ index: true, engine: true }).then(function (html) {
+            var blob = new Blob(['\uFEFF', html], { type: 'text/html;charset=utf-8' });
             var a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = 'PDF매뉴얼통합검색기_' + self.docs.length + '권내장.html';
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
             setTimeout(function () { URL.revokeObjectURL(a.href); }, 120000);
             self.showToast('등록된 매뉴얼·목차·PDF 엔진이 모두 포함된 단일 HTML 파일이 저장되었습니다! (' + (blob.size / 1048576).toFixed(1) + ' MB)');
+        });
+    },
+
+    // 전송용 슬림 문서: 목차·검색 캐시는 받는 쪽에서 다시 만들 수 있어 제외, 빈/이미지 쪽은 쪽 번호 목록(bl/im)으로만
+    slimDoc: function (d) {
+        var pages = [], bl = [], im = [];
+        d.pages.forEach(function (p) {
+            if (p.st === 'blank') bl.push(p.pageNum);
+            else if (p.st === 'img' && !p.text) im.push(p.pageNum);
+            else {
+                var r = { pageNum: p.pageNum, text: p.text || '' };
+                if (p.st) r.st = p.st;
+                if (p.err) r.err = p.err;
+                pages.push(r);
+            }
+        });
+        var out = { id: d.id, fileName: d.fileName, numPages: d.numPages || d.pages.length, pages: pages };
+        if (bl.length) out.bl = bl;
+        if (im.length) out.im = im;
+        if (d.report) out.report = d.report;
+        return out;
+    },
+
+    // QR 전송 대상 파일 구성: 체크된 매뉴얼 → 전송용 JSON(+선택: 검색 전용 HTML). 없으면 null
+    buildTransferFiles: function (opts) {
+        opts = opts || {};
+        var self = this;
+        var docs = this.docs.filter(function (d) { return d.checked !== false; });
+        if (!docs.length) return Promise.resolve(null);
+        var d0 = new Date(), pad = function (n) { return String(n).padStart(2, '0'); };
+        var stamp = d0.getFullYear() + pad(d0.getMonth() + 1) + pad(d0.getDate()) + '_' + pad(d0.getHours()) + pad(d0.getMinutes());
+        var payload = {
+            v: 2, kind: 'pdf-manual-index',
+            exportedAt: d0.getFullYear() + '-' + pad(d0.getMonth() + 1) + '-' + pad(d0.getDate()) + ' ' + pad(d0.getHours()) + ':' + pad(d0.getMinutes()),
+            docs: docs.map(function (d) { return self.slimDoc(d); })
+        };
+        var json = new TextEncoder().encode(JSON.stringify(payload));
+        var pages = 0, chars = 0;
+        docs.forEach(function (d) { pages += d.numPages || d.pages.length; d.pages.forEach(function (p) { chars += (p.text || '').length; }); });
+        var files = [{ name: '매뉴얼색인_' + stamp + '_' + docs.length + '권.json', u8: json, mtime: d0.getTime() }];
+        var summary = '전송 대상 <b>' + docs.length + '권</b> · ' + pages + '쪽 · 글자 ' + chars.toLocaleString() + '자<br>전송용 JSON ' + (json.length / 1048576).toFixed(2) + ' MB (압축 전)';
+        if (!opts.viewer) return Promise.resolve({ files: files, summary: summary });
+        return this.buildHtmlString({ index: false, engine: false }).then(function (html) {
+            var u8 = new TextEncoder().encode(html);
+            files.push({ name: 'PDF검색기_검색전용.html', u8: u8, mtime: d0.getTime() });
+            return { files: files, summary: summary + '<br>+ 검색 전용 검색기 HTML ' + (u8.length / 1024).toFixed(0) + ' KB' };
         });
     },
 

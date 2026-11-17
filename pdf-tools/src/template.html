@@ -447,6 +447,26 @@
         .snippet-body { white-space:pre-wrap; }
         .rep-doc { border:1.5px solid var(--border-color); border-radius:8px; padding:0.6rem 0.75rem; margin-bottom:0.55rem; background:var(--bg-subtle); }
         .rep-ok { color:#047857; font-weight:900; } .rep-warn { color:#b45309; font-weight:900; } .rep-bad { color:#b91c1c; font-weight:900; }
+        /* ---- QR 전송 모달 ---- */
+        .qr-dialog { max-width: 1120px; width: 96vw; }
+        .qr-grid { display:grid; grid-template-columns: 330px 1fr; gap:1rem; margin-top:0.6rem; }
+        .qr-side { display:flex; flex-direction:column; gap:0.5rem; font-size:0.82rem; }
+        .qr-box { border:1.5px solid var(--border-color); background:var(--bg-subtle); border-radius:8px; padding:0.55rem 0.7rem; line-height:1.6; }
+        .qr-opt { display:flex; gap:0.4rem; align-items:flex-start; font-weight:700; cursor:pointer; }
+        .qr-adv { border:1px dashed var(--border-color); border-radius:8px; padding:0.45rem 0.6rem; }
+        .qr-adv summary { cursor:pointer; font-weight:800; color:var(--primary); }
+        .qr-adv-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.4rem 0.6rem; margin:0.5rem 0; }
+        .qr-adv-grid label { display:flex; flex-direction:column; font-size:0.74rem; color:var(--text-secondary); font-weight:700; gap:0.15rem; }
+        .qr-note { font-size:0.74rem; color:var(--text-secondary); margin:0.3rem 0; line-height:1.5; }
+        .qr-stage { height: min(62vh, 640px); background:#fff; border:1.5px solid var(--border-color); border-radius:10px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+        .qr-stage canvas { display:none; max-width:100%; max-height:100%; image-rendering:pixelated; image-rendering:crisp-edges; background:#fff; }
+        .qr-stage.live canvas { display:block; }
+        .qr-stage.live .qr-stage-ph { display:none; }
+        .qr-stage-ph { color:var(--text-muted); text-align:center; padding:1rem; }
+        .qr-stage-info { position:absolute; left:0; right:0; bottom:0; padding:0.3rem 0.6rem; font-size:0.78rem; background:rgba(255,255,255,0.92); text-align:center; display:none; }
+        .qr-stage.live .qr-stage-info { display:block; }
+        .qr-stage:fullscreen { background:#fff; border:none; border-radius:0; height:100vh; }
+        @media (max-width: 900px) { .qr-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -466,6 +486,9 @@
                 </button>
                 <button type="button" class="btn btn-header" style="background: rgba(16, 185, 129, 0.45); border-color: #6ee7b7;" onclick="app.downloadEmbeddedHtml()">
                     💾 매뉴얼 내장 단일 HTML 저장
+                </button>
+                <button type="button" class="btn btn-header" style="background: rgba(245, 158, 11, 0.55); border-color: #fcd34d;" onclick="QRSEND.open()" title="체크한 매뉴얼을 압축해 QR 영상으로 전송합니다 (수신기: qr-receiver.html)">
+                    📡 QR로 전송
                 </button>
                 <button type="button" class="btn btn-header" onclick="app.exportJsonIndex()">
                     📦 색인 JSON 백업
@@ -654,6 +677,59 @@
     </div>
 
     <!-- ==========================================================================
+         MODAL: QR 전송 (체크한 매뉴얼 → 전송용 JSON → 압축 → 자동 QR 재생)
+         ========================================================================== -->
+    <div id="qrModal" class="modal-backdrop">
+        <div class="modal-dialog qr-dialog">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:1rem; font-weight:900;">📡 QR로 전송 — 폰(또는 웹캠 PC)의 qr-receiver.html 로 비추세요</h3>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="QRSEND.close()">✕ 닫기</button>
+            </div>
+            <div class="qr-grid">
+                <div class="qr-side">
+                    <div id="qrSummary" class="qr-box">체크된 매뉴얼을 확인하는 중…</div>
+                    <div id="qrHint" class="qr-box" style="background:#eff6ff; border-color:#bfdbfe;"></div>
+                    <div id="qrEstimate" class="qr-box"></div>
+                    <label class="qr-opt"><input type="checkbox" id="qrViewer" onchange="QRSEND.onOptionChange('qrViewer')"> 검색기도 함께 보내기 <small>(최초 1회 · PDF 엔진 제외 검색 전용 HTML, 약 0.2MB)</small></label>
+                    <details class="qr-adv">
+                        <summary>고급 설정</summary>
+                        <div class="qr-adv-grid">
+                            <label>QR 크기
+                                <select id="qrPreset" onchange="QRSEND.onOptionChange('qrPreset')">
+                                    <option value="12">안정 (V12)</option><option value="18" selected>표준 (V18)</option><option value="24">고속 (V24)</option><option value="30">최고속 (V30)</option>
+                                </select></label>
+                            <label>초당 프레임 <input type="number" id="qrFps" min="1" max="30" value="10" onchange="QRSEND.onOptionChange('qrFps')"></label>
+                            <label>예상 손실률
+                                <select id="qrLoss" onchange="QRSEND.onOptionChange('qrLoss')">
+                                    <option value="0.05">5%</option><option value="0.1" selected>10%</option><option value="0.15">15%</option><option value="0.25">25%</option><option value="0.35">35%</option>
+                                </select></label>
+                            <label>재전송할 구간 <input type="text" id="qrPlaylist" placeholder="예: 3,5-7 (비우면 전체)" onchange="QRSEND.onOptionChange('qrPlaylist')"></label>
+                        </div>
+                        <div class="qr-note">※ QR 크기를 바꾸면 수신기에서 [수신 초기화] 후 처음부터 받아야 합니다.</div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="QRSEND.startCalib()" title="여러 속도 단계를 순서대로 재생합니다. 폰 수신기에 최적 설정이 표시됩니다 (약 50초)">📶 속도 보정 테스트</button>
+                        <div id="qrWarn" class="qr-note" style="color:#92400e;"></div>
+                    </details>
+                </div>
+                <div class="qr-main">
+                    <div id="qrStage" class="qr-stage">
+                        <canvas id="qrCanvas"></canvas>
+                        <div class="qr-stage-ph">전송 파일을 준비하면 자동으로 QR 재생이 시작됩니다.</div>
+                        <div id="qrStageInfo" class="qr-stage-info"></div>
+                    </div>
+                    <div class="progress-bar" style="margin:0.4rem 0;"><div id="qrBar" class="progress-fill"></div></div>
+                    <div id="qrStatus" style="font-size:0.82rem; min-height:1.3rem;"></div>
+                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <button type="button" id="qrPause" class="btn btn-secondary btn-sm" onclick="QRSEND.togglePause()" disabled>⏸ 일시정지</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="QRSEND.fullscreen()">⛶ 전체화면</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="QRSEND.restart()">↻ 다시 만들기</button>
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--text-muted); margin-top:0.35rem;">재생 중에는 이 탭을 숨기지 마세요(숨기면 멈춥니다). 수신기에 "수신·검증 완료"가 뜰 때까지 계속 재생됩니다.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
          MODAL 3: 삭제 전 재확인 알림 모달 (선택 삭제 / 개별 삭제 공통)
          ========================================================================== -->
     <div id="confirmDeleteModal" class="modal-backdrop">
@@ -684,10 +760,16 @@
 /*@@ZLIB@@*/
     </script>
     <script>
+/*@@QRENC@@*/
+    </script>
+    <script>
 /*@@LAYOUT@@*/
     </script>
     <script>
 /*@@ENGINE@@*/
+    </script>
+    <script>
+/*@@QRSEND@@*/
     </script>
     <script>
 /*@@APP@@*/

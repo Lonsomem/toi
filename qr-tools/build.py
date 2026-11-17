@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""qr-tools/src 의 조각을 합쳐 단일 HTML(qr-sender.html, qr-receiver.html)을 만든다.
+"""qr-tools/src 의 조각을 합쳐 수신기 단일 HTML(qr-receiver.html)을 만든다. (송신은 pdf-manual-search.html 에 내장됨)
 사용: python3 qr-tools/build.py"""
 import os, re
 base = os.path.dirname(os.path.abspath(__file__))
@@ -20,5 +20,4 @@ def build(template, repl, out):
     print(out, len(html.encode('utf-8')) // 1024, 'KB')
 
 core = rd('src', 'core.js')
-build('sender.template.html', {'CORE': core, 'QR': rd('src', 'qr-encoder.js'), 'UI': rd('src', 'sender-ui.js')}, 'qr-sender.html')
 build('receiver.template.html', {'CORE': core, 'JSQR': rd('vendor', 'jsQR.js'), 'UI': rd('src', 'receiver-ui.js')}, 'qr-receiver.html')

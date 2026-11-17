@@ -46,28 +46,30 @@ table td,table th{border-bottom:1px solid var(--line);padding:.3rem .4rem;text-a
 </style>
 </head>
 <body>
-<header><h1>📱 QR 파일 수신기</h1><span>카메라로 연속 QR을 받아 자동으로 복원 · 외부 통신 없음</span></header>
+<header><h1>📱 QR 수신기</h1><span>카메라 시작 → QR 영상을 비추면 자동으로 복원·저장 · 외부 통신 없음</span></header>
 <div class="wrap">
 
   <div class="card">
-    <h2>1. 카메라로 수신</h2>
+    <h2>1. 카메라 시작 후 송신 화면을 비추세요</h2>
     <div class="cam" id="cam"><video id="video" playsinline muted></video><div class="ph" id="camPh">[카메라 시작]을 누르고<br>송신 화면의 QR 전체가 보이게 맞추세요</div></div>
     <div class="row">
       <button class="btn" id="btnStart">📷 카메라 시작</button>
       <button class="btn sec" id="btnStop" disabled>■ 중지</button>
       <button class="btn sec" id="btnTorch" disabled>🔦 손전등</button>
     </div>
-    <div class="row">
-      <label class="hint">색상 모드
-        <select id="colorMode"><option value="auto" selected>자동</option><option value="mono">흑백</option><option value="rgb">RGB 3층</option></select></label>
-      <label class="hint">인식 엔진
-        <select id="engine"><option value="auto" selected>자동</option><option value="js">jsQR (소프트웨어)</option><option value="bd">내장 BarcodeDetector</option></select></label>
-    </div>
     <div class="msg hidden" id="camMsg"></div>
+    <details style="margin-top:.4rem"><summary class="hint" style="cursor:pointer">고급 설정 (평소엔 건드리지 않아도 됩니다)</summary>
+      <div class="row">
+        <label class="hint">색상 모드
+          <select id="colorMode"><option value="auto" selected>자동</option><option value="mono">흑백</option><option value="rgb">RGB 3층</option></select></label>
+        <label class="hint">인식 엔진
+          <select id="engine"><option value="auto" selected>자동</option><option value="js">jsQR (소프트웨어)</option><option value="bd">내장 BarcodeDetector</option></select></label>
+      </div>
+    </details>
   </div>
 
   <div class="card">
-    <h2>2. 수신 상태</h2>
+    <h2>2. 수신 상태 (끝나면 자동 저장)</h2>
     <div class="msg" id="stateMsg">대기 중 — 송신기가 재생되는 화면을 비추세요.</div>
     <div class="bar" style="margin-top:.6rem"><i id="totalBar"></i></div>
     <div class="stat">
@@ -90,15 +92,16 @@ table td,table th{border-bottom:1px solid var(--line);padding:.3rem .4rem;text-a
   </div>
 
   <div class="card hidden" id="resultCard">
-    <h2>3. 수신 완료 · 파일 받기</h2>
+    <h2>3. 수신 완료</h2>
     <div class="msg ok" id="verifyMsg"></div>
     <ul class="files" id="resultList"></ul>
     <div class="row"><button class="btn ok" id="btnZip">📦 전체를 ZIP으로 받기</button></div>
     <p class="hint">모든 파일은 전송 전 원본과 바이트 단위로 동일합니다(SHA-256·CRC32 검증). 한글 파일명은 그대로 복원됩니다.</p>
   </div>
 
-  <div class="card">
-    <h2>카메라를 쓸 수 없을 때: 영상 파일로 수신</h2>
+  <details class="card"><summary style="cursor:pointer; font-weight:800; color:#3730a3;">문제 해결: 카메라를 쓸 수 없을 때(영상 파일로 수신) · 진단 로그</summary>
+  <div style="margin-top:.7rem">
+    <h2>영상 파일로 수신</h2>
     <p class="hint">폰 기본 카메라앱으로 송신 화면을 <b>동영상 촬영</b>한 뒤 아래에서 그 영상을 선택하면 같은 방식으로 복원합니다.</p>
     <div class="row">
       <input type="file" id="videoFile" accept="video/*">
@@ -111,8 +114,8 @@ table td,table th{border-bottom:1px solid var(--line);padding:.3rem .4rem;text-a
     <video id="vplay" playsinline muted style="width:100%;max-height:200px;background:#000;border-radius:8px;display:none"></video>
     <div class="msg hidden" id="vMsg"></div>
   </div>
-
-  <div class="card"><h2>진단 로그</h2><div id="log"></div></div>
+  <div style="margin-top:.8rem"><h2>진단 로그</h2><div id="log"></div></div>
+  </details>
 </div>
 
 <script>
@@ -11581,9 +11584,23 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
     }
 
+    function describeFile(f) {
+        // 전송용 JSON 이면 매뉴얼 수·쪽 수를 요약해 보여준다
+        if (!/\.json$/i.test(f.name) || f.size > 80 * 1048576) return '';
+        try {
+            var o = JSON.parse(QX.utf8.dec(f.data));
+            if (o && Array.isArray(o.docs)) {
+                var pages = 0;
+                o.docs.forEach(function (d) { pages += d.numPages || (d.pages ? d.pages.length : 0); });
+                return ' (매뉴얼 ' + o.docs.length + '권 · ' + pages + '쪽)';
+            }
+        } catch (e) { }
+        return '';
+    }
     function showResults(files) {
         $('resultCard').className = 'card';
-        $('verifyMsg').textContent = '✅ SHA-256 · CRC32 검증 통과 · 파일 ' + files.length + '개 (원본과 바이트 단위 동일)';
+        var extra = files.length === 1 ? describeFile(files[0]) : '';
+        $('verifyMsg').textContent = '✅ 수신·검증 완료 (SHA-256·CRC32 통과) · 파일 ' + files.length + '개' + extra + (files.length === 1 ? ' — 자동 저장됨(다운로드 폴더 확인)' : ' — 아래 [다운로드]로 받으세요');
         var ul = $('resultList');
         ul.innerHTML = '';
         files.forEach(function (f) {
@@ -11609,6 +11626,9 @@ function findAlignmentPattern(matrix, alignmentPatternQuads, topRight, topLeft, 
             ul.appendChild(li);
         });
         $('resultCard').scrollIntoView();
+        if (files.length === 1) {   // 파일이 하나면 바로 저장 (절차 최소화)
+            try { downloadBlob(new Blob([files[0].data], { type: 'application/octet-stream' }), files[0].name); } catch (e) { log('자동 저장 실패: ' + e); }
+        }
     }
 
     /* ---------- 디코딩 ---------- */

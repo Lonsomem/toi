@@ -4,7 +4,7 @@
    외부 통신 없음. 워커는 Blob URL 로 만들고, 실패하면 PDF.js 가 자동으로 메인 스레드(페이크 워커)로 대체.
    ========================================================================== */
 var PDFENGINE = (function () {
-    var state = { ready: false, error: null, version: '3.11.174', workerMode: '' };
+    var state = { ready: false, error: null, version: '3.11.174', workerMode: '', viewerOnly: false };
     var cmaps = null, cmapCache = {};
 
     function b64ToU8(b64) {
@@ -33,6 +33,11 @@ var PDFENGINE = (function () {
 
     function load() {
         if (state.ready) return Promise.resolve(state);
+        var mainSlot = document.getElementById('pdfjs-main-z');
+        if (!mainSlot || !mainSlot.textContent.trim()) { // 전송용 '검색 전용' HTML: 엔진을 뺀 파일
+            state.viewerOnly = true;
+            return Promise.resolve(state);
+        }
         return readSlot('pdfjs-main-z').then(function (mainU8) {
             var s = document.createElement('script');
             s.id = 'pdfjs-injected';

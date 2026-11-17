@@ -1,23 +1,26 @@
-# 오프라인 QR 파일 전송 (`qr-sender.html` / `qr-receiver.html`) 개발 메모
+# 오프라인 QR 파일 전송 개발 메모
+
+> **2026-11-17 구조 변경**: 별도 송신기(`qr-sender.html`)는 **제거**했다. 송신은 `pdf-manual-search.html` 의 **[📡 QR로 전송]** 에 내장(`pdf-tools/src/qrsend.js`)되어 체크한 매뉴얼을 전송용 JSON 으로 만들어 압축·자동 재생한다. 수신기(`qr-receiver.html`)는 유지·단순화(카메라 시작 → 완료 시 파일 1개면 **자동 저장**).
+> 아래 내용 중 "송신기 UI" 절은 이 내장 송신 모듈 기준으로 읽을 것. 프레임 포맷·오류 복구·스케줄·수신기는 그대로다.
+> 임의 파일(사건노트 HTML 등)을 QR 로 보내는 기능은 현재 없다(필요하면 `qrsend.js` 의 파일 구성부(`app.buildTransferFiles`)만 교체하면 됨).
 
 PC 화면에 연속 QR 을 재생(송신) → 폰 카메라로 받아(수신) 원본 파일로 복원. **사건 관리 노트와 코드 독립**. 임의 파일(한글 파일명·PDF 등) 여러 개 전송.
 최대 규모 요구: ~34,000KB. PC 브라우저: **구형 Chrome/Edge**. 폰: 저장한 HTML 을 `file://` 로 열어 사용.
 
 ## 1. 파일/빌드
 ```
-qr-tools/src/core.js               공통 코어(순수 JS, Node 에서도 require 가능 → 단위 테스트)
-qr-tools/src/qr-encoder.js         QR 인코더 + 캔버스 그리기(흑백 drawQR / RGB drawQR3 / channelToGray)
-qr-tools/src/sender.template.html  송신기 HTML/CSS  (/*@@CORE@@*/ /*@@QR@@*/ /*@@UI@@*/ 치환 지점)
-qr-tools/src/sender-ui.js          송신기 UI 로직
-qr-tools/src/receiver.template.html 수신기 HTML/CSS (/*@@CORE@@*/ /*@@JSQR@@*/ /*@@UI@@*/)
-qr-tools/src/receiver-ui.js        수신기 UI 로직
-qr-tools/vendor/jsQR.js            jsQR 1.4.0 원문(Apache-2.0, 수신기에만 인라인)
-qr-tools/build.py                  → 저장소 루트 qr-sender.html / qr-receiver.html 생성
-qr-tools/tests/*                   수동 테스트(README 참고)
+qr-tools/src/core.js               공통 코어 QX (CRC/SHA/Base45/DEFLATE/아카이브/프레임/오류복구/Assembler) — 검색기 빌드도 포함
+qr-tools/src/qr-encoder.js         QR 인코더 + 캔버스 그리기(drawQR; RGB 용 drawQR3 는 UI 에서 더 이상 사용 안 함) — 검색기 빌드도 포함
+qr-tools/src/receiver.template.html / receiver-ui.js   수신기 (→ 루트 qr-receiver.html)
+qr-tools/vendor/jsQR.js            jsQR 1.4.0 (Apache-2.0), 수신기에만 인라인
+qr-tools/build.py                  수신기만 빌드
+pdf-tools/src/qrsend.js            송신 모듈 QRSEND (검색기에 내장)
+qr-tools/tests/*                   단위 테스트(core/qr-encoder/rgb/fountain)
+pdf-tools/tests/e2e-transfer*.test.js   송신(검색기)→수신기 종단 간 / 영상 폴백
 ```
-- 수정은 `src` 에서, 빌드: `python3 qr-tools/build.py`. 빌드가 `</script` 포함 여부를 assert.
-- **UI 코드 문법 제약**: 구형 브라우저 호환(`?.`, `??`, 옵셔널 catch 금지; async/await·템플릿 리터럴은 OK). core.js 는 `const QX = {}` 전역 네임스페이스.
-- 테스트 후크: `window.__qrxSender`(상태 S), `window.__qrxRecv`(`{R, onFrame}`).
+- 수정: core.js·qr-encoder.js 변경 시 `python3 qr-tools/build.py` **와** `python3 pdf-tools/build.py` 둘 다.
+- **UI 코드 문법 제약**: 구형 브라우저 호환(`?.`/`??` 금지). core.js 는 `const QX = {}` 전역.
+- 테스트 후크: `QRSEND.state`(송신 상태), `window.__qrxRecv`(`{R, onFrame}`).
 
 ## 2. 전체 파이프라인
 ```
@@ -61,14 +64,12 @@ header = `{v:1, files:[{n:이름, s:원본크기, c:저장크기, m:0저장|1def
 - 메타 프레임을 구간 시작 시 + `metaEvery` 프레임마다 삽입(수신기가 아무 때나 합류 가능).
 - `estimateFrames()`: 1회차 총 프레임 추정(UI 예상 시간용).
 
-## 8. 송신기 UI (`sender-ui.js`)
-- 주요 id: `fileInput, fileList, imgOpt/imgMax/imgQ/imgFmt/btnImgAll/btnImgNone, btnPrepare, preset, verInput, ecl, fps, segSize, loss, advance, rgb, loopAll, playlist, est, warn, btnPlay, btnCalib, stage, qr(canvas), stageInfo, status, playBar, btnPrev/Pause/Next/Jump/Focus/Full, hzInfo`.
-- 기본값: 프리셋 V18, ECC L, 10fps, 구간 512KB, 손실률 10%, 자동 전환, 반복 켬. V23 은 자동으로 V24 (jsQR 이 V23-L 을 못 읽음; OpenCV 는 정상).
-- **사진 축소(선택)**: 이미지 파일마다 `축소` 체크(기본 꺼짐). `reduceImage`: `createImageBitmap(file,{imageOrientation:'from-image'})`(실패 시 `Image`) → 긴 변 `imgMax` 로 리사이즈, 흰 배경, `canvas.toBlob(JPEG/WebP, 화질)`. EXIF 제거·원본 아님(경고 문구 있음). 파일명 `원본이름(축소).jpg|webp`. 이득 없으면(≥90%) 원본 유지, 실패 시 원본 사용. 구형 Chrome(<81)에서는 EXIF 회전 미반영 가능 → 목록 미리보기 썸네일로 확인하도록 안내.
-- **타이밍**: `measureHz()` 로 모니터 주사율 측정 → `ticks = round(Hz/fps)` 개의 rAF 마다 프레임 교체(`effFps = Hz/ticks`). 백그라운드 탭에서는 rAF 정지.
-- QR 마스크 평가는 20프레임마다 1회, 나머지는 캐시(`encodeQR`), QR 인코딩 ≈ 4ms(V18).
-- **RGB 3층(실험)**: 한 화면에 서로 다른 QR 3개를 R/G/B 채널로(`drawQR3`), 프레임 3개 소비. 헤더 bit7 로 수신기에 알림.
-- **속도 보정 테스트**(`btnCalib`): 11단계(흑백 V12/18/24/30 × fps10/15, V24 ECC M, RGB V18/24) 각 7초 재생 → 수신기가 `CalibStats.report()` 표 + 추천(수신율 ≥50% 중 실효 KB/s 최대).
+## 8. 송신 모듈 (`pdf-tools/src/qrsend.js`, 검색기 내장)
+- 흐름: `QRSEND.open()` → `app.buildTransferFiles({viewer})` → 각 파일 `QX.packFile`(JSON 은 deflate) → `QX.buildArchive` → SHA-256(세션 id = 앞 4바이트) → 자동 `startPlay()`. 닫기 전까지(수신 완료 때까지) 계속 재생(보충 조각).
+- **전송 대상**: 좌측 목록에서 **체크된** 매뉴얼. 파일 1: `매뉴얼색인_YYYYMMDD_HHmm_N권.json`(슬림 JSON, 형식은 `docs/pdf-search.md` 9절). 옵션 `#qrViewer`: + `PDF검색기_검색전용.html`(엔진 제외, 색인 비움 ≈ 0.2MB).
+- 고급(접힘): QR 크기 프리셋 V12/18/24/30(기본 V18), 초당 프레임(기본 10), 예상 손실률(기본 10%), **재전송 구간**(수신기 `미완료 구간` 입력), **📶 속도 보정 테스트**(V12~V30 × 10/15fps 7단계 각 7초; 수신기가 표로 추천). 설정은 localStorage `PDFSEARCH_QR_*` 에 기억. QR 크기를 바꾸면 수신기에서 `수신 초기화` 필요(B 가 달라짐).
+- **타이밍**: `measureHz()`(rAF 45회 중앙값) → `ticks = round(Hz/fps)` 정수배로 프레임 교체. 마스크 평가는 20프레임마다 1회.
+- 제거된 것: 임의 파일 선택/드롭, 사진 축소, RGB 3층 UI, 구간 전환 수동 모드, 구간 이동 버튼(필요 시 재전송 구간 입력으로 대체). 코어(`QX.FrameSource` 의 manual/layered, `drawQR3`)에는 남아 있음.
 
 ## 9. 수신기 UI (`receiver-ui.js`)
 - 입력: ① 카메라(`getUserMedia`, 후면, 1080p 이상 요청, 손전등/WakeLock 가능 시) ② **영상 파일 폴백**(폰 카메라앱으로 송신 화면 촬영 → 파일 선택, 재생속도 0.25~1배, `requestVideoFrameCallback`).
@@ -88,8 +89,8 @@ header = `{v:1, files:[{n:이름, s:원본크기, c:저장크기, m:0저장|1def
 - 영상 폴백(VP9 녹화): 흑백 복원 성공, **RGB 는 실패**(손실 압축이 색 해상도를 깎음). 실제 폰 카메라 라이브에서 RGB 가 되는지는 **미검증** → 보정 테스트 결과로 판단.
 - 이론 유효 속도: `B × fps × 층수 × (1-loss)`. 기본(V18,10fps,10%) ≈ 6 KB/s → 3MB 무축소 ≈ 8분, 축소(~500KB) ≈ 1.5분. **실제 폰 카메라 수치는 사용자 측정 대기** (송신기 `📶 속도 보정 테스트`).
 
-## 11. 형식별 용량 효과
-텍스트/JSON/HTML 은 크게 줄어듦(331KB 텍스트→1.3KB). PDF·HWPX·DOCX·ZIP·동영상은 줄지 않음(원본 그대로). 사진만 축소 옵션으로 감소. PDF 내부 이미지 재압축은 미구현.
+## 11. 용량 효과
+전송 대상은 텍스트 JSON 이라 deflate 로 크게 줄어듦(실측: 1308쪽 합성 문서 JSON 222KB). 압축 강화(글자 단위 문맥 모델 등)는 2단계 계획. 사진 축소·PDF 재압축은 송신기 제거와 함께 삭제됨.
 
 ## 12. 알려진 이슈/주의
 - 폰에서 `file://` 로 열면 브라우저/기기에 따라 `getUserMedia` 가 막힐 수 있음 → 영상 폴백 사용.
