@@ -12,6 +12,7 @@
 | `pdf-manual-search.html` | 다중 PDF 매뉴얼 검색기(PDF.js 내장, 표 인식). **빌드 산출물** | `docs/pdf-search.md` |
 | `pdf-tools/src/*`, `pdf-tools/vendor/*` | 위 파일의 소스·내장 PDF.js (수정 후 `python3 pdf-tools/build.py`) | 〃 |
 | `qr-tools/tests/*` | 수동 실행 테스트 스크립트 | `qr-tools/tests/README.md` |
+| (미구현) 내부망 로컬 LLM | QR 전송 대신 내부망 PC에 경량 LLM(Qwen) + RAG 로 매뉴얼 질의. 모델 선택·반입 절차만 검토됨, 코드 없음 | `docs/local-llm.md` |
 
 ## 절대 규칙
 1. **`qr-receiver.html`/`pdf-manual-search.html` 을 직접 수정하지 말 것.** `qr-tools/src`(→ `python3 qr-tools/build.py`) 또는 `pdf-tools/src`(→ `python3 pdf-tools/build.py`) 수정. `pdf-tools/build.py` 는 `qr-tools/src/core.js`(QX)와 `qr-encoder.js` 를 가져다 쓰므로 이 둘을 바꾸면 **두 빌드를 모두 재실행**.
@@ -34,3 +35,4 @@
 - QR 양방향 피드백(웹캠으로 수신 완료 확인) 미구현. 전송 암호화는 헤더 플래그 자리만 예약(`flags` bit0).
 - **진행 계획(사용자와 합의)**: 1단계 = 검색기에서 QR 전송(완료, JSON 만 전송·검색기 포함은 선택) → 2단계 압축 강화(deflate → 글자 단위 문맥 모델 등) → 3단계 매뉴얼 **죄명별 지식 JSON**(구성요건·필수 확인 항목·수사 체크리스트·범죄사실 예문·수사결과보고서 구성; 검색기에 태깅 화면 + 자동 후보, 사람 확인 필수, 모든 항목에 출처 쪽) → 4단계 사건 관리 노트의 **질의 마법사**(죄명 후보 제시→필수 항목 점검·질문→수사 방향 체크리스트→초안; 입력 안 된 사실은 `OO`, 법적 판단 안 함, 체크리스트는 사건 할 일로 추가). 외부 LLM 용 프롬프트 묶음은 같은 지식 JSON 사용.
 - 사용자 의도: 내부망에서 변환 완료 후 전송, 외부에서 자유 활용(파인튜닝·사실관계 비정형 추출). 학습용 쌍(입력-정답)은 매뉴얼만으로는 부족 → few-shot/RAG 먼저. 개인정보 마스킹은 선택 기능으로 논의만(이름·주소는 규칙으로 불완전).
+- **방향 전환 검토 중(2026-11-17)**: QR 전송 대신 내부망 PC에 경량 LLM(Qwen2.5-7B-Instruct, RAM 16GB·VRAM 없음 가정) + RAG 직접 구축하는 안을 검토 중. 상세는 `docs/local-llm.md`. 아직 코드 없음, 실측 테스트 전.
