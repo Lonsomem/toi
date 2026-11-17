@@ -1103,11 +1103,14 @@ var app = {
     /* ======================================================================
        8. 내보내기 (JSON / 단일 HTML)
        ====================================================================== */
+    // 좌측 목록에서 체크된(선택된) 매뉴얼만 내보냄 — QR 전송 대상 선택과 동일한 체크박스 사용
     exportJsonIndex: function () {
-        var blob = new Blob([JSON.stringify({ v: 2, docs: this.docs })], { type: 'application/json' });
+        var docs = this.docs.filter(function (d) { return d.checked !== false; });
+        if (!docs.length) { this.showToast('내보낼 매뉴얼을 좌측 목록에서 1권 이상 체크하세요.'); return; }
+        var blob = new Blob([JSON.stringify({ v: 2, docs: docs })], { type: 'application/json' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = '매뉴얼색인백업_' + this.docs.length + '권.json';
+        a.download = '매뉴얼색인백업_' + docs.length + '권.json';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
     },

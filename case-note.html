@@ -2154,8 +2154,18 @@
                 </p>
                 <div style="display: flex; flex-direction: column; gap: 0.65rem;">
                     <button type="button" class="btn btn-primary" onclick="app.exportPureJson('all')">
-                        💾 전체 사건 + 템플릿 JSON 내보내기
+                        💾 선택한 사건 + 템플릿 JSON 내보내기
                     </button>
+                    <div style="border: 1px solid var(--border-color, #ddd); border-radius: 8px; padding: 0.5rem 0.6rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                            <span style="font-size: 0.8rem; color: var(--text-secondary);">내보낼 사건 선택</span>
+                            <span>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="app.toggleAllExportCases(true)">전체 선택</button>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="app.toggleAllExportCases(false)">전체 해제</button>
+                            </span>
+                        </div>
+                        <div id="exportCaseListContainer" style="max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.25rem;"></div>
+                    </div>
                     <button type="button" class="btn btn-secondary" onclick="app.exportPureJson('template')">
                         📤 서식·템플릿만 내보내기 (동료 공유용, 사건 제외)
                     </button>
@@ -2543,7 +2553,8 @@
                     'todoTabNextCount',
                     'todoTabTodayCount',
                     'todoPanelSub',
-                    'todoTabAllCount'
+                    'todoTabAllCount',
+                    'exportCaseListContainer'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -4315,6 +4326,7 @@
                PURE JSON BACKUP / RESTORE & COMMON UTILS
                ====================================================================== */
             openBackupModal() {
+                this.renderExportCaseList();
                 document.getElementById('backupModal').classList.add('open');
             },
 
@@ -4322,13 +4334,41 @@
                 document.getElementById('backupModal').classList.remove('open');
             },
 
+            renderExportCaseList() {
+                const box = document.getElementById('exportCaseListContainer');
+                if (!box) return;
+                if (!this.cases.length) {
+                    box.innerHTML = '<span style="font-size:0.8rem;color:var(--text-secondary);">등록된 사건이 없습니다.</span>';
+                    return;
+                }
+                box.innerHTML = this.cases.map(c => `
+                    <label style="display:flex;align-items:center;gap:0.4rem;font-size:0.82rem;cursor:pointer;">
+                        <input type="checkbox" class="exportCaseCheck" value="${c.id}" checked>
+                        <span>${this.escapeHtml(c.caseNumber || '(사건번호 없음)')} · ${this.escapeHtml(c.title || '(제목 없음)')}</span>
+                    </label>
+                `).join('');
+            },
+
+            toggleAllExportCases(checked) {
+                document.querySelectorAll('.exportCaseCheck').forEach(el => { el.checked = checked; });
+            },
+
             /* 공유 JSON 형식: { version:1, exportedAt:'YYYY-MM-DD HH:mm', template:{checklist,forms,customFields}, cases:[...] } */
             exportPureJson(scope) {
+                let cases = [];
+                if (scope === 'all') {
+                    const selectedIds = Array.from(document.querySelectorAll('.exportCaseCheck:checked')).map(el => el.value);
+                    cases = this.cases.filter(c => selectedIds.includes(c.id));
+                    if (!cases.length) {
+                        this.showToast('내보낼 사건을 1건 이상 선택하세요.');
+                        return;
+                    }
+                }
                 const payload = {
                     version: 1,
                     exportedAt: this.getFormattedNow(),
                     template: this.template,
-                    cases: scope === 'template' ? [] : this.cases
+                    cases: cases
                 };
                 const blob = new Blob(['﻿' + JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
