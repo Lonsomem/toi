@@ -9,16 +9,19 @@
 | `case-note.html` | 사건 관리 노트 (단일 HTML, 자기 자신을 덮어쓰는 Quine 구조) | `docs/case-note.md` |
 | `qr-sender.html` / `qr-receiver.html` | 오프라인 QR 파일 전송기(PC→폰). **빌드 산출물** | `docs/qr-transfer.md` |
 | `qr-tools/src/*` | QR 도구 소스 (여기를 수정하고 `python3 qr-tools/build.py`) | 〃 |
+| `pdf-manual-search.html` | 다중 PDF 매뉴얼 검색기(PDF.js 내장, 표 인식). **빌드 산출물** | `docs/pdf-search.md` |
+| `pdf-tools/src/*`, `pdf-tools/vendor/*` | 위 파일의 소스·내장 PDF.js (수정 후 `python3 pdf-tools/build.py`) | 〃 |
 | `qr-tools/tests/*` | 수동 실행 테스트 스크립트 | `qr-tools/tests/README.md` |
 
 ## 절대 규칙
-1. **`qr-sender.html`/`qr-receiver.html` 을 직접 수정하지 말 것.** `qr-tools/src` 수정 → `python3 qr-tools/build.py`.
+1. **`qr-sender.html`/`qr-receiver.html`/`pdf-manual-search.html` 을 직접 수정하지 말 것.** `qr-tools/src`(→ `python3 qr-tools/build.py`) 또는 `pdf-tools/src`(→ `python3 pdf-tools/build.py`) 수정. `pdf-tools/build.py` 는 `qr-tools/src/core.js`(QX inflate/deflate)도 가져다 쓰므로 core.js 변경 시 둘 다 재빌드.
 2. `case-note.html` 은 단일 파일. 새 동적 영역(innerHTML 로 그리는 컨테이너·카운터 span)을 추가하면 `buildCleanHtmlDocumentString()` 의 `dynamicContainerIds` 에 id 추가.
 3. 데이터 변경 후에는 반드시 `this.onStateChanged()`. 스키마 속성 추가 시 `loadDatabase()` 에 기본값 방어 코드.
 4. 공유 JSON(version 1) 형식은 깨지 않는다 (기존 환경 호환). 새 속성은 선택(optional)으로.
 5. 한글 데이터 무결성이 최우선: 파일 내용은 바이트로만 다루고, 텍스트는 항상 UTF-8.
-6. QR 도구 UI 코드는 **구형 Chrome/Edge 호환 문법만** (`?.`, `??`, `catch {}` 등 금지 — 점검: `grep -nE '\?\.|\?\?|catch \{' qr-tools/src/*.js`).
-7. 테스트는 사용자 PC/폰이 아니라 이 컨테이너(headless Chromium)에서만 가능. **실제 폰 카메라 동작은 검증된 적 없음** — 단정적으로 말하지 말 것.
+6. QR 도구·PDF 검색기 UI 코드는 **구형 Chrome/Edge 호환 문법만** (`?.`, `??`, `catch {}` 등 금지 — 점검: `grep -nE '\?\.|\?\?|catch \{' qr-tools/src/*.js pdf-tools/src/*.js`). PDF.js 는 legacy 빌드.
+7. 테스트는 사용자 PC/폰이 아니라 이 컨테이너(headless Chromium)에서만 가능. **실제 폰 카메라 동작, 사용자의 실제 PDF(HWP 변환본 등)에서의 추출 품질은 검증된 적 없음** — 단정적으로 말하지 말 것. (PDF 검색기는 합성 PDF 로만 검증)
+8. PDF.js(Apache-2.0)는 `pdf-tools/vendor` 에 원문 그대로 두고 LICENSE 유지. 외부 요청 0건을 유지(`e2e.test.js` 가 검사).
 
 ## 작업 흐름
 - 수정 → (QR 도구면 build) → 해당 테스트 실행 → `git add`/commit → `git push -u origin ccr-4ca3e7c9-6uwh9u`.
