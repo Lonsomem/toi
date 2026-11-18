@@ -1816,7 +1816,7 @@
                 <div class="hero-case-identity">
                     <div class="hero-meta-row">
                         <input type="text" id="detailCaseNumber" class="inline-case-num" placeholder="사건번호" oninput="app.updateCurrentCaseField('caseNumber', this.value)">
-                        <input type="text" id="detailCharge" class="inline-charge-input" placeholder="죄명 (예: 사기)" oninput="app.updateCurrentCaseField('charge', this.value)">
+                        <input type="text" id="detailCharge" class="inline-charge-input" placeholder="죄명 (예: 사기)" oninput="app.updateCurrentCaseField('charge', this.value)" onblur="app.autoLoadChargeForms()" title="죄명 입력 후 포커스를 벗어나면, 이 죄명에 설정된 우선 양식이 자동으로 불러와집니다.">
                         <select id="detailStatus" class="inline-status-select" onchange="app.updateCurrentCaseField('status', this.value)">
                             <option value="수사중">🔵 수사중</option>
                             <option value="영장신청">🟣 영장신청</option>
@@ -2003,6 +2003,29 @@
                         <!-- 선택된 공통 항목 입력 영역 -->
                         <div id="customFieldsContainer" style="flex: 1; display: flex; flex-direction: column; min-height: 0;"></div>
                     </div>
+
+                    <!-- 사건별 치환 변수 ({{변수명}}) -->
+                    <div class="bento-card" style="flex: 0.9;">
+                        <div class="widget-header">
+                            <div class="widget-title">
+                                <div class="widget-icon-box" style="background: #ffedd5; color: #ea580c;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
+                                        <polyline points="4 17 10 11 4 5"></polyline>
+                                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                                    </svg>
+                                </div>
+                                치환 변수 ({{변수명}})
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.openTemplateModal()" title="모든 사건에 적용되는 변수 기본값 관리">⚙️ 전역 기본값</button>
+                        </div>
+                        <div id="caseVariablesContainer" style="max-height: 180px; overflow-y: auto;"></div>
+                        <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+                            <input type="text" id="newVarName" placeholder="이 사건만의 변수명" style="max-width: 130px;">
+                            <input type="text" id="newVarValue" placeholder="값" style="flex: 1;">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="app.addCaseExtraVariable()">+ 추가</button>
+                        </div>
+                        <div id="removedVariablesChips" style="margin-top: 0.4rem;"></div>
+                    </div>
                 </div>
 
             </div>
@@ -2072,7 +2095,12 @@
                     </div>
 
                     <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.45rem 0.7rem; font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.4rem;">
-                        <span>💡 한글(HWP)에서 복사한 양식을 아래에 붙여넣어 두세요. <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{죄명}}</code>, <code>{{범죄사실}}</code> 등을 넣으면 열려있는 사건 정보로 자동 치환 복사도 가능합니다.</span>
+                        <span>💡 한글(HWP)에서 복사한 양식을 아래에 붙여넣어 두세요. <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{죄명}}</code>, <code>{{범죄사실}}</code> 및 [⚙️ 기본 템플릿 설정]에서 등록한 <code>{{변수명}}</code> 도 열려있는 사건 정보로 자동 치환 복사됩니다.</span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                        <label style="font-size: 0.78rem; color: var(--text-secondary); white-space: nowrap;" title="사건의 죄명이 여기 적힌 값과 일치하면, 사건을 열 때 이 서식이 자동으로 개별 서식함에 추가됩니다.">🎯 자동 불러오기 죄명</label>
+                        <input type="text" id="globalFormAutoChargesInput" placeholder="쉼표로 구분, 예: 사기, 사기미수" style="flex: 1;" oninput="app.updateActiveGlobalForm('autoCharges', this.value)">
                     </div>
 
                     <textarea id="globalFormContentInput" style="flex: 1; width: 100%; font-size: 0.86rem; line-height: 1.6; padding: 0.75rem; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm);" placeholder="여기에 한글(HWP) 파일에서 복사한 서식 문구, 영장 신청 문구, 수사보고서 양식, 이송 사유 등을 그대로 붙여넣으세요 (Ctrl+V)..." oninput="app.updateActiveGlobalForm('content', this.value)"></textarea>
@@ -2126,10 +2154,24 @@
                 </div>
 
                 <!-- 3. 신규 사건 기본 서식 및 양식 -->
-                <div>
+                <div style="margin-bottom: 1.4rem;">
                     <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">3. 기본 서식 및 양식 상용구</h3>
                     <div id="tplFormsList" style="display: flex; flex-direction: column; gap: 0.7rem; margin-bottom: 0.6rem;"></div>
                     <button type="button" class="btn btn-secondary btn-sm" onclick="app.addTemplateFormItem()">+ 기본 서식 추가</button>
+                </div>
+
+                <!-- 4. 치환 변수 기본값 (전역) -->
+                <div>
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">4. 치환 변수 기본값 (전역, 서식·공통서식 안에서 <code>{{변수명}}</code> 형태로 사용)</h3>
+                    <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        여기서 등록한 변수는 모든 사건에 기본으로 적용됩니다. 각 사건 상세화면의 [치환 변수] 위젯에서 사건별로 값을 따로 입력하거나, 특정 사건에서만 제외할 수 있습니다.
+                    </p>
+                    <div style="display: flex; gap: 0.45rem; margin-bottom: 0.6rem; flex-wrap: wrap;">
+                        <input type="text" id="tplNewVarName" placeholder="변수명 (예: 피해자)" style="max-width: 160px;">
+                        <input type="text" id="tplNewVarDefault" placeholder="기본값 (선택)" style="flex: 1; min-width: 160px;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="app.addTemplateVariable()">+ 변수 추가</button>
+                    </div>
+                    <div id="tplVariablesList" style="display: flex; flex-direction: column; gap: 0.4rem;"></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -2260,6 +2302,11 @@
                         content: `[수 사 보 고]\n사건번호: {{사건번호}}\n사 건 명: {{제목}}\n\n1. 보고 취지\n본건 수사 진행 중 확인된 주요 참고사항 및 검토 내역을 보고하고자 함.\n\n2. 확인 내용\n{{참고사항}}\n\n3. 향후 수사 계획\n위 확인 사항을 토대로 후속 수사를 진행하고자 함.`
                     }
                 ],
+                variables: [
+                    { id: 'var_victim', name: '피해자', defaultValue: '' },
+                    { id: 'var_datetime', name: '일시', defaultValue: '' },
+                    { id: 'var_damage_amount', name: '피해금액', defaultValue: '' }
+                ],
                 customFields: [
                     {
                         id: 'cf_suspect_info',
@@ -2277,7 +2324,8 @@
                         id: 'gf_1',
                         category: '영장신청',
                         title: '금융계좌 압수수색영장 필요성 (표준 상용구)',
-                        content: `[압수·수색의 필요성]\n본건은 불특정 다수를 상대로 한 온라인 사기 사건으로, 피해자가 송금한 피해금원이 입금된 피의자 명의 금융계좌의 개설정보(인적사항, 연락처) 및 입출금 거래내역, 접속 IP 등을 확인하지 아니하고는 피의자를 특정하거나 범행의 전모를 규명하기 어렵습니다.\n\n따라서 사건번호 {{사건번호}} ({{제목}}) 피의사건의 실체적 진실 발견을 위해 본건 계좌에 대한 압수·수색영장의 발부를 신청합니다.`
+                        content: `[압수·수색의 필요성]\n본건은 불특정 다수를 상대로 한 온라인 사기 사건으로, 피해자가 송금한 피해금원이 입금된 피의자 명의 금융계좌의 개설정보(인적사항, 연락처) 및 입출금 거래내역, 접속 IP 등을 확인하지 아니하고는 피의자를 특정하거나 범행의 전모를 규명하기 어렵습니다.\n\n따라서 사건번호 {{사건번호}} ({{제목}}) 피의사건의 실체적 진실 발견을 위해 본건 계좌에 대한 압수·수색영장의 발부를 신청합니다.`,
+                        autoCharges: ['사기']
                     },
                     {
                         id: 'gf_2',
@@ -2395,11 +2443,17 @@
                     if (!Array.isArray(this.template.globalForms)) {
                         this.template.globalForms = getDefaultMasterTemplate().globalForms;
                     }
+                    if (!Array.isArray(this.template.variables)) this.template.variables = [];
+                    this.template.globalForms.forEach(gf => { if (!Array.isArray(gf.autoCharges)) gf.autoCharges = []; });
                     this.cases.forEach(cs => {
                         if (typeof cs.charge !== 'string') cs.charge = '';
                         if (typeof cs.crimeFact !== 'string') cs.crimeFact = '';
                         if (!Array.isArray(cs.checklist)) cs.checklist = [];
                         cs.checklist.forEach((it, i) => { if (!it.id) it.id = 'chk_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000); });
+                        if (!cs.variableValues || typeof cs.variableValues !== 'object') cs.variableValues = {};
+                        if (!Array.isArray(cs.removedVariableIds)) cs.removedVariableIds = [];
+                        if (!Array.isArray(cs.extraVariables)) cs.extraVariables = [];
+                        if (!Array.isArray(cs.autoLoadedFormIds)) cs.autoLoadedFormIds = [];
                     });
                     embeddedSavedAt = loadedFromEmbedded.savedAt || '';
                 } else {
@@ -2554,7 +2608,10 @@
                     'todoTabTodayCount',
                     'todoPanelSub',
                     'todoTabAllCount',
-                    'exportCaseListContainer'
+                    'exportCaseListContainer',
+                    'tplVariablesList',
+                    'caseVariablesContainer',
+                    'removedVariablesChips'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -3492,8 +3549,10 @@
 
                 this.renderHeroGraphicMetrics();
                 this.renderDetailChecklist();
+                this.autoLoadChargeForms();
                 this.renderDetailForms();
                 this.renderDetailCustomFields();
+                this.renderCaseVariables();
             },
 
             /**
@@ -3823,7 +3882,7 @@
 
             resolveVariables(rawText, caseObj) {
                 if (!rawText || !caseObj) return rawText || '';
-                return rawText
+                let out = rawText
                     .replace(/\{\{사건번호\}\}/g, caseObj.caseNumber || '')
                     .replace(/\{\{제목\}\}/g, caseObj.title || '')
                     .replace(/\{\{사건개요\}\}/g, caseObj.overview || '')
@@ -3831,6 +3890,138 @@
                     .replace(/\{\{범죄사실\}\}/g, caseObj.crimeFact || '')
                     .replace(/\{\{참고사항\}\}/g, caseObj.reference || '')
                     .replace(/\{\{비고\}\}/g, caseObj.remarks || '');
+
+                this.getEffectiveVariables(caseObj).forEach(v => {
+                    if (!v.name) return;
+                    const escaped = v.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const re = new RegExp('\\{\\{' + escaped + '\\}\\}', 'g');
+                    out = out.replace(re, v.value || 'OO');
+                });
+                return out;
+            },
+
+            /* ======================================================================
+               사건별 치환 변수 ({{변수명}}) — 전역 기본 세팅(template.variables) +
+               사건별 값 덮어쓰기(variableValues) / 제외(removedVariableIds) / 이 사건만의 추가 변수(extraVariables)
+               ====================================================================== */
+            getEffectiveVariables(caseObj) {
+                if (!caseObj) return [];
+                const removed = new Set(caseObj.removedVariableIds || []);
+                const overrides = caseObj.variableValues || {};
+                const fromTpl = (this.template.variables || [])
+                    .filter(v => !removed.has(v.id))
+                    .map(v => ({
+                        id: v.id,
+                        name: v.name,
+                        value: overrides[v.id] !== undefined ? overrides[v.id] : (v.defaultValue || ''),
+                        source: 'template'
+                    }));
+                const extra = (caseObj.extraVariables || []).map(v => ({ id: v.id, name: v.name, value: v.value || '', source: 'case' }));
+                return fromTpl.concat(extra);
+            },
+
+            renderCaseVariables() {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                const box = document.getElementById('caseVariablesContainer');
+                const chipsBox = document.getElementById('removedVariablesChips');
+                if (!box) return;
+
+                const effective = this.getEffectiveVariables(current);
+                if (effective.length === 0) {
+                    box.innerHTML = `<div style="color: var(--text-muted); font-size: 0.78rem; padding: 0.4rem;">등록된 변수가 없습니다. 아래에서 이 사건만의 변수를 추가하거나, [⚙️ 전역 기본값]에서 모든 사건에 적용될 변수를 등록하세요.</div>`;
+                } else {
+                    box.innerHTML = effective.map(v => `
+                        <div style="display: flex; align-items: center; gap: 0.4rem; background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.35rem 0.5rem; margin-bottom: 0.3rem;">
+                            <span style="font-size: 0.72rem; font-weight: 800; color: ${v.source === 'case' ? '#ea580c' : 'var(--text-secondary)'}; min-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${this.escapeAttr(v.name)}">{{${this.escapeHtml(v.name)}}}</span>
+                            <input type="text" value="${this.escapeAttr(v.value)}" placeholder="값" style="flex: 1;" oninput="app.updateCaseVariableValue('${v.id}', '${v.source}', this.value)">
+                            ${v.source === 'template'
+                                ? `<button type="button" class="btn btn-ghost btn-sm" title="이 사건에서만 제외 (전역 설정은 유지)" onclick="app.removeCaseVariable('${v.id}')">제외</button>`
+                                : `<button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" title="이 사건 전용 변수 삭제" onclick="app.deleteCaseExtraVariable('${v.id}')">삭제</button>`}
+                        </div>
+                    `).join('');
+                }
+
+                const removedIds = current.removedVariableIds || [];
+                if (removedIds.length === 0) {
+                    chipsBox.innerHTML = '';
+                } else {
+                    const removedDefs = (this.template.variables || []).filter(v => removedIds.includes(v.id));
+                    chipsBox.innerHTML = `<div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">이 사건에서 제외한 전역 변수 (복원 가능):</div>` +
+                        removedDefs.map(v => `
+                            <span style="display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; background: #f1f5f9; border-radius: 999px; padding: 0.15rem 0.5rem; margin: 0 0.25rem 0.25rem 0;">
+                                {{${this.escapeHtml(v.name)}}}
+                                <button type="button" style="border: none; background: none; cursor: pointer; color: var(--primary); font-weight: 800; font-size: 0.72rem;" onclick="app.restoreCaseVariable('${v.id}')">복원</button>
+                            </span>
+                        `).join('');
+                }
+            },
+
+            updateCaseVariableValue(id, source, val) {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                if (source === 'case') {
+                    if (!current.extraVariables) current.extraVariables = [];
+                    const item = current.extraVariables.find(v => v.id === id);
+                    if (item) item.value = val;
+                } else {
+                    if (!current.variableValues) current.variableValues = {};
+                    current.variableValues[id] = val;
+                }
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+            },
+
+            removeCaseVariable(id) {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                if (!Array.isArray(current.removedVariableIds)) current.removedVariableIds = [];
+                if (!current.removedVariableIds.includes(id)) current.removedVariableIds.push(id);
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+                this.renderCaseVariables();
+            },
+
+            restoreCaseVariable(id) {
+                const current = this.getCurrentCase();
+                if (!current || !Array.isArray(current.removedVariableIds)) return;
+                current.removedVariableIds = current.removedVariableIds.filter(x => x !== id);
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+                this.renderCaseVariables();
+            },
+
+            addCaseExtraVariable() {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                const nameEl = document.getElementById('newVarName');
+                const valEl = document.getElementById('newVarValue');
+                const name = (nameEl.value || '').trim();
+                if (!name) {
+                    this.showToast('변수명을 입력하세요.');
+                    return;
+                }
+                if (this.getEffectiveVariables(current).some(v => v.name === name)) {
+                    this.showToast('이미 같은 이름의 변수가 있습니다.');
+                    return;
+                }
+                if (!current.extraVariables) current.extraVariables = [];
+                current.extraVariables.push({ id: 'cvar_' + Date.now(), name: name, value: (valEl.value || '').trim() });
+                nameEl.value = '';
+                valEl.value = '';
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+                this.renderCaseVariables();
+                this.showToast('이 사건만의 변수가 추가되었습니다.');
+            },
+
+            deleteCaseExtraVariable(id) {
+                const current = this.getCurrentCase();
+                if (!current || !current.extraVariables) return;
+                current.extraVariables = current.extraVariables.filter(v => v.id !== id);
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+                this.renderCaseVariables();
             },
 
             applyVariablesToAllForms() {
@@ -3934,6 +4125,7 @@
                 const catEl = document.getElementById('globalFormCategoryInput');
                 const titleEl = document.getElementById('globalFormTitleInput');
                 const contentEl = document.getElementById('globalFormContentInput');
+                const autoChargesEl = document.getElementById('globalFormAutoChargesInput');
                 if (!catEl || !titleEl || !contentEl) return;
 
                 const active = list[this.activeGlobalFormIndex];
@@ -3941,6 +4133,7 @@
                     catEl.value = '';
                     titleEl.value = '';
                     contentEl.value = '';
+                    if (autoChargesEl) { autoChargesEl.value = ''; autoChargesEl.disabled = true; }
                     catEl.disabled = true;
                     titleEl.disabled = true;
                     contentEl.disabled = true;
@@ -3953,6 +4146,10 @@
                 catEl.value = active.category || '';
                 titleEl.value = active.title || '';
                 contentEl.value = active.content || '';
+                if (autoChargesEl) {
+                    autoChargesEl.disabled = false;
+                    autoChargesEl.value = (Array.isArray(active.autoCharges) ? active.autoCharges : []).join(', ');
+                }
             },
 
             addGlobalFormItem() {
@@ -3961,7 +4158,8 @@
                     id: 'gf_' + Date.now(),
                     category: '한글서식',
                     title: '새 공통 서식 (한글에서 복사한 내용 붙여넣기)',
-                    content: ''
+                    content: '',
+                    autoCharges: []
                 });
                 this.activeGlobalFormIndex = 0;
                 const searchEl = document.getElementById('globalFormSearchInput');
@@ -3980,7 +4178,11 @@
                 const list = this.ensureGlobalForms();
                 const active = list[this.activeGlobalFormIndex];
                 if (!active) return;
-                active[key] = val;
+                if (key === 'autoCharges') {
+                    active.autoCharges = val.split(',').map(s => s.trim()).filter(Boolean);
+                } else {
+                    active[key] = val;
+                }
                 this.onStateChanged();
                 if (key === 'title' || key === 'category') {
                     this.renderGlobalFormsList();
@@ -4070,6 +4272,35 @@
                 this.onStateChanged();
                 this.renderDetailForms();
                 this.showToast(`[${active.title}] 서식이 현재 사건의 개별 서식함에 추가되었습니다.`);
+            },
+
+            // 죄명에 "자동 불러오기 죄명"이 설정된 공통 서식을 현재 사건의 개별 서식함으로 자동 복제 (죄명 변경 시 / 사건 상세 진입 시 호출, 이미 불러온 서식은 중복 추가 안 함)
+            autoLoadChargeForms() {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                const charge = (current.charge || '').trim();
+                if (!charge) return;
+
+                const list = this.ensureGlobalForms();
+                const matched = list.filter(gf => Array.isArray(gf.autoCharges) && gf.autoCharges.some(c => (c || '').trim() === charge));
+                if (!matched.length) return;
+
+                if (!current.forms) current.forms = [];
+                if (!Array.isArray(current.autoLoadedFormIds)) current.autoLoadedFormIds = [];
+                let added = 0;
+                matched.forEach(gf => {
+                    if (current.autoLoadedFormIds.includes(gf.id)) return;
+                    current.forms.push({ id: 'form_' + Date.now() + '_' + added, title: gf.title, content: gf.content || '' });
+                    current.autoLoadedFormIds.push(gf.id);
+                    added++;
+                });
+
+                if (added) {
+                    current.updatedAt = this.getFormattedNow();
+                    this.onStateChanged();
+                    this.renderDetailForms();
+                    this.showToast(`죄명 [${charge}]에 설정된 우선 양식 ${added}건이 자동으로 불러와졌습니다.`);
+                }
             },
 
             /* --- 3열 하단: 마스터 템플릿 공통 항목 탭 전환 위젯 --- */
@@ -4220,6 +4451,18 @@
                         <textarea rows="3" oninput="app.updateTemplateFormItem(${idx}, 'content', this.value)">${this.escapeHtml(f.content)}</textarea>
                     </div>
                 `).join('');
+
+                const varList = document.getElementById('tplVariablesList');
+                const vars = this.template.variables || [];
+                varList.innerHTML = vars.length ? vars.map((v, idx) => `
+                    <div style="display: flex; gap: 0.45rem; align-items: center; background: var(--bg-subtle); padding: 0.4rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm);">
+                        <span style="font-size: 0.78rem; color: var(--text-secondary);">{{</span>
+                        <input type="text" value="${this.escapeAttr(v.name)}" placeholder="변수명" style="max-width: 140px; font-weight: 700;" oninput="app.updateTemplateVariable(${idx}, 'name', this.value)">
+                        <span style="font-size: 0.78rem; color: var(--text-secondary);">}}</span>
+                        <input type="text" value="${this.escapeAttr(v.defaultValue || '')}" placeholder="기본값" style="flex: 1;" oninput="app.updateTemplateVariable(${idx}, 'defaultValue', this.value)">
+                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="app.removeTemplateVariable(${idx})">삭제</button>
+                    </div>
+                `).join('') : `<div style="color: var(--text-muted); font-size: 0.78rem; padding: 0.3rem;">등록된 전역 변수가 없습니다.</div>`;
             },
 
             addTemplateCustomField() {
@@ -4252,6 +4495,40 @@
             removeTemplateCustomField(idx) {
                 if (!this.template.customFields || !this.template.customFields[idx]) return;
                 this.template.customFields.splice(idx, 1);
+                this.onStateChanged();
+                this.renderTemplateModalContent();
+            },
+
+            addTemplateVariable() {
+                const nameEl = document.getElementById('tplNewVarName');
+                const defEl = document.getElementById('tplNewVarDefault');
+                const name = (nameEl.value || '').trim();
+                if (!name) {
+                    this.showToast('변수명을 입력하세요.');
+                    return;
+                }
+                if (!this.template.variables) this.template.variables = [];
+                if (this.template.variables.some(v => v.name === name)) {
+                    this.showToast('이미 같은 이름의 전역 변수가 있습니다.');
+                    return;
+                }
+                this.template.variables.push({ id: 'var_' + Date.now(), name: name, defaultValue: (defEl.value || '').trim() });
+                nameEl.value = '';
+                defEl.value = '';
+                this.onStateChanged();
+                this.renderTemplateModalContent();
+                this.showToast('전역 변수가 추가되었습니다.');
+            },
+
+            updateTemplateVariable(idx, key, val) {
+                if (!this.template.variables || !this.template.variables[idx]) return;
+                this.template.variables[idx][key] = val;
+                this.onStateChanged();
+            },
+
+            removeTemplateVariable(idx) {
+                if (!this.template.variables || !this.template.variables[idx]) return;
+                this.template.variables.splice(idx, 1);
                 this.onStateChanged();
                 this.renderTemplateModalContent();
             },
@@ -4398,7 +4675,18 @@
                 const out = { checklist: chk, forms, customFields: cfs };
                 if (Array.isArray(t.globalForms)) {
                     out.globalForms = t.globalForms.filter(f => f && typeof f === 'object')
-                        .map((f, i) => ({ id: f.id || ('gf_imp_' + Date.now() + '_' + i), category: String(f.category || ''), title: String(f.title || ''), content: String(f.content || '') }));
+                        .map((f, i) => ({
+                            id: f.id || ('gf_imp_' + Date.now() + '_' + i),
+                            category: String(f.category || ''),
+                            title: String(f.title || ''),
+                            content: String(f.content || ''),
+                            autoCharges: Array.isArray(f.autoCharges) ? f.autoCharges.map(String).filter(Boolean) : []
+                        }));
+                }
+                if (Array.isArray(t.variables)) {
+                    out.variables = t.variables.filter(v => v && typeof v === 'object')
+                        .map((v, i) => ({ id: v.id || ('var_imp_' + Date.now() + '_' + i), name: String(v.name || ''), defaultValue: String(v.defaultValue || '') }))
+                        .filter(v => v.name);
                 }
                 return out;
             },
@@ -4425,7 +4713,12 @@
                         todayOrder: (it && typeof it.todayOrder === 'number') ? it.todayOrder : 0
                     })),
                     forms: Array.isArray(c.forms) ? c.forms : [],
-                    customValues: (c.customValues && typeof c.customValues === 'object') ? c.customValues : {}
+                    customValues: (c.customValues && typeof c.customValues === 'object') ? c.customValues : {},
+                    variableValues: (c.variableValues && typeof c.variableValues === 'object') ? c.variableValues : {},
+                    removedVariableIds: Array.isArray(c.removedVariableIds) ? c.removedVariableIds.filter(x => typeof x === 'string') : [],
+                    extraVariables: (Array.isArray(c.extraVariables) ? c.extraVariables : []).filter(v => v && typeof v === 'object' && v.name)
+                        .map((v, i) => ({ id: v.id || ('cvar_imp_' + stamp + '_' + i), name: String(v.name || ''), value: String(v.value || '') })),
+                    autoLoadedFormIds: Array.isArray(c.autoLoadedFormIds) ? c.autoLoadedFormIds.filter(x => typeof x === 'string') : []
                 });
             },
 
@@ -4485,6 +4778,13 @@
                                     incomingTpl.customFields.forEach(f => {
                                         if (!t.customFields.some(o => o.id === f.id)) { t.customFields.push(f); addedTpl++; }
                                     });
+                                    if (Array.isArray(incomingTpl.variables)) {
+                                        if (!Array.isArray(t.variables)) t.variables = [];
+                                        incomingTpl.variables.forEach(v => {
+                                            const dup = t.variables.some(o => o.id === v.id || o.name === v.name);
+                                            if (!dup) { t.variables.push(v); addedTpl++; }
+                                        });
+                                    }
                                 }
                                 const ids = new Set(this.cases.map(c => c.id));
                                 incomingCases.forEach(c => {
