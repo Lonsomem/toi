@@ -2026,29 +2026,23 @@
                         <div id="customFieldsContainer" style="flex: 1; display: flex; flex-direction: column; min-height: 0;"></div>
                     </div>
 
-                    <!-- 사건별 치환 변수 ({{변수명}}) -->
+                    <!-- 사건관계인 (고소인/피고소인/참고인별 치환 변수 {{식별자.필드명}}) -->
                     <div class="bento-card" style="flex: 0.9;">
                         <div class="widget-header">
                             <div class="widget-title">
                                 <div class="widget-icon-box" style="background: #ffedd5; color: #ea580c;">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
-                                        <polyline points="4 17 10 11 4 5"></polyline>
-                                        <line x1="12" y1="19" x2="20" y2="19"></line>
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="9" cy="7" r="4"></circle>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                                     </svg>
                                 </div>
-                                치환 변수 ({{변수명}})
+                                사건관계인 ({{식별자.필드명}})
                             </div>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.openTemplateModal()" title="모든 사건에 적용되는 변수 기본값 관리">⚙️ 전역 기본값</button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.openPeopleModal()">👥 관리</button>
                         </div>
-                        <div style="flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column;">
-                            <div id="caseVariablesContainer"></div>
-                            <div style="display: flex; gap: 0.4rem; margin-top: 0.35rem; flex-shrink: 0;">
-                                <input type="text" id="newVarName" placeholder="이 사건만의 변수명" style="max-width: 130px;">
-                                <input type="text" id="newVarValue" placeholder="값" style="flex: 1;">
-                                <button type="button" class="btn btn-primary btn-sm" onclick="app.addCaseExtraVariable()">+ 추가</button>
-                            </div>
-                            <div id="removedVariablesChips" style="margin-top: 0.3rem; flex-shrink: 0;"></div>
-                        </div>
+                        <div id="peopleSummaryContainer" style="flex: 1; min-height: 0; overflow-y: auto;"></div>
                     </div>
                 </div>
 
@@ -2075,7 +2069,7 @@
                     </div>
                 </div>
                 <p style="font-size: 0.76rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                    💡 본문 내 <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{죄명}}</code>, <code>{{범죄사실}}</code>, <code>{{참고사항}}</code>, <code>{{비고}}</code>는 복사 시 현재 사건 데이터로 자동 치환됩니다.
+                    💡 본문 내 <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{죄명}}</code>, <code>{{범죄사실}}</code>, <code>{{참고사항}}</code>, <code>{{비고}}</code>와, [👥 사건관계인]에서 등록한 <code>{{고소인1.이름}}</code>, <code>{{사건.일시}}</code> 같은 관계인별 항목도 복사 시 현재 사건 데이터로 자동 치환됩니다.
                 </p>
                 <textarea id="activeFormContent" rows="13" style="font-size: 0.86rem; line-height: 1.6;" placeholder="영장 신청 필수 기재사항, 범죄사실 초안, 이송 사유 등을 입력하세요." oninput="app.updateActiveFormContent(this.value)"></textarea>
             </div>
@@ -2119,7 +2113,7 @@
                     </div>
 
                     <div style="background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.45rem 0.7rem; font-size: 0.75rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.4rem;">
-                        <span>💡 한글(HWP)에서 복사한 양식을 아래에 붙여넣어 두세요. <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{죄명}}</code>, <code>{{범죄사실}}</code> 및 [⚙️ 기본 템플릿 설정]에서 등록한 <code>{{변수명}}</code> 도 열려있는 사건 정보로 자동 치환 복사됩니다.</span>
+                        <span>💡 한글(HWP)에서 복사한 양식을 아래에 붙여넣어 두세요. <code>{{사건번호}}</code>, <code>{{제목}}</code>, <code>{{사건개요}}</code>, <code>{{죄명}}</code>, <code>{{범죄사실}}</code> 및 [👥 사건관계인]에서 등록한 <code>{{고소인1.이름}}</code>, <code>{{사건.일시}}</code> 같은 관계인별 항목도 열려있는 사건 정보로 자동 치환 복사됩니다.</span>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 0.4rem;">
@@ -2184,23 +2178,42 @@
                     <button type="button" class="btn btn-secondary btn-sm" onclick="app.addTemplateFormItem()">+ 기본 서식 추가</button>
                 </div>
 
-                <!-- 4. 치환 변수 기본값 (전역) -->
+                <!-- 4. 사건관계인 역할별 기본 필드 -->
                 <div>
-                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">4. 치환 변수 기본값 (전역, 서식·공통서식 안에서 <code>{{변수명}}</code> 형태로 사용)</h3>
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">4. 사건관계인 역할별 기본 필드 (전역)</h3>
                     <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                        여기서 등록한 변수는 모든 사건에 기본으로 적용됩니다. 각 사건 상세화면의 [치환 변수] 위젯에서 사건별로 값을 따로 입력하거나, 특정 사건에서만 제외할 수 있습니다.
+                        역할마다 기본으로 준비해 둘 항목입니다. 실제 값은 각 사건의 [👥 사건관계인]에서 입력하고, 필요 없는 항목은 사건별로 빼거나 그 사건·사람만의 항목을 추가할 수 있습니다. 서식에서는 <code>{{고소인1.이름}}</code>, <code>{{사건.일시}}</code> 형태로 사용합니다.
                     </p>
+                    <div id="tplRoleFieldsTabBar" style="display: flex; gap: 0.35rem; margin-bottom: 0.6rem; flex-wrap: wrap;"></div>
                     <div style="display: flex; gap: 0.45rem; margin-bottom: 0.6rem; flex-wrap: wrap;">
-                        <input type="text" id="tplNewVarName" placeholder="변수명 (예: 피해자)" style="max-width: 160px;">
-                        <input type="text" id="tplNewVarDefault" placeholder="기본값 (선택)" style="flex: 1; min-width: 160px;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="app.addTemplateVariable()">+ 변수 추가</button>
+                        <input type="text" id="tplNewRoleFieldName" placeholder="필드명 (예: 이름)" style="max-width: 160px;">
+                        <input type="text" id="tplNewRoleFieldDefault" placeholder="기본값 (선택)" style="flex: 1; min-width: 160px;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="app.addTemplateRoleField()">+ 필드 추가</button>
                     </div>
-                    <div id="tplVariablesList" style="display: flex; flex-direction: column; gap: 0.4rem;"></div>
+                    <div id="tplRoleFieldsList" style="display: flex; flex-direction: column; gap: 0.4rem;"></div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="app.resetDefaultTemplate()">초기 기본값 복원</button>
                 <button type="button" class="btn btn-primary" onclick="app.closeTemplateModal()">설정 완료</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 1-2: 사건관계인 관리 모달 (고소인/피고소인/참고인별 치환 변수)
+         ========================================================================== -->
+    <div id="peopleModal" class="modal-backdrop">
+        <div class="modal-dialog" style="max-width: 920px; height: 82vh;">
+            <div class="modal-header">
+                <h2>👥 사건관계인 관리 ({{식별자.필드명}})</h2>
+                <button type="button" class="btn btn-ghost" onclick="app.closePeopleModal()">✕</button>
+            </div>
+            <div class="modal-body" style="display: grid; grid-template-columns: 240px 1fr; gap: 1rem; padding: 1rem; overflow: hidden;">
+                <div style="display: flex; flex-direction: column; gap: 0.6rem; overflow-y: auto; border-right: 1px solid var(--border-light); padding-right: 0.85rem; min-height: 0;">
+                    <div id="peopleListContainer"></div>
+                </div>
+                <div id="personEditorContainer" style="overflow-y: auto; min-height: 0;"></div>
             </div>
         </div>
     </div>
@@ -2294,6 +2307,27 @@
         const STORAGE_KEY_B64 = 'CASE_NOTE_SINGLE_FILE_B64_V4';
         const STORAGE_KEY_META = 'CASE_NOTE_SINGLE_FILE_META_V4';
 
+        /* 사건관계인 역할 정의: case(사건공통, 1명 고정) / complainant(고소인·진정인·고발인) / accused(피고소인·피진정인) / witness(참고인) */
+        const PERSON_ROLES = {
+            case: { label: '사건공통', icon: '🏢', singleton: true, subLabels: ['사건'] },
+            complainant: { label: '고소인', icon: '🙋', singleton: false, subLabels: ['고소인', '진정인', '고발인'] },
+            accused: { label: '피고소인', icon: '🧍', singleton: false, subLabels: ['피고소인', '피진정인'] },
+            witness: { label: '참고인', icon: '👤', singleton: false, subLabels: ['참고인'] }
+        };
+        const PERSON_ROLE_ORDER = ['case', 'complainant', 'accused', 'witness'];
+
+        function createPersonRecord(role, subLabel, slug) {
+            return { id: 'person_' + Date.now() + '_' + Math.floor(Math.random() * 100000), role: role, subLabel: subLabel, slug: slug, label: '', fieldValues: {}, removedFieldIds: [], extraFields: [] };
+        }
+
+        // 샘플 데이터 생성 전용: 역할 기본 필드를 "필드명"으로 찾아 값을 채워 넣는다
+        function makeSamplePerson(role, subLabel, slug, valuesByName) {
+            const roleFields = getDefaultMasterTemplate().personRoleFields[role] || [];
+            const fieldValues = {};
+            roleFields.forEach(f => { if (valuesByName[f.name] !== undefined) fieldValues[f.id] = valuesByName[f.name]; });
+            return Object.assign(createPersonRecord(role, subLabel, slug), { fieldValues: fieldValues });
+        }
+
         function getDefaultMasterTemplate() {
             return {
                 checklist: [
@@ -2326,11 +2360,30 @@
                         content: `[수 사 보 고]\n사건번호: {{사건번호}}\n사 건 명: {{제목}}\n\n1. 보고 취지\n본건 수사 진행 중 확인된 주요 참고사항 및 검토 내역을 보고하고자 함.\n\n2. 확인 내용\n{{참고사항}}\n\n3. 향후 수사 계획\n위 확인 사항을 토대로 후속 수사를 진행하고자 함.`
                     }
                 ],
-                variables: [
-                    { id: 'var_victim', name: '피해자', defaultValue: '' },
-                    { id: 'var_datetime', name: '일시', defaultValue: '' },
-                    { id: 'var_damage_amount', name: '피해금액', defaultValue: '' }
-                ],
+                personRoleFields: {
+                    case: [
+                        { id: 'pf_case_datetime', name: '일시', defaultValue: '' },
+                        { id: 'pf_case_damage_total', name: '피해금액합계', defaultValue: '' }
+                    ],
+                    complainant: [
+                        { id: 'pf_comp_name', name: '이름', defaultValue: '' },
+                        { id: 'pf_comp_ssn', name: '주민번호', defaultValue: '' },
+                        { id: 'pf_comp_phone', name: '연락처', defaultValue: '' },
+                        { id: 'pf_comp_address', name: '주소', defaultValue: '' },
+                        { id: 'pf_comp_damage', name: '피해금액', defaultValue: '' },
+                        { id: 'pf_comp_datetime', name: '피해일시', defaultValue: '' }
+                    ],
+                    accused: [
+                        { id: 'pf_acc_name', name: '이름', defaultValue: '' },
+                        { id: 'pf_acc_ssn', name: '주민번호', defaultValue: '' },
+                        { id: 'pf_acc_phone', name: '연락처', defaultValue: '' },
+                        { id: 'pf_acc_address', name: '주소', defaultValue: '' }
+                    ],
+                    witness: [
+                        { id: 'pf_wit_name', name: '이름', defaultValue: '' },
+                        { id: 'pf_wit_phone', name: '연락처', defaultValue: '' }
+                    ]
+                },
                 customFields: [
                     {
                         id: 'cf_suspect_info',
@@ -2397,7 +2450,14 @@
                     customValues: {
                         cf_suspect_info: '성명 불상 (토스뱅크 1000-0000-1234 명의자 회신 대기중)',
                         cf_warrant_log: '• 2026. 10. 28. 계좌영장 신청 (영장번호 2026-1102)\n• 2026. 10. 29. 토스뱅크 팩스 집행 완료'
-                    }
+                    },
+                    people: [
+                        makeSamplePerson('case', '사건', '사건', { 일시: '2026-10-18', 피해금액합계: '285만원' }),
+                        makeSamplePerson('complainant', '고소인', '고소인1', { 이름: '김민수', 연락처: '010-1234-5678', 피해금액: '120만원', 피해일시: '2026-10-18' }),
+                        makeSamplePerson('complainant', '고소인', '고소인2', { 이름: '이지은', 피해금액: '95만원', 피해일시: '2026-10-18' }),
+                        makeSamplePerson('complainant', '고소인', '고소인3', { 이름: '박성호', 피해금액: '70만원', 피해일시: '2026-10-18' }),
+                        makeSamplePerson('accused', '피고소인', '피고소인1', { 연락처: '010-9876-5432' })
+                    ]
                 }
             ];
         }
@@ -2420,6 +2480,8 @@
             todoTab: 'today',
             todoShowDone: false,
             todoCollapsed: {},
+            selectedPersonId: null,
+            activeRoleFieldsTab: 'case',
 
             init() {
                 this.loadDatabase();
@@ -2443,6 +2505,7 @@
                         this.closeTemplateModal();
                         this.closeBackupModal();
                         this.closeGlobalFormsModal();
+                        this.closePeopleModal();
                     }
                 });
             },
@@ -2467,17 +2530,15 @@
                     if (!Array.isArray(this.template.globalForms)) {
                         this.template.globalForms = getDefaultMasterTemplate().globalForms;
                     }
-                    if (!Array.isArray(this.template.variables)) this.template.variables = [];
                     this.template.globalForms.forEach(gf => { if (!Array.isArray(gf.autoCharges)) gf.autoCharges = []; });
+                    this.ensureTemplatePersonRoleFields();
                     this.cases.forEach(cs => {
                         if (typeof cs.charge !== 'string') cs.charge = '';
                         if (typeof cs.crimeFact !== 'string') cs.crimeFact = '';
                         if (!Array.isArray(cs.checklist)) cs.checklist = [];
                         cs.checklist.forEach((it, i) => { if (!it.id) it.id = 'chk_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000); });
-                        if (!cs.variableValues || typeof cs.variableValues !== 'object') cs.variableValues = {};
-                        if (!Array.isArray(cs.removedVariableIds)) cs.removedVariableIds = [];
-                        if (!Array.isArray(cs.extraVariables)) cs.extraVariables = [];
                         if (!Array.isArray(cs.autoLoadedFormIds)) cs.autoLoadedFormIds = [];
+                        this.migrateCaseFlatVariables(cs);
                     });
                     embeddedSavedAt = loadedFromEmbedded.savedAt || '';
                 } else {
@@ -2633,9 +2694,11 @@
                     'todoPanelSub',
                     'todoTabAllCount',
                     'exportCaseListContainer',
-                    'tplVariablesList',
-                    'caseVariablesContainer',
-                    'removedVariablesChips'
+                    'tplRoleFieldsTabBar',
+                    'tplRoleFieldsList',
+                    'peopleSummaryContainer',
+                    'peopleListContainer',
+                    'personEditorContainer'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -3520,8 +3583,10 @@
                         date: ''
                     })),
                     forms: JSON.parse(JSON.stringify(this.template.forms || [])),
-                    customValues: {}
+                    customValues: {},
+                    people: []
                 };
+                this.ensureCasePeople(newCase);
 
                 this.cases.unshift(newCase);
                 this.onStateChanged();
@@ -3576,7 +3641,7 @@
                 this.autoLoadChargeForms();
                 this.renderDetailForms();
                 this.renderDetailCustomFields();
-                this.renderCaseVariables();
+                this.renderPeopleSummary();
             },
 
             /**
@@ -3915,137 +3980,328 @@
                     .replace(/\{\{참고사항\}\}/g, caseObj.reference || '')
                     .replace(/\{\{비고\}\}/g, caseObj.remarks || '');
 
-                this.getEffectiveVariables(caseObj).forEach(v => {
-                    if (!v.name) return;
-                    const escaped = v.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const re = new RegExp('\\{\\{' + escaped + '\\}\\}', 'g');
-                    out = out.replace(re, v.value || 'OO');
+                const people = Array.isArray(caseObj.people) ? caseObj.people : [];
+                out = out.replace(/\{\{([^{}.]+)\.([^{}]+)\}\}/g, (whole, slug, fieldName) => {
+                    const person = people.find(p => p.slug === slug.trim());
+                    if (!person) return whole; // 존재하지 않는 식별자는 그대로 둬서 눈에 띄게 함
+                    const field = this.getEffectivePersonFields(person).find(f => f.name === fieldName.trim());
+                    if (!field) return whole; // 그 관계인에게 없는 필드명도 그대로 둠
+                    return field.value || 'OO';
                 });
                 return out;
             },
 
             /* ======================================================================
-               사건별 치환 변수 ({{변수명}}) — 전역 기본 세팅(template.variables) +
-               사건별 값 덮어쓰기(variableValues) / 제외(removedVariableIds) / 이 사건만의 추가 변수(extraVariables)
+               사건관계인(people) — 역할(case/complainant/accused/witness)별 기본 필드 세트
+               (template.personRoleFields) + 사람별 값 덮어쓰기(fieldValues) / 제외(removedFieldIds)
+               / 그 사람만의 추가 필드(extraFields). 서식에서는 {{식별자(slug).필드명}} 으로 사용.
                ====================================================================== */
-            getEffectiveVariables(caseObj) {
-                if (!caseObj) return [];
-                const removed = new Set(caseObj.removedVariableIds || []);
-                const overrides = caseObj.variableValues || {};
-                const fromTpl = (this.template.variables || [])
-                    .filter(v => !removed.has(v.id))
-                    .map(v => ({
-                        id: v.id,
-                        name: v.name,
-                        value: overrides[v.id] !== undefined ? overrides[v.id] : (v.defaultValue || ''),
-                        source: 'template'
-                    }));
-                const extra = (caseObj.extraVariables || []).map(v => ({ id: v.id, name: v.name, value: v.value || '', source: 'case' }));
-                return fromTpl.concat(extra);
+            ensureTemplatePersonRoleFields() {
+                if (!this.template.personRoleFields || typeof this.template.personRoleFields !== 'object') {
+                    this.template.personRoleFields = JSON.parse(JSON.stringify(getDefaultMasterTemplate().personRoleFields));
+                }
+                PERSON_ROLE_ORDER.forEach(role => {
+                    if (!Array.isArray(this.template.personRoleFields[role])) this.template.personRoleFields[role] = [];
+                });
+                if (Array.isArray(this.template.variables) && this.template.variables.length) {
+                    const caseFields = this.template.personRoleFields.case;
+                    this.template.variables.forEach(v => {
+                        if (!caseFields.some(f => f.id === v.id || f.name === v.name)) caseFields.push(v);
+                    });
+                }
+                delete this.template.variables;
             },
 
-            renderCaseVariables() {
+            ensureCasePeople(cs) {
+                if (!Array.isArray(cs.people)) cs.people = [];
+                if (!cs.people.some(p => p.role === 'case')) {
+                    cs.people.unshift(createPersonRecord('case', '사건', '사건'));
+                }
+                cs.people.forEach(p => {
+                    if (!p.fieldValues || typeof p.fieldValues !== 'object') p.fieldValues = {};
+                    if (!Array.isArray(p.removedFieldIds)) p.removedFieldIds = [];
+                    if (!Array.isArray(p.extraFields)) p.extraFields = [];
+                    if (typeof p.label !== 'string') p.label = '';
+                });
+            },
+
+            // 구버전(평면 변수) 호환: 사건의 variableValues/removedVariableIds/extraVariables 를 사건공통 관계인으로 흡수
+            migrateCaseFlatVariables(cs) {
+                this.ensureCasePeople(cs);
+                const casePerson = cs.people.find(p => p.role === 'case');
+                if (cs.variableValues && typeof cs.variableValues === 'object' && Object.keys(cs.variableValues).length) {
+                    Object.assign(casePerson.fieldValues, cs.variableValues);
+                }
+                if (Array.isArray(cs.removedVariableIds) && cs.removedVariableIds.length) {
+                    casePerson.removedFieldIds = casePerson.removedFieldIds.concat(cs.removedVariableIds.filter(id => !casePerson.removedFieldIds.includes(id)));
+                }
+                if (Array.isArray(cs.extraVariables) && cs.extraVariables.length) {
+                    casePerson.extraFields = casePerson.extraFields.concat(cs.extraVariables);
+                }
+                delete cs.variableValues;
+                delete cs.removedVariableIds;
+                delete cs.extraVariables;
+            },
+
+            generatePersonSlug(caseObj, role) {
+                const roleInfo = PERSON_ROLES[role];
+                const existing = new Set(caseObj.people.map(p => p.slug));
+                let n = 1;
+                while (existing.has(roleInfo.label + n)) n++;
+                return roleInfo.label + n;
+            },
+
+            getEffectivePersonFields(person) {
+                if (!person) return [];
+                const roleFields = (this.template.personRoleFields && this.template.personRoleFields[person.role]) || [];
+                const removed = new Set(person.removedFieldIds || []);
+                const overrides = person.fieldValues || {};
+                const fromRole = roleFields.filter(f => !removed.has(f.id)).map(f => ({
+                    id: f.id, name: f.name, value: overrides[f.id] !== undefined ? overrides[f.id] : (f.defaultValue || ''), source: 'role'
+                }));
+                const extra = (person.extraFields || []).map(f => ({ id: f.id, name: f.name, value: f.value || '', source: 'extra' }));
+                return fromRole.concat(extra);
+            },
+
+            /* ---------- 사건 상세화면 요약 카드 ---------- */
+            renderPeopleSummary() {
+                const current = this.getCurrentCase();
+                const box = document.getElementById('peopleSummaryContainer');
+                if (!current || !box) return;
+                this.ensureCasePeople(current);
+
+                box.innerHTML = PERSON_ROLE_ORDER.map(role => {
+                    const roleInfo = PERSON_ROLES[role];
+                    const people = current.people.filter(p => p.role === role);
+                    const chips = people.map(p => {
+                        const filled = this.getEffectivePersonFields(p).filter(f => f.value).length;
+                        const total = this.getEffectivePersonFields(p).length;
+                        return `<span class="custom-tab-chip" style="cursor:pointer;" onclick="app.openPeopleModal('${p.id}')">${this.escapeHtml(p.slug)}${p.label ? ' · ' + this.escapeHtml(p.label) : ''} (${filled}/${total})</span>`;
+                    }).join('');
+                    return `
+                        <div style="margin-bottom: 0.4rem;">
+                            <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-secondary); margin-bottom: 0.2rem;">${roleInfo.icon} ${this.escapeHtml(roleInfo.label)}${roleInfo.singleton ? '' : ' (' + people.length + '명)'}</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:0.3rem;">${chips || '<span style="font-size:0.74rem;color:var(--text-muted);">등록된 사람 없음</span>'}</div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            /* ---------- 사건관계인 관리 모달 ---------- */
+            openPeopleModal(personId) {
                 const current = this.getCurrentCase();
                 if (!current) return;
-                const box = document.getElementById('caseVariablesContainer');
-                const chipsBox = document.getElementById('removedVariablesChips');
-                if (!box) return;
+                this.ensureCasePeople(current);
+                this.selectedPersonId = personId || (current.people[0] && current.people[0].id) || null;
+                this.renderPeopleModal();
+                document.getElementById('peopleModal').classList.add('open');
+            },
 
-                const effective = this.getEffectiveVariables(current);
-                if (effective.length === 0) {
-                    box.innerHTML = `<div style="color: var(--text-muted); font-size: 0.78rem; padding: 0.4rem;">등록된 변수가 없습니다. 아래에서 이 사건만의 변수를 추가하거나, [⚙️ 전역 기본값]에서 모든 사건에 적용될 변수를 등록하세요.</div>`;
-                } else {
-                    box.innerHTML = effective.map(v => `
-                        <div style="display: flex; align-items: center; gap: 0.4rem; background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.35rem 0.5rem; margin-bottom: 0.3rem;">
-                            <span style="font-size: 0.72rem; font-weight: 800; color: ${v.source === 'case' ? '#ea580c' : 'var(--text-secondary)'}; min-width: 64px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${this.escapeAttr(v.name)}">{{${this.escapeHtml(v.name)}}}</span>
-                            <input type="text" value="${this.escapeAttr(v.value)}" placeholder="값" style="flex: 1;" oninput="app.updateCaseVariableValue('${v.id}', '${v.source}', this.value)">
-                            ${v.source === 'template'
-                                ? `<button type="button" class="btn btn-ghost btn-sm" title="이 사건에서만 제외 (전역 설정은 유지)" onclick="app.removeCaseVariable('${v.id}')">제외</button>`
-                                : `<button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" title="이 사건 전용 변수 삭제" onclick="app.deleteCaseExtraVariable('${v.id}')">삭제</button>`}
+            closePeopleModal() {
+                document.getElementById('peopleModal').classList.remove('open');
+                this.renderPeopleSummary();
+            },
+
+            renderPeopleModal() {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                const listBox = document.getElementById('peopleListContainer');
+                listBox.innerHTML = PERSON_ROLE_ORDER.map(role => {
+                    const roleInfo = PERSON_ROLES[role];
+                    const people = current.people.filter(p => p.role === role);
+                    const rows = people.map(p => `
+                        <div onclick="app.selectPerson('${p.id}')" style="padding:0.4rem 0.5rem; border-radius: var(--radius-sm); border:1px solid ${p.id === this.selectedPersonId ? 'var(--primary)' : 'var(--border-light)'}; background:${p.id === this.selectedPersonId ? 'var(--primary-light)' : 'var(--bg-subtle)'}; cursor:pointer; margin-bottom:0.3rem; font-size:0.82rem;">
+                            <b>${this.escapeHtml(p.slug)}</b>${p.label ? ' · ' + this.escapeHtml(p.label) : ''}
                         </div>
                     `).join('');
-                }
+                    return `
+                        <div style="margin-bottom: 0.7rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; font-weight:800; color:var(--text-secondary); margin-bottom:0.3rem;">
+                                <span>${roleInfo.icon} ${this.escapeHtml(roleInfo.label)}</span>
+                                ${roleInfo.singleton ? '' : `<button type="button" class="btn btn-ghost btn-sm" onclick="app.addPerson('${role}')">+ 추가</button>`}
+                            </div>
+                            ${rows || '<div style="font-size:0.76rem;color:var(--text-muted);padding:0.2rem 0.1rem;">없음</div>'}
+                        </div>
+                    `;
+                }).join('');
+                this.renderPersonEditor();
+            },
 
-                const removedIds = current.removedVariableIds || [];
-                if (removedIds.length === 0) {
-                    chipsBox.innerHTML = '';
+            selectPerson(id) {
+                this.selectedPersonId = id;
+                this.renderPeopleModal();
+            },
+
+            renderPersonEditor() {
+                const current = this.getCurrentCase();
+                const box = document.getElementById('personEditorContainer');
+                if (!current || !box) return;
+                const person = current.people.find(p => p.id === this.selectedPersonId);
+                if (!person) {
+                    box.innerHTML = `<div style="color:var(--text-muted); font-size:0.85rem; padding:1rem;">왼쪽에서 관계인을 선택하거나 추가하세요.</div>`;
+                    return;
+                }
+                const roleInfo = PERSON_ROLES[person.role];
+                const effective = this.getEffectivePersonFields(person);
+                const removedIds = person.removedFieldIds || [];
+                const removedDefs = ((this.template.personRoleFields && this.template.personRoleFields[person.role]) || []).filter(f => removedIds.includes(f.id));
+
+                const subLabelHtml = roleInfo.subLabels.length > 1
+                    ? `<select onchange="app.updatePersonMeta('${person.id}', 'subLabel', this.value)">${roleInfo.subLabels.map(s => `<option value="${this.escapeAttr(s)}" ${s === person.subLabel ? 'selected' : ''}>${this.escapeHtml(s)}</option>`).join('')}</select>`
+                    : `<span style="font-weight:700;">${this.escapeHtml(roleInfo.subLabels[0])}</span>`;
+
+                box.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:0.6rem; margin-bottom:0.7rem; flex-wrap:wrap;">
+                        <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap;">
+                            ${subLabelHtml}
+                            <label style="font-size:0.78rem; color:var(--text-secondary);">식별자
+                                <input type="text" value="${this.escapeAttr(person.slug)}" style="max-width:110px; font-weight:700;" ${person.role === 'case' ? 'disabled' : ''} onchange="app.updatePersonMeta('${person.id}', 'slug', this.value)" title="서식에서 {{${this.escapeAttr(person.slug)}.필드명}} 형태로 사용됩니다">
+                            </label>
+                            <label style="font-size:0.78rem; color:var(--text-secondary);">구분 메모
+                                <input type="text" value="${this.escapeAttr(person.label)}" placeholder="예: 대표 피해자" style="max-width:160px;" oninput="app.updatePersonMeta('${person.id}', 'label', this.value)">
+                            </label>
+                        </div>
+                        ${person.role === 'case' ? '' : `<button type="button" class="btn btn-danger btn-sm" onclick="app.deletePerson('${person.id}')">🗑️ 이 관계인 삭제</button>`}
+                    </div>
+                    <p style="font-size:0.76rem; color:var(--text-secondary); margin-bottom:0.5rem;">서식에서는 <code>{{${this.escapeHtml(person.slug)}.필드명}}</code> 형태로 사용합니다. (예: <code>{{${this.escapeHtml(person.slug)}.이름}}</code>)</p>
+                    <div id="personFieldsList" style="display:flex; flex-direction:column; gap:0.35rem; margin-bottom:0.6rem;">
+                        ${effective.length ? effective.map(f => `
+                            <div style="display:flex; align-items:center; gap:0.4rem; background:var(--bg-subtle); border:1px solid var(--border-light); border-radius:var(--radius-sm); padding:0.35rem 0.5rem;">
+                                <span style="font-size:0.74rem; font-weight:800; color:${f.source === 'extra' ? '#ea580c' : 'var(--text-secondary)'}; min-width:72px;">${this.escapeHtml(f.name)}</span>
+                                <input type="text" value="${this.escapeAttr(f.value)}" placeholder="값" style="flex:1;" oninput="app.updatePersonFieldValue('${person.id}', '${f.id}', '${f.source}', this.value)">
+                                ${f.source === 'role'
+                                    ? `<button type="button" class="btn btn-ghost btn-sm" title="이 사람에게서만 제외" onclick="app.removePersonField('${person.id}', '${f.id}')">제외</button>`
+                                    : `<button type="button" class="btn btn-ghost btn-sm" style="color:var(--danger);" title="필드 삭제" onclick="app.deletePersonExtraField('${person.id}', '${f.id}')">삭제</button>`}
+                            </div>
+                        `).join('') : `<div style="color:var(--text-muted); font-size:0.78rem; padding:0.3rem;">준비된 필드가 없습니다. 템플릿 설정에서 [${roleInfo.label}] 기본 필드를 추가하거나, 아래에서 이 사람만의 필드를 추가하세요.</div>`}
+                    </div>
+                    ${removedDefs.length ? `
+                        <div style="margin-bottom:0.6rem;">
+                            <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:0.25rem;">이 사람에게서 제외한 기본 필드 (복원 가능):</div>
+                            ${removedDefs.map(f => `
+                                <span style="display:inline-flex; align-items:center; gap:0.3rem; font-size:0.72rem; background:#f1f5f9; border-radius:999px; padding:0.15rem 0.5rem; margin:0 0.25rem 0.25rem 0;">
+                                    ${this.escapeHtml(f.name)}
+                                    <button type="button" style="border:none; background:none; cursor:pointer; color:var(--primary); font-weight:800; font-size:0.72rem;" onclick="app.restorePersonField('${person.id}', '${f.id}')">복원</button>
+                                </span>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    <div style="display:flex; gap:0.4rem;">
+                        <input type="text" id="newPersonFieldName" placeholder="이 사람만의 필드명" style="max-width:150px;">
+                        <input type="text" id="newPersonFieldValue" placeholder="값" style="flex:1;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="app.addPersonExtraField('${person.id}')">+ 추가</button>
+                    </div>
+                `;
+            },
+
+            updatePersonMeta(personId, key, val) {
+                const current = this.getCurrentCase();
+                const person = current && current.people.find(p => p.id === personId);
+                if (!person) return;
+                if (key === 'slug') {
+                    const slug = (val || '').trim();
+                    if (!slug) { this.showToast('식별자를 입력하세요.'); this.renderPersonEditor(); return; }
+                    if (!/^[0-9A-Za-z가-힣_]+$/.test(slug)) { this.showToast('식별자는 한글·영문·숫자·밑줄만 사용할 수 있습니다.'); this.renderPersonEditor(); return; }
+                    if (current.people.some(p => p.id !== personId && p.slug === slug)) { this.showToast('이미 사용 중인 식별자입니다.'); this.renderPersonEditor(); return; }
+                    person.slug = slug;
                 } else {
-                    const removedDefs = (this.template.variables || []).filter(v => removedIds.includes(v.id));
-                    chipsBox.innerHTML = `<div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">이 사건에서 제외한 전역 변수 (복원 가능):</div>` +
-                        removedDefs.map(v => `
-                            <span style="display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; background: #f1f5f9; border-radius: 999px; padding: 0.15rem 0.5rem; margin: 0 0.25rem 0.25rem 0;">
-                                {{${this.escapeHtml(v.name)}}}
-                                <button type="button" style="border: none; background: none; cursor: pointer; color: var(--primary); font-weight: 800; font-size: 0.72rem;" onclick="app.restoreCaseVariable('${v.id}')">복원</button>
-                            </span>
-                        `).join('');
+                    person[key] = val;
                 }
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+                this.renderPeopleModal();
             },
 
-            updateCaseVariableValue(id, source, val) {
+            updatePersonFieldValue(personId, fieldId, source, val) {
                 const current = this.getCurrentCase();
-                if (!current) return;
-                if (source === 'case') {
-                    if (!current.extraVariables) current.extraVariables = [];
-                    const item = current.extraVariables.find(v => v.id === id);
-                    if (item) item.value = val;
+                const person = current && current.people.find(p => p.id === personId);
+                if (!person) return;
+                if (source === 'extra') {
+                    const f = (person.extraFields || []).find(x => x.id === fieldId);
+                    if (f) f.value = val;
                 } else {
-                    if (!current.variableValues) current.variableValues = {};
-                    current.variableValues[id] = val;
+                    if (!person.fieldValues) person.fieldValues = {};
+                    person.fieldValues[fieldId] = val;
                 }
                 current.updatedAt = this.getFormattedNow();
                 this.onStateChanged();
             },
 
-            removeCaseVariable(id) {
+            removePersonField(personId, fieldId) {
                 const current = this.getCurrentCase();
-                if (!current) return;
-                if (!Array.isArray(current.removedVariableIds)) current.removedVariableIds = [];
-                if (!current.removedVariableIds.includes(id)) current.removedVariableIds.push(id);
+                const person = current && current.people.find(p => p.id === personId);
+                if (!person) return;
+                if (!Array.isArray(person.removedFieldIds)) person.removedFieldIds = [];
+                if (!person.removedFieldIds.includes(fieldId)) person.removedFieldIds.push(fieldId);
                 current.updatedAt = this.getFormattedNow();
                 this.onStateChanged();
-                this.renderCaseVariables();
+                this.renderPersonEditor();
             },
 
-            restoreCaseVariable(id) {
+            restorePersonField(personId, fieldId) {
                 const current = this.getCurrentCase();
-                if (!current || !Array.isArray(current.removedVariableIds)) return;
-                current.removedVariableIds = current.removedVariableIds.filter(x => x !== id);
+                const person = current && current.people.find(p => p.id === personId);
+                if (!person || !Array.isArray(person.removedFieldIds)) return;
+                person.removedFieldIds = person.removedFieldIds.filter(x => x !== fieldId);
                 current.updatedAt = this.getFormattedNow();
                 this.onStateChanged();
-                this.renderCaseVariables();
+                this.renderPersonEditor();
             },
 
-            addCaseExtraVariable() {
+            addPersonExtraField(personId) {
                 const current = this.getCurrentCase();
-                if (!current) return;
-                const nameEl = document.getElementById('newVarName');
-                const valEl = document.getElementById('newVarValue');
+                const person = current && current.people.find(p => p.id === personId);
+                if (!person) return;
+                const nameEl = document.getElementById('newPersonFieldName');
+                const valEl = document.getElementById('newPersonFieldValue');
                 const name = (nameEl.value || '').trim();
-                if (!name) {
-                    this.showToast('변수명을 입력하세요.');
-                    return;
-                }
-                if (this.getEffectiveVariables(current).some(v => v.name === name)) {
-                    this.showToast('이미 같은 이름의 변수가 있습니다.');
-                    return;
-                }
-                if (!current.extraVariables) current.extraVariables = [];
-                current.extraVariables.push({ id: 'cvar_' + Date.now(), name: name, value: (valEl.value || '').trim() });
-                nameEl.value = '';
-                valEl.value = '';
+                if (!name) { this.showToast('필드명을 입력하세요.'); return; }
+                if (this.getEffectivePersonFields(person).some(f => f.name === name)) { this.showToast('이미 같은 이름의 필드가 있습니다.'); return; }
+                if (!person.extraFields) person.extraFields = [];
+                person.extraFields.push({ id: 'pfx_' + Date.now(), name: name, value: (valEl.value || '').trim() });
                 current.updatedAt = this.getFormattedNow();
                 this.onStateChanged();
-                this.renderCaseVariables();
-                this.showToast('이 사건만의 변수가 추가되었습니다.');
+                this.renderPersonEditor();
             },
 
-            deleteCaseExtraVariable(id) {
+            deletePersonExtraField(personId, fieldId) {
                 const current = this.getCurrentCase();
-                if (!current || !current.extraVariables) return;
-                current.extraVariables = current.extraVariables.filter(v => v.id !== id);
+                const person = current && current.people.find(p => p.id === personId);
+                if (!person) return;
+                person.extraFields = (person.extraFields || []).filter(f => f.id !== fieldId);
                 current.updatedAt = this.getFormattedNow();
                 this.onStateChanged();
-                this.renderCaseVariables();
+                this.renderPersonEditor();
+            },
+
+            addPerson(role) {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                const roleInfo = PERSON_ROLES[role];
+                if (!roleInfo || roleInfo.singleton) return;
+                const slug = this.generatePersonSlug(current, role);
+                const person = createPersonRecord(role, roleInfo.subLabels[0], slug);
+                current.people.push(person);
+                current.updatedAt = this.getFormattedNow();
+                this.selectedPersonId = person.id;
+                this.onStateChanged();
+                this.renderPeopleModal();
+            },
+
+            deletePerson(id) {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                const idx = current.people.findIndex(p => p.id === id);
+                if (idx < 0) return;
+                if (current.people[idx].role === 'case') { this.showToast('사건공통 항목은 삭제할 수 없습니다.'); return; }
+                this.openConfirmModal('관계인 삭제', '이 관계인과 입력된 정보를 삭제하시겠습니까?', () => {
+                    current.people.splice(idx, 1);
+                    if (this.selectedPersonId === id) this.selectedPersonId = (current.people[0] && current.people[0].id) || null;
+                    current.updatedAt = this.getFormattedNow();
+                    this.onStateChanged();
+                    this.renderPeopleModal();
+                    this.closeConfirmModal();
+                });
             },
 
             applyVariablesToAllForms() {
@@ -4476,17 +4732,34 @@
                     </div>
                 `).join('');
 
-                const varList = document.getElementById('tplVariablesList');
-                const vars = this.template.variables || [];
-                varList.innerHTML = vars.length ? vars.map((v, idx) => `
+                this.renderTemplateRoleFields();
+            },
+
+            renderTemplateRoleFields() {
+                this.ensureTemplatePersonRoleFields();
+                const tabBar = document.getElementById('tplRoleFieldsTabBar');
+                const list = document.getElementById('tplRoleFieldsList');
+                if (!tabBar || !list) return;
+
+                tabBar.innerHTML = PERSON_ROLE_ORDER.map(role => {
+                    const roleInfo = PERSON_ROLES[role];
+                    const active = role === this.activeRoleFieldsTab;
+                    return `<button type="button" class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}" onclick="app.selectRoleFieldsTab('${role}')">${roleInfo.icon} ${this.escapeHtml(roleInfo.label)}</button>`;
+                }).join('');
+
+                const fields = this.template.personRoleFields[this.activeRoleFieldsTab] || [];
+                list.innerHTML = fields.length ? fields.map((f, idx) => `
                     <div style="display: flex; gap: 0.45rem; align-items: center; background: var(--bg-subtle); padding: 0.4rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm);">
-                        <span style="font-size: 0.78rem; color: var(--text-secondary);">{{</span>
-                        <input type="text" value="${this.escapeAttr(v.name)}" placeholder="변수명" style="max-width: 140px; font-weight: 700;" oninput="app.updateTemplateVariable(${idx}, 'name', this.value)">
-                        <span style="font-size: 0.78rem; color: var(--text-secondary);">}}</span>
-                        <input type="text" value="${this.escapeAttr(v.defaultValue || '')}" placeholder="기본값" style="flex: 1;" oninput="app.updateTemplateVariable(${idx}, 'defaultValue', this.value)">
-                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="app.removeTemplateVariable(${idx})">삭제</button>
+                        <input type="text" value="${this.escapeAttr(f.name)}" placeholder="필드명" style="max-width: 140px; font-weight: 700;" oninput="app.updateTemplateRoleField(${idx}, 'name', this.value)">
+                        <input type="text" value="${this.escapeAttr(f.defaultValue || '')}" placeholder="기본값" style="flex: 1;" oninput="app.updateTemplateRoleField(${idx}, 'defaultValue', this.value)">
+                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="app.removeTemplateRoleField(${idx})">삭제</button>
                     </div>
-                `).join('') : `<div style="color: var(--text-muted); font-size: 0.78rem; padding: 0.3rem;">등록된 전역 변수가 없습니다.</div>`;
+                `).join('') : `<div style="color: var(--text-muted); font-size: 0.78rem; padding: 0.3rem;">등록된 기본 필드가 없습니다.</div>`;
+            },
+
+            selectRoleFieldsTab(role) {
+                this.activeRoleFieldsTab = role;
+                this.renderTemplateRoleFields();
             },
 
             addTemplateCustomField() {
@@ -4523,38 +4796,40 @@
                 this.renderTemplateModalContent();
             },
 
-            addTemplateVariable() {
-                const nameEl = document.getElementById('tplNewVarName');
-                const defEl = document.getElementById('tplNewVarDefault');
+            addTemplateRoleField() {
+                const nameEl = document.getElementById('tplNewRoleFieldName');
+                const defEl = document.getElementById('tplNewRoleFieldDefault');
                 const name = (nameEl.value || '').trim();
                 if (!name) {
-                    this.showToast('변수명을 입력하세요.');
+                    this.showToast('필드명을 입력하세요.');
                     return;
                 }
-                if (!this.template.variables) this.template.variables = [];
-                if (this.template.variables.some(v => v.name === name)) {
-                    this.showToast('이미 같은 이름의 전역 변수가 있습니다.');
+                const fields = this.template.personRoleFields[this.activeRoleFieldsTab];
+                if (fields.some(f => f.name === name)) {
+                    this.showToast('이미 같은 이름의 필드가 있습니다.');
                     return;
                 }
-                this.template.variables.push({ id: 'var_' + Date.now(), name: name, defaultValue: (defEl.value || '').trim() });
+                fields.push({ id: 'pf_' + Date.now(), name: name, defaultValue: (defEl.value || '').trim() });
                 nameEl.value = '';
                 defEl.value = '';
                 this.onStateChanged();
-                this.renderTemplateModalContent();
-                this.showToast('전역 변수가 추가되었습니다.');
+                this.renderTemplateRoleFields();
+                this.showToast('기본 필드가 추가되었습니다.');
             },
 
-            updateTemplateVariable(idx, key, val) {
-                if (!this.template.variables || !this.template.variables[idx]) return;
-                this.template.variables[idx][key] = val;
+            updateTemplateRoleField(idx, key, val) {
+                const fields = this.template.personRoleFields[this.activeRoleFieldsTab];
+                if (!fields || !fields[idx]) return;
+                fields[idx][key] = val;
                 this.onStateChanged();
             },
 
-            removeTemplateVariable(idx) {
-                if (!this.template.variables || !this.template.variables[idx]) return;
-                this.template.variables.splice(idx, 1);
+            removeTemplateRoleField(idx) {
+                const fields = this.template.personRoleFields[this.activeRoleFieldsTab];
+                if (!fields || !fields[idx]) return;
+                fields.splice(idx, 1);
                 this.onStateChanged();
-                this.renderTemplateModalContent();
+                this.renderTemplateRoleFields();
             },
 
             addTemplateChecklist() {
@@ -4707,17 +4982,25 @@
                             autoCharges: Array.isArray(f.autoCharges) ? f.autoCharges.map(String).filter(Boolean) : []
                         }));
                 }
-                if (Array.isArray(t.variables)) {
-                    out.variables = t.variables.filter(v => v && typeof v === 'object')
-                        .map((v, i) => ({ id: v.id || ('var_imp_' + Date.now() + '_' + i), name: String(v.name || ''), defaultValue: String(v.defaultValue || '') }))
-                        .filter(v => v.name);
+                const normFields = (arr, prefix) => (Array.isArray(arr) ? arr : []).filter(v => v && typeof v === 'object')
+                    .map((v, i) => ({ id: v.id || (prefix + '_imp_' + Date.now() + '_' + i), name: String(v.name || ''), defaultValue: String(v.defaultValue || '') }))
+                    .filter(v => v.name);
+                const personRoleFields = {};
+                PERSON_ROLE_ORDER.forEach(role => {
+                    personRoleFields[role] = normFields(t.personRoleFields && t.personRoleFields[role], 'pf_' + role);
+                });
+                if (Array.isArray(t.variables)) { // 구버전(평면 변수) 호환: 사건공통 역할로 흡수
+                    normFields(t.variables, 'var').forEach(v => {
+                        if (!personRoleFields.case.some(f => f.name === v.name)) personRoleFields.case.push(v);
+                    });
                 }
+                out.personRoleFields = personRoleFields;
                 return out;
             },
 
             normalizeImportedCase(c, idx) {
                 const stamp = Date.now() + '_' + idx;
-                return Object.assign({}, c, {
+                const normalized = Object.assign({}, c, {
                     id: c.id || ('case_imp_' + stamp),
                     caseNumber: c.caseNumber || '',
                     status: this.normalizeImportedStatus(c.status),
@@ -4738,12 +5021,27 @@
                     })),
                     forms: Array.isArray(c.forms) ? c.forms : [],
                     customValues: (c.customValues && typeof c.customValues === 'object') ? c.customValues : {},
+                    people: (Array.isArray(c.people) ? c.people : []).filter(p => p && typeof p === 'object' && PERSON_ROLES[p.role])
+                        .map((p, i) => ({
+                            id: p.id || ('person_imp_' + stamp + '_' + i),
+                            role: p.role,
+                            subLabel: p.subLabel || PERSON_ROLES[p.role].subLabels[0],
+                            slug: p.slug || (PERSON_ROLES[p.role].label + (i + 1)),
+                            label: p.label || '',
+                            fieldValues: (p.fieldValues && typeof p.fieldValues === 'object') ? p.fieldValues : {},
+                            removedFieldIds: Array.isArray(p.removedFieldIds) ? p.removedFieldIds.filter(x => typeof x === 'string') : [],
+                            extraFields: (Array.isArray(p.extraFields) ? p.extraFields : []).filter(f => f && typeof f === 'object' && f.name)
+                                .map((f, j) => ({ id: f.id || ('pfx_imp_' + stamp + '_' + i + '_' + j), name: String(f.name || ''), value: String(f.value || '') }))
+                        })),
+                    // 구버전(평면 변수) 호환 필드 — 아래 migrateCaseFlatVariables 가 people 로 흡수한다
                     variableValues: (c.variableValues && typeof c.variableValues === 'object') ? c.variableValues : {},
                     removedVariableIds: Array.isArray(c.removedVariableIds) ? c.removedVariableIds.filter(x => typeof x === 'string') : [],
                     extraVariables: (Array.isArray(c.extraVariables) ? c.extraVariables : []).filter(v => v && typeof v === 'object' && v.name)
                         .map((v, i) => ({ id: v.id || ('cvar_imp_' + stamp + '_' + i), name: String(v.name || ''), value: String(v.value || '') })),
                     autoLoadedFormIds: Array.isArray(c.autoLoadedFormIds) ? c.autoLoadedFormIds.filter(x => typeof x === 'string') : []
                 });
+                this.migrateCaseFlatVariables(normalized); // 구버전 평면 변수를 사건공통 관계인으로 흡수 + people 싱글톤 보장
+                return normalized;
             },
 
             importPureJson(event) {
@@ -4802,11 +5100,14 @@
                                     incomingTpl.customFields.forEach(f => {
                                         if (!t.customFields.some(o => o.id === f.id)) { t.customFields.push(f); addedTpl++; }
                                     });
-                                    if (Array.isArray(incomingTpl.variables)) {
-                                        if (!Array.isArray(t.variables)) t.variables = [];
-                                        incomingTpl.variables.forEach(v => {
-                                            const dup = t.variables.some(o => o.id === v.id || o.name === v.name);
-                                            if (!dup) { t.variables.push(v); addedTpl++; }
+                                    if (incomingTpl.personRoleFields) {
+                                        this.ensureTemplatePersonRoleFields();
+                                        PERSON_ROLE_ORDER.forEach(role => {
+                                            const incomingFields = incomingTpl.personRoleFields[role] || [];
+                                            incomingFields.forEach(v => {
+                                                const dup = t.personRoleFields[role].some(o => o.id === v.id || o.name === v.name);
+                                                if (!dup) { t.personRoleFields[role].push(v); addedTpl++; }
+                                            });
                                         });
                                     }
                                 }
