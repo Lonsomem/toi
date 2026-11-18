@@ -80,10 +80,10 @@
         }
 
         /* ==========================================================================
-           2. Compact Top Header (54px 고정)
+           2. Compact Top Header (46px 고정)
            ========================================================================== */
         .app-header {
-            height: 54px;
+            height: 46px;
             flex-shrink: 0;
             background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
             color: #ffffff;
@@ -294,11 +294,11 @@
            ========================================================================== */
         .main-container {
             flex: 1;
-            height: calc(100vh - 54px);
+            height: calc(100vh - 46px);
             max-width: 1680px;
             width: 100%;
             margin: 0 auto;
-            padding: 0.75rem 1.25rem;
+            padding: 0.55rem 1.25rem;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -871,8 +871,8 @@
             background: var(--bg-surface);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
-            padding: 0.65rem 1rem;
-            margin-bottom: 0.65rem;
+            padding: 0.45rem 1rem;
+            margin-bottom: 0.5rem;
             box-shadow: var(--shadow-sm);
             display: grid;
             grid-template-columns: auto 1.2fr 1.3fr auto;
@@ -890,8 +890,8 @@
         /* SVG 원형 도넛 차트 */
         .donut-gauge-wrap {
             position: relative;
-            width: 56px;
-            height: 56px;
+            width: 46px;
+            height: 46px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -899,8 +899,8 @@
         }
 
         .donut-gauge-wrap svg {
-            width: 56px;
-            height: 56px;
+            width: 46px;
+            height: 46px;
             transform: rotate(-90deg);
         }
 
@@ -1052,7 +1052,7 @@
         .bento-col {
             display: flex;
             flex-direction: column;
-            gap: 0.65rem;
+            gap: 0.5rem;
             min-height: 0;
             overflow: hidden;
         }
@@ -1061,7 +1061,7 @@
             background: var(--bg-surface);
             border: 1px solid var(--border-light);
             border-radius: var(--radius-md);
-            padding: 0.75rem 0.9rem;
+            padding: 0.55rem 0.75rem;
             box-shadow: var(--shadow-sm);
             display: flex;
             flex-direction: column;
@@ -1073,22 +1073,22 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.45rem;
+            margin-bottom: 0.3rem;
             flex-shrink: 0;
         }
 
         .widget-title {
             display: flex;
             align-items: center;
-            gap: 0.4rem;
-            font-size: 0.82rem;
+            gap: 0.35rem;
+            font-size: 0.78rem;
             font-weight: 800;
             color: var(--text-main);
         }
 
         .widget-icon-box {
-            width: 24px;
-            height: 24px;
+            width: 20px;
+            height: 20px;
             border-radius: 6px;
             display: flex;
             align-items: center;
@@ -2018,13 +2018,13 @@
                             </div>
                             <button type="button" class="btn btn-secondary btn-sm" onclick="app.openTemplateModal()" title="모든 사건에 적용되는 변수 기본값 관리">⚙️ 전역 기본값</button>
                         </div>
-                        <div id="caseVariablesContainer" style="max-height: 180px; overflow-y: auto;"></div>
-                        <div style="display: flex; gap: 0.4rem; margin-top: 0.5rem;">
+                        <div id="caseVariablesContainer" style="flex: 1; min-height: 0; overflow-y: auto;"></div>
+                        <div style="display: flex; gap: 0.4rem; margin-top: 0.35rem; flex-shrink: 0;">
                             <input type="text" id="newVarName" placeholder="이 사건만의 변수명" style="max-width: 130px;">
                             <input type="text" id="newVarValue" placeholder="값" style="flex: 1;">
                             <button type="button" class="btn btn-primary btn-sm" onclick="app.addCaseExtraVariable()">+ 추가</button>
                         </div>
-                        <div id="removedVariablesChips" style="margin-top: 0.4rem;"></div>
+                        <div id="removedVariablesChips" style="margin-top: 0.3rem; flex-shrink: 0;"></div>
                     </div>
                 </div>
 
