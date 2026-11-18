@@ -52,6 +52,7 @@
 
         html, body {
             height: 100vh;
+            height: 100dvh; /* 모바일/태블릿 브라우저의 주소창 등 동적 툴바로 100vh 가 실제 화면보다 커지는 문제 보정 */
             width: 100vw;
             overflow: hidden; /* 전체 페이지 스크롤 제거 (원페이지 대시보드 고정) */
             font-family: var(--font-sans);
@@ -84,7 +85,9 @@
            ========================================================================== */
         .app-header {
             height: 46px;
+            min-height: 0;
             flex-shrink: 0;
+            overflow: hidden; /* 버튼이 많아 줄바꿈이 생겨도 헤더 높이가 46px 를 넘지 않도록 고정(넘치면 안쪽에서 잘림) */
             background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
             color: #ffffff;
             padding: 0 1.25rem;
@@ -99,9 +102,11 @@
             max-width: 1680px;
             margin: 0 auto;
             display: flex;
+            flex-wrap: nowrap;
             justify-content: space-between;
             align-items: center;
             gap: 0.75rem;
+            min-width: 0;
         }
 
         .brand-title {
@@ -110,6 +115,7 @@
             gap: 0.65rem;
             cursor: pointer;
             user-select: none;
+            min-width: 0;
         }
 
         .brand-logo {
@@ -121,6 +127,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .brand-text {
+            min-width: 0;
+            overflow: hidden;
         }
 
         .brand-text h1 {
@@ -128,6 +140,9 @@
             font-weight: 800;
             letter-spacing: -0.02em;
             line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .brand-text span {
@@ -135,12 +150,16 @@
             color: #93c5fd;
             display: block;
             margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .header-actions {
             display: flex;
             align-items: center;
             gap: 0.4rem;
+            flex-shrink: 0;
         }
 
         /* ==========================================================================
@@ -295,6 +314,7 @@
         .main-container {
             flex: 1;
             height: calc(100vh - 46px);
+            height: calc(100dvh - 46px);
             max-width: 1680px;
             width: 100%;
             margin: 0 auto;
