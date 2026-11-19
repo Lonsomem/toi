@@ -152,6 +152,24 @@
             </div>
         </div>
     </div>
+
+    <div class="card hidden" id="transformCard">
+        <h2>5. 값 형식 변환 (선택)</h2>
+        <p class="hint">특정 키의 값 형식을 일괄 정리합니다 (정규식으로 찾아서 바꿈). 상세정보까지 다 가져온 뒤, 저장하기 직전에 적용하는 것을 추천합니다 — 먼저 바꿔버리면 "4. 사건별 상세정보 가져오기"가 원래 형식을 기대하는 경우 매칭이 안 될 수 있습니다.</p>
+        <div class="row" style="margin-top:0;">
+            <label style="font-size:0.82rem; color: var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
+                적용할 키
+                <select id="transformKeySelect"></select>
+            </label>
+            <button type="button" class="btn secondary sm" onclick="app.applyCaseNoPreset()">사건번호 형식 정리 (2026-012345(10-03) → 2026-12345)</button>
+        </div>
+        <div class="row">
+            <input type="text" id="transformPattern" placeholder="찾을 정규식, 예: ^(\d{4})-0*(\d+)(?:\(.*\))?$">
+            <input type="text" id="transformReplace" placeholder="바꿀 형식 ($1, $2 사용 가능), 예: $1-$2">
+            <button type="button" class="btn" onclick="app.applyTransform()">적용</button>
+        </div>
+        <div id="transformMsg" class="msg"></div>
+    </div>
 </main>
 
 <script>
@@ -403,6 +421,56 @@ var app = {
         document.getElementById('detailKeySelectWrap').classList.add('hidden');
         if (this.matchKey) document.getElementById('detailFetchCard').classList.remove('hidden');
         else document.getElementById('detailFetchCard').classList.add('hidden');
+
+        this.renderTransformKeySelect();
+        document.getElementById('transformCard').classList.remove('hidden');
+    },
+
+    renderTransformKeySelect: function () {
+        var sel = document.getElementById('transformKeySelect');
+        var cur = sel.value;
+        var cols = this.previewRows.length ? Object.keys(this.previewRows[0]) : [];
+        var self = this;
+        sel.innerHTML = cols.map(function (k) {
+            return '<option value="' + self.escapeAttr(k) + '"' + (k === cur ? ' selected' : '') + '>' + self.escapeHtml(k) + '</option>';
+        }).join('');
+    },
+
+    applyCaseNoPreset: function () {
+        if (this.matchKey) document.getElementById('transformKeySelect').value = this.matchKey;
+        document.getElementById('transformPattern').value = '^(\\d{4})-0*(\\d+)(?:\\(.*\\))?$';
+        document.getElementById('transformReplace').value = '$1-$2';
+    },
+
+    showTransformMsg: function (text, kind) {
+        var el = document.getElementById('transformMsg');
+        el.textContent = text;
+        el.className = 'msg ' + (kind || '');
+    },
+
+    applyTransform: function () {
+        var key = document.getElementById('transformKeySelect').value;
+        var patternStr = document.getElementById('transformPattern').value;
+        var replaceStr = document.getElementById('transformReplace').value;
+        if (!key) { this.showTransformMsg('적용할 키를 선택하세요.', 'warn'); return; }
+        if (!patternStr) { this.showTransformMsg('찾을 정규식을 입력하세요.', 'warn'); return; }
+        var re;
+        try {
+            re = new RegExp(patternStr);
+        } catch (e) {
+            this.showTransformMsg('정규식이 올바르지 않습니다: ' + e.message, 'bad');
+            return;
+        }
+        var changed = 0;
+        this.previewRows.forEach(function (row) {
+            if (row[key] === undefined || row[key] === null) return;
+            var before = String(row[key]);
+            var after = before.replace(re, replaceStr);
+            if (after !== before) changed++;
+            row[key] = after;
+        });
+        this.renderPreviewTable(this.previewRows.length ? Object.keys(this.previewRows[0]) : []);
+        this.showTransformMsg(changed + '건 변경됨 (전체 ' + this.previewRows.length + '건 중, 일치하지 않은 값은 그대로 유지)', 'ok');
     },
 
     renderPreviewTable: function (keys) {
@@ -544,6 +612,7 @@ var app = {
 
         var allCols = existingCols.concat(keys.map(function (k) { return colNameFor[k]; }));
         this.renderPreviewTable(allCols);
+        this.renderTransformKeySelect();
         this.showDetailMsg('상세 정보가 미리보기·저장 결과에 반영되었습니다.', 'ok');
     },
 
