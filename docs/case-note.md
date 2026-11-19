@@ -73,6 +73,15 @@ case = {
 - `#globalFormsModal` 📚 공통 서식 보관함: `openGlobalFormsModal`, 좌측 목록/검색, 우측 편집기. 원문 복사 / 현재 사건 변수 치환 복사(`copyActiveGlobalForm`) / 사건 필드 삽입(`insertGlobalFormToCaseField`: crimeFact·overview·reference) / 현재 사건 서식함에 복제(`cloneGlobalFormToCurrentCase`). 한글(HWP)에서 복사한 문구 붙여넣기용. 기본 템플릿 복원(`resetDefaultTemplate`)·JSON 덮어쓰기 해도 보관함 보존.
 - `#templateModal` ⚙ 기본 템플릿 설정(체크리스트/서식/공통항목).
 - `#backupModal` 📦 JSON 내보내기·불러오기. `#confirmModal`(alert/confirm 대체).
+- `#externalImportModal` 📥 외부 사건목록 가져오기 (2026-11-19 신규, `openExternalImportModal`): 내부 시스템 사건목록 JSON을 선택한 키만 새 사건으로 추가. 상세는 아래 "외부 사건목록 가져오기" 절 참고. 별도 파일(`case-import.html`)로 만들었던 URL fetch/CORS 우회/사건별 상세조회/값 변환 기능은 전부 걷어내고, 가장 단순한 흐름만 이 모달 하나로 통합함(사용자 요청: "그냥 다 집어치우고... 선택한 항목만... 옮겨서 받아오는 기능만").
+
+## 8. 외부 사건목록 가져오기 (`#externalImportModal`)
+1. **콘솔 스크립트 복사** (`copyExternalImportScript`): 모달을 열면 `eiConsoleScript` textarea에 고정된 스크립트가 채워짐 — 대상 페이지의 `location.href`를 `fetch`해서 `.json` 파일로 다운로드. 사용자가 그 코드를 내부 시스템 페이지의 개발자도구 콘솔에 직접 붙여넣어 실행(같은 출처라 CORS 제약 없음).
+2. **파일 불러오기** (`loadExternalFile` → `handleExternalRawText`): 저장한 `.json`을 선택하면 `FileReader`로 읽음. "데이터 경로"(`eiDataPath`)에 `data.myCaseListVo` 같은 점(.) 경로를 직접 입력하면 `eiGetArrayAtPath`로 그 위치를 바로 사용(배열 인덱스 `[0]`도 지원). 비워두면 `eiFindCaseArray`가 객체 트리를 재귀적으로 훑어 "객체로 이루어진 배열"을 자동으로 찾고(후보 여럿이면 가장 긴 것 선택, 메시지에 다른 후보 경로도 표시), 지정한 경로를 못 찾으면 자동 탐지로 전환하며 경고.
+3. **항목 선택·매핑** (`renderExternalKeyMap`/`updateExternalMapping`): 처음 500건에서 발견한 키마다 드롭다운으로 사건 관리 노트 필드(사건번호/제목/죄명/상태/사건개요/참고사항/비고/사용 안 함) 중 하나를 고름. **사건번호는 반드시 하나 지정**해야 하며(`importExternalCases`가 검사), 상태값은 `normalizeImportedStatus`로 정규화.
+4. **가져오기** (`importExternalCases`): 매핑 안 된 키는 무시. 사건번호가 비어있거나 **이미 같은 사건번호의 사건이 있으면 건너뜀**(추가/건너뜀 건수 안내). 새 사건은 `createNewCase`와 동일한 최소 스키마로 생성(기본 템플릿 체크리스트 적용, `ensureCasePeople`로 사건공통 관계인 자동 생성, forms/people 빈 배열 등은 사용자가 상세화면에서 직접 채움) 후 `this.cases.unshift` + `onStateChanged()`.
+- 검증: Playwright로 중첩 경로 자동탐지·수동 지정, 필드 매핑, 상태 정규화, 중복 사건번호 스킵, 템플릿 체크리스트·사건공통 관계인 자동 적용, quine 저장 함수 정상 동작까지 확인(14건). **검증 안 됨**: 사용자의 실제 내부 시스템 JSON 스키마.
+- 참고: 동일한 URL-fetch/CORS 우회/키 선별/콘솔 스크립트 개념은 독립 파일 `case-import.html`(및 `json-viewer.html`)에도 있음 — 그쪽은 이 모달과 무관하게 더 많은 옵션(URL 직접 fetch, 클립보드 자동 붙여넣기, 사건별 상세조회, 정규식 값 변환)을 가진 범용 도구로 유지됨. 지금 사용자가 원한 건 사건 관리 노트에 바로 통합된 가장 단순한 버전.
 
 ## 5. 스타일 메모
 - 원래 어두운 남색 → 파스텔 그라데이션(보라→하늘→민트) 톤으로 개편. 개편용 CSS 는 `<style>` 맨 끝의 "UI 개편" 블록(원본 규칙을 덮어씀). 토큰은 `:root` 변수.
