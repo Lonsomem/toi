@@ -1876,6 +1876,52 @@
         .todo-count-chip.done { background: var(--success-bg); color: var(--success); }
         .case-table .col-actions { width: 50px; text-align: right; }
 
+        /* --- 좌측 필터 사이드바 (검색·상태·정렬·표시 열) --- */
+        .list-content-row { flex: 1; min-height: 0; display: flex; gap: 0.9rem; }
+        .filter-sidebar {
+            width: 190px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.9rem;
+            background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 10px;
+            padding: 0.85rem 0.8rem; align-self: flex-start;
+        }
+        .sidebar-new-btn { width: 100%; justify-content: center; font-size: 0.78rem; padding: 0.5rem 0; }
+        .sidebar-search {
+            display: flex; align-items: center; gap: 0.4rem; border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 0.4rem 0.55rem; background: var(--bg-body);
+        }
+        .sidebar-search svg { width: 14px; height: 14px; color: var(--text-muted); flex-shrink: 0; }
+        .sidebar-search input {
+            border: none; background: transparent; outline: none; font-size: 0.76rem; width: 100%; color: var(--text-main);
+        }
+        .sidebar-section { display: flex; flex-direction: column; gap: 0.4rem; }
+        .sidebar-section-title {
+            font-size: 0.66rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;
+        }
+        .status-pill-list { display: flex; flex-direction: column; gap: 0.15rem; }
+        .status-pill {
+            display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;
+            border: none; background: transparent; border-radius: 6px; padding: 0.35rem 0.5rem;
+            font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; text-align: left;
+        }
+        .status-pill:hover { background: var(--bg-body); }
+        .status-pill.active { background: var(--primary-light); color: var(--primary); }
+        .status-pill-count {
+            font-size: 0.66rem; font-weight: 700; color: var(--text-muted); background: var(--bg-body);
+            border-radius: 999px; padding: 0.05rem 0.4rem; min-width: 1.3em; text-align: center;
+        }
+        .status-pill.active .status-pill-count { background: rgba(31,136,61,0.16); color: var(--primary); }
+        .sidebar-select {
+            width: 100%; font-size: 0.74rem; padding: 0.4rem 0.5rem; border: 1px solid var(--border-color);
+            border-radius: 6px; background: var(--bg-surface); color: var(--text-main);
+        }
+        .sidebar-link-btn {
+            display: flex; align-items: center; gap: 0.4rem; width: 100%; border: 1px solid var(--border-color);
+            background: var(--bg-surface); border-radius: 6px; padding: 0.4rem 0.55rem; font-size: 0.74rem;
+            font-weight: 600; color: var(--text-main); cursor: pointer;
+        }
+        .sidebar-link-btn:hover { background: var(--bg-body); }
+        .sidebar-dropdown { position: absolute; left: 0; right: 0; top: calc(100% + 4px); }
+        .list-table-area { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+
         /* --- 표시 열 선택 드롭다운 --- */
         .column-menu-wrap { position: relative; }
         .column-menu-dropdown {
@@ -2053,57 +2099,60 @@
                     <div id="priorityTodoList" class="todo-scroll"></div>
                 </aside>
 
-                <!-- 우측: 검색/필터 + 사건 카드 -->
+                <!-- 우측: 좌측 필터 사이드바 + 사건 테이블 -->
                 <div class="list-main">
-            <!-- 검색 · 필터 · 신규 사건 등록 툴바 -->
-            <div class="list-toolbar">
-                <div class="search-filter-group">
-                    <div class="search-box">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <input type="search" id="searchInput" placeholder="사건번호, 제목, 피해현황, 계좌번호, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
+                    <div class="list-content-row">
+                        <!-- 필터 사이드바 (검색·상태·정렬·표시 열) -->
+                        <aside class="filter-sidebar">
+                            <button type="button" class="btn btn-primary sidebar-new-btn" onclick="app.createNewCase()">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                </svg>
+                                새 사건
+                            </button>
+
+                            <div class="sidebar-search">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="11" cy="11" r="8"></circle>
+                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                </svg>
+                                <input type="search" id="searchInput" placeholder="사건번호, 제목, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
+                            </div>
+
+                            <div class="sidebar-section">
+                                <div class="sidebar-section-title">상태</div>
+                                <div id="statusFilterPills" class="status-pill-list"></div>
+                            </div>
+
+                            <div class="sidebar-section">
+                                <div class="sidebar-section-title">정렬</div>
+                                <select id="sortFilter" class="sidebar-select" onchange="app.currentPage=1; app.saveDashboardSortPref()">
+                                    <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
+                                    <option value="UPDATED_DESC">최근 수정일순</option>
+                                    <option value="CASENUM_DESC">사건번호순</option>
+                                    <option value="PROGRESS_ASC">진행률 낮은순</option>
+                                    <option value="PROGRESS_DESC">진행률 높은순</option>
+                                </select>
+                            </div>
+
+                            <div class="sidebar-section column-menu-wrap">
+                                <button type="button" class="sidebar-link-btn" onclick="app.toggleColumnMenu()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                    </svg>
+                                    표시 열 설정
+                                </button>
+                                <div id="columnMenuDropdown" class="column-menu-dropdown sidebar-dropdown"></div>
+                            </div>
+                        </aside>
+
+                        <div class="list-table-area">
+                            <div id="case-list-body" class="case-cards-grid"></div>
+                            <div id="paginationBar" class="pagination-bar"></div>
+                        </div>
                     </div>
-                    <select id="statusFilter" style="width: 135px;" onchange="app.currentPage=1; app.saveDashboardSortPref()">
-                        <option value="ALL">전체 상태</option>
-                        <option value="수사중">수사중</option>
-                        <option value="영장신청">영장신청</option>
-                        <option value="송치완료">송치완료</option>
-                        <option value="타관이송">타관이송</option>
-                        <option value="중지/각하">중지/각하</option>
-                    </select>
-                    <select id="sortFilter" style="width: 170px;" onchange="app.currentPage=1; app.saveDashboardSortPref()">
-                        <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
-                        <option value="UPDATED_DESC">최근 수정일순</option>
-                        <option value="CASENUM_DESC">사건번호순</option>
-                        <option value="PROGRESS_ASC">진행률 낮은순</option>
-                        <option value="PROGRESS_DESC">진행률 높은순</option>
-                    </select>
-                </div>
-
-                <div class="column-menu-wrap">
-                    <button type="button" class="btn btn-secondary" title="표시할 열 선택" onclick="app.toggleColumnMenu()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"></circle>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                        </svg>
-                        표시 열
-                    </button>
-                    <div id="columnMenuDropdown" class="column-menu-dropdown"></div>
-                </div>
-
-                <button type="button" class="btn btn-primary" onclick="app.createNewCase()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    + 새 사건 카드 생성
-                </button>
-            </div>
-
-                    <div id="case-list-body" class="case-cards-grid"></div>
-                    <div id="paginationBar" class="pagination-bar"></div>
                 </div>
             </div>
         </section>
@@ -2831,6 +2880,7 @@
             activityLog: {},
             dashboardPrefs: null,
             columnMenuOpen: false,
+            activeStatusFilter: 'ALL',
 
             init() {
                 this.loadDatabase();
@@ -2858,9 +2908,31 @@
             applyDashboardPrefsToToolbar() {
                 if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
                 const sortEl = document.getElementById('sortFilter');
-                const statusEl = document.getElementById('statusFilter');
                 if (sortEl && this.dashboardPrefs.tableSort) sortEl.value = this.dashboardPrefs.tableSort;
-                if (statusEl && this.dashboardPrefs.tableStatus) statusEl.value = this.dashboardPrefs.tableStatus;
+                this.activeStatusFilter = this.dashboardPrefs.tableStatus || 'ALL';
+            },
+
+            setStatusFilter(value) {
+                this.activeStatusFilter = value;
+                this.currentPage = 1;
+                if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
+                this.dashboardPrefs.tableStatus = value;
+                this.onStateChanged();
+                this.renderCaseList();
+            },
+
+            renderStatusFilterPills() {
+                const container = document.getElementById('statusFilterPills');
+                if (!container) return;
+                const statuses = ['ALL', '수사중', '영장신청', '송치완료', '타관이송', '중지/각하'];
+                const labels = { ALL: '전체' };
+                const active = this.activeStatusFilter || 'ALL';
+                container.innerHTML = statuses.map(st => {
+                    const count = st === 'ALL' ? this.cases.length : this.cases.filter(c => c.status === st).length;
+                    return `<button type="button" class="status-pill ${st === active ? 'active' : ''}" onclick="app.setStatusFilter('${st}')">
+                        <span>${labels[st] || st}</span><span class="status-pill-count">${count}</span>
+                    </button>`;
+                }).join('');
             },
 
             setupKeyboardShortcuts() {
@@ -3109,7 +3181,8 @@
                     'personEditorContainer',
                     'eiKeyMapContainer',
                     'activityGraphContainer',
-                    'columnMenuDropdown'
+                    'columnMenuDropdown',
+                    'statusFilterPills'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -3350,8 +3423,9 @@
                 if (!container) return;
 
                 const query = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
-                const statusFilter = document.getElementById('statusFilter')?.value || 'ALL';
+                const statusFilter = this.activeStatusFilter || 'ALL';
                 const sortType = document.getElementById('sortFilter')?.value || 'MANUAL_ORDER';
+                this.renderStatusFilterPills();
 
                 const total = this.cases.length;
                 const activeCount = this.cases.filter(c => c.status === '수사중' || c.status === '영장신청').length;
@@ -3511,7 +3585,6 @@
             saveDashboardSortPref() {
                 if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
                 this.dashboardPrefs.tableSort = document.getElementById('sortFilter')?.value || 'MANUAL_ORDER';
-                this.dashboardPrefs.tableStatus = document.getElementById('statusFilter')?.value || 'ALL';
                 this.onStateChanged();
                 this.currentPage = 1;
                 this.renderCaseList();

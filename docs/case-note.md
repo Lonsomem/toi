@@ -102,6 +102,7 @@ case = {
 - **활동 기여 그래프(깃허브 잔디 스타일)**: `#activityGraphContainer`(`app.renderActivityGraph()`)가 최근 18주(7×18 셀)를 그려줌. 데이터는 `app.activityLog = { 'YYYY-MM-DD': { todoCount, caseIds:[], items:[] } }` — DB 최상위에 저장(공유 JSON v1 과는 무관, 퀸 저장본 전용 필드). `app.recordActivity('todo'|'case', caseId, label)` 을 호출하는 지점: 할 일 완료 처리(목록뷰 `toggleTaskFromListView`, 상세뷰 체크리스트 토글) + 새 사건 생성(`createNewCase`, caseId 당 하루 1회만 집계). 셀에 마우스를 올리면 그날 활동 요약(`title` 속성, 최대 5개) 툴팁. 색상 4단계는 그날 최대값 대비 상대 비율로 계산(`levelOf`).
 - `getDefaultDashboardPrefs()` 가 기본값(정렬=드래그순서, 상태필터=전체, 보이는 열) 정의. `loadDatabase()`에 하위호환 방어(`activityLog`/`dashboardPrefs` 없으면 기본값) 추가됨.
 - 검증: Playwright로 테이블 렌더/열 숨김/활동 로그 집계/헤더 메뉴 열고닫기/퀸 저장-재로드 라운드트립까지 확인. 기존 `check_people/check_forms/check_casenote_export/check_migration` 전부 재통과(회귀 없음). `check_vars.js` 는 본 작업 이전부터 깨져 있던 스크립트(오래된 API 참조)로 무관.
+- **(같은 날, 후속) 상단 수평 툴바 → 좌측 필터 사이드바로 재배치**: 검색창/상태 필터/정렬/표시 열 설정을 `.list-toolbar`(가로 한 줄)에서 `<aside class="filter-sidebar">`(테이블 왼쪽, 190px 고정폭)로 이동. 상태 필터는 `<select>` 대신 건수가 보이는 세로 pill 목록(`#statusFilterPills`, `app.renderStatusFilterPills()`)으로 교체 — 상태값은 더 이상 DOM 에서 읽지 않고 `app.activeStatusFilter` 상태로 직접 관리(`app.setStatusFilter(value)`), `dashboardPrefs.tableStatus` 에 계속 영속화됨. 정렬 셀렉트·표시 열 버튼은 그대로 사이드바 안으로 이동. "+ 새 사건" 버튼도 사이드바 맨 위로 이동.
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
