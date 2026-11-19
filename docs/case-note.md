@@ -115,6 +115,7 @@ case = {
   - 검색창·정렬·표시 항목·새 사건 버튼은 "사건" 섹션 헤더 우측에 한 줄 툴바로(`.repo-toolbar`), 깃허브의 "Find a repository... / Type / Language / New" 툴바와 같은 자리.
   - `renderCaseList()`의 `<table>` 생성 로직을 전부 `.repo-row` div 생성으로 교체(드래그 재정렬 핸들러는 동일하게 재사용, `<tr>`→`<div>`만 변경이라 로직 변화 없음). `renderColumnMenu()`의 토글 대상에서 `caseNumber`/`title` 제거.
   - 모든 렌더 대상 id 는 그대로 유지(구조 재배치만), 기존 회귀 테스트 전부 재통과.
+- **(같은 날, 네 번째 — 반응형 수정) 태블릿/모바일에서 레이아웃이 깨지는 문제**: `.github-profile-layout`(flex row, 사이드바 260px 고정)이 좁은 화면에서 `.profile-main`을 거의 0px로 짜부라뜨림(375px 폭에서 43px까지). 기존 `@media (max-width: 1100px)` 블록(이미 `html,body`/`.main-container`를 `overflow:auto`로 풀어 한 화면 고정을 해제하던 지점)에 편승해 `.github-profile-layout { flex-direction: column; }`로 세로 1단 전환(사이드바 위, 본문 아래, 페이지 전체 스크롤). `@media (max-width: 640px)`를 추가로 둬서 "사건" 섹션 툴바(검색/정렬/표시항목/새사건)를 세로로 쌓고 폭 100%로, 헤더의 파일 동기화 배지는 숨김(⋮ 메뉴로 여전히 접근 가능). 1024/820/428/375px 네 폭에서 가로 스크롤 없음·메뉴 안 잘림·본문 폭 정상 확인, 기존 회귀 테스트 전부 재통과.
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
