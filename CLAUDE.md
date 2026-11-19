@@ -13,6 +13,7 @@
 | `pdf-tools/src/*`, `pdf-tools/vendor/*` | 위 파일의 소스·내장 PDF.js (수정 후 `python3 pdf-tools/build.py`) | 〃 |
 | `qr-tools/tests/*` | 수동 실행 테스트 스크립트 | `qr-tools/tests/README.md` |
 | `case-import.html` | 사건목록 가져오기. 내부 시스템 URL(또는 붙여넣기)의 JSON에서 필요한 키만 선별해 저장. **`case-note.html`과 별개 파일**, 사건번호 매칭 연동은 미구현 | `docs/case-import.md` |
+| `json-viewer.html` | 범용 JSON 트리 뷰어(붙여넣기/파일/URL). 특정 기능에 종속되지 않는 독립 도구 — 트리로 펼쳐보기·검색·경로/값 복사 | `docs/json-viewer.md` |
 | (미구현) 내부망 로컬 LLM | QR 전송 대신 내부망 PC에 경량 LLM(Qwen) + RAG 로 매뉴얼 질의. 모델 선택·반입 절차만 검토됨, 코드 없음 | `docs/local-llm.md` |
 
 ## 절대 규칙
