@@ -5083,11 +5083,23 @@
                 }
 
                 const keySet = {}; const order = [];
+                const keySamples = {}; const keyHasData = {};
                 found.rows.slice(0, 500).forEach((row) => {
-                    if (row && typeof row === 'object') Object.keys(row).forEach((k) => { if (!keySet[k]) { keySet[k] = true; order.push(k); } });
+                    if (!row || typeof row !== 'object') return;
+                    Object.keys(row).forEach((k) => {
+                        if (!keySet[k]) { keySet[k] = true; order.push(k); keySamples[k] = []; }
+                        const v = row[k];
+                        if (v === null || v === undefined) return;
+                        keyHasData[k] = true;
+                        const sVal = (typeof v === 'object') ? JSON.stringify(v) : String(v);
+                        if (keySamples[k].length < 3 && keySamples[k].indexOf(sVal) === -1) keySamples[k].push(sVal);
+                    });
                 });
 
-                this.externalImport = { rows: found.rows, keys: order, mapping: {} };
+                this.externalImport = {
+                    rows: found.rows, keys: order, mapping: {},
+                    keySamples: keySamples, keyHasData: keyHasData, showEmptyKeys: false
+                };
                 order.forEach((k) => { this.externalImport.mapping[k] = 'skip'; });
                 this.renderExternalKeyMap();
                 document.getElementById('eiMappingSection').classList.remove('hidden');
@@ -5096,25 +5108,55 @@
 
             renderExternalKeyMap() {
                 const box = document.getElementById('eiKeyMapContainer');
-                const self = this;
                 const fieldOptions = [
-                    ['skip', '사용 안 함'], ['caseNumber', '사건번호'], ['title', '제목'], ['charge', '죄명'],
-                    ['status', '상태'], ['overview', '사건개요'], ['reference', '참고사항'], ['remarks', '비고']
+                    ['skip', '사용 안 함'],
+                    ['caseNumber', '사건번호'],
+                    ['createdAt', '접수일자'],
+                    ['title', '제목'],
+                    ['charge', '죄명'],
+                    ['status', '상태'],
+                    ['overview', '사건개요'],
+                    ['reference', '참고사항 (피의자·피해자·접수단서 등)'],
+                    ['remarks', '비고']
                 ];
-                box.innerHTML = this.externalImport.keys.map((k) => {
-                    const raw = this.externalImport.rows[0] ? this.externalImport.rows[0][k] : '';
-                    const sample = (raw === null || raw === undefined) ? '' : (typeof raw === 'object' ? JSON.stringify(raw) : String(raw));
-                    const options = fieldOptions.map(([val, label]) =>
-                        `<option value="${val}" ${this.externalImport.mapping[k] === val ? 'selected' : ''}>${label}</option>`
-                    ).join('');
-                    return `
-                        <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; padding:0.3rem 0.2rem;">
-                            <b style="min-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${this.escapeAttr(k)}">${this.escapeHtml(k)}</b>
-                            <span style="flex:1; color:var(--text-secondary); font-size:0.76rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${this.escapeAttr(sample)}">${this.escapeHtml(sample.slice(0, 40))}</span>
-                            <select onchange="app.updateExternalMapping('${this.escapeAttr(k).replace(/'/g, "\\'")}', this.value)">${options}</select>
+                const allKeys = this.externalImport.keys;
+                const emptyKeys = allKeys.filter((k) => !this.externalImport.keyHasData[k]);
+                const visibleKeys = this.externalImport.showEmptyKeys ? allKeys : allKeys.filter((k) => this.externalImport.keyHasData[k]);
+
+                let html = '';
+                if (emptyKeys.length) {
+                    html += `
+                        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.74rem; color:var(--text-muted); padding:0.3rem 0.2rem; border-bottom:1px dashed var(--border-light); margin-bottom:0.3rem;">
+                            <span>값이 비어있는(null) 키 ${emptyKeys.length}개는 숨겼습니다.</span>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="app.toggleExternalEmptyKeys()">${this.externalImport.showEmptyKeys ? '숨기기' : '모두 보기'}</button>
                         </div>
                     `;
-                }).join('');
+                }
+
+                if (!visibleKeys.length) {
+                    html += `<div style="color:var(--text-muted); font-size:0.8rem; padding:0.4rem;">표시할 키가 없습니다.</div>`;
+                } else {
+                    html += visibleKeys.map((k) => {
+                        const samples = this.externalImport.keySamples[k] || [];
+                        const sample = samples.length ? samples.join(' / ') : '(값 없음)';
+                        const options = fieldOptions.map(([val, label]) =>
+                            `<option value="${val}" ${this.externalImport.mapping[k] === val ? 'selected' : ''}>${label}</option>`
+                        ).join('');
+                        return `
+                            <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; padding:0.3rem 0.2rem;">
+                                <b style="min-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${this.escapeAttr(k)}">${this.escapeHtml(k)}</b>
+                                <span style="flex:1; color:var(--text-secondary); font-size:0.76rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${this.escapeAttr(sample)}">${this.escapeHtml(sample.slice(0, 60))}</span>
+                                <select onchange="app.updateExternalMapping('${this.escapeAttr(k).replace(/'/g, "\\'")}', this.value)">${options}</select>
+                            </div>
+                        `;
+                    }).join('');
+                }
+                box.innerHTML = html;
+            },
+
+            toggleExternalEmptyKeys() {
+                this.externalImport.showEmptyKeys = !this.externalImport.showEmptyKeys;
+                this.renderExternalKeyMap();
             },
 
             updateExternalMapping(key, value) {
@@ -5148,13 +5190,22 @@
                         customValues: {},
                         people: []
                     };
+                    const freeTextFields = { overview: true, reference: true, remarks: true };
                     Object.keys(mapping).forEach((k) => {
                         const target = mapping[k];
                         if (!target || target === 'skip' || target === 'caseNumber') return;
                         const val = row[k];
                         const strVal = (val === undefined || val === null) ? '' : String(val);
-                        if (target === 'status') newCase.status = this.normalizeImportedStatus(strVal);
-                        else newCase[target] = strVal;
+                        if (!strVal) return;
+                        if (target === 'status') {
+                            newCase.status = this.normalizeImportedStatus(strVal);
+                        } else if (freeTextFields[target]) {
+                            // 여러 키를 같은 항목(참고사항 등)에 매핑하면 덮어쓰지 않고 줄바꿈으로 이어붙임
+                            const line = k + ': ' + strVal;
+                            newCase[target] = newCase[target] ? (newCase[target] + '\n' + line) : line;
+                        } else {
+                            newCase[target] = strVal;
+                        }
                     });
                     this.ensureCasePeople(newCase);
                     this.cases.unshift(newCase);
