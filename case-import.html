@@ -71,6 +71,7 @@
         <div class="tabs" style="margin-top:0.8rem;">
             <button type="button" class="tab-btn active" id="tabBtnUrl" onclick="app.switchTab('url')">🌐 URL로 가져오기</button>
             <button type="button" class="tab-btn" id="tabBtnPaste" onclick="app.switchTab('paste')">📋 직접 붙여넣기</button>
+            <button type="button" class="tab-btn" id="tabBtnFile" onclick="app.switchTab('file')">📁 파일</button>
         </div>
 
         <div id="urlPanel" class="tab-panel">
@@ -79,7 +80,7 @@
                 <button type="button" class="btn" onclick="app.fetchFromUrl()">가져오기</button>
                 <button type="button" class="btn secondary" onclick="app.openUrlInNewTab()">🔗 새 탭에서 열기</button>
             </div>
-            <p class="hint">[가져오기]는 이 페이지가 그 주소로 직접 접속해 JSON을 가져옵니다. 다른 서버로는 통신하지 않습니다. 다만 브라우저의 교차출처 정책(CORS) 때문에 대상 시스템이 허용하지 않으면 실패할 수 있습니다 — 그런 경우 [🔗 새 탭에서 열기]로 직접 연 뒤, 그 탭에서 전체 선택(Ctrl+A) · 복사(Ctrl+C)하고 [📋 직접 붙여넣기] 탭의 [클립보드에서 붙여넣기]를 사용하세요.</p>
+            <p class="hint">[가져오기]는 이 페이지가 그 주소로 직접 접속해 JSON을 가져옵니다. 다른 서버로는 통신하지 않습니다. 다만 브라우저의 교차출처 정책(CORS) 때문에 대상 시스템이 허용하지 않으면 실패할 수 있습니다 — 그런 경우 [🔗 새 탭에서 열기]로 직접 연 뒤, 그 탭에서 전체 선택(Ctrl+A) · 복사(Ctrl+C)하고 [📋 직접 붙여넣기] 탭의 [클립보드에서 붙여넣기]를 사용하거나, 개발자도구 콘솔에서 직접 .json 파일로 저장해 [📁 파일] 탭으로 불러오세요.</p>
         </div>
 
         <div id="pastePanel" class="tab-panel hidden">
@@ -91,6 +92,11 @@
             <div class="row">
                 <button type="button" class="btn" onclick="app.loadFromPaste()">붙여넣은 내용으로 가져오기</button>
             </div>
+        </div>
+
+        <div id="filePanel" class="tab-panel hidden">
+            <input type="file" id="fileInput" accept=".json,application/json" onchange="app.loadFromFile(event)">
+            <p class="hint">로컬 .json 파일을 선택하면 바로 읽어서 불러옵니다. (예: 개발자도구 콘솔에서 fetch 결과를 .json 파일로 저장해둔 것)</p>
         </div>
 
         <div id="fetchMsg" class="msg"></div>
@@ -176,8 +182,10 @@ var app = {
     switchTab: function (tab) {
         document.getElementById('tabBtnUrl').classList.toggle('active', tab === 'url');
         document.getElementById('tabBtnPaste').classList.toggle('active', tab === 'paste');
+        document.getElementById('tabBtnFile').classList.toggle('active', tab === 'file');
         document.getElementById('urlPanel').classList.toggle('hidden', tab !== 'url');
         document.getElementById('pastePanel').classList.toggle('hidden', tab !== 'paste');
+        document.getElementById('filePanel').classList.toggle('hidden', tab !== 'file');
     },
 
     showMsg: function (text, kind) {
@@ -230,10 +238,20 @@ var app = {
         this.handleRawText(text);
     },
 
+    loadFromFile: function (event) {
+        var file = event.target.files && event.target.files[0];
+        if (!file) return;
+        var self = this;
+        var reader = new FileReader();
+        reader.onload = function (e) { self.handleRawText(String(e.target.result)); };
+        reader.onerror = function () { self.showMsg('파일을 읽지 못했습니다.', 'bad'); };
+        reader.readAsText(file, 'utf-8');
+    },
+
     handleRawText: function (text) {
         var data;
         try {
-            data = JSON.parse(text);
+            data = JSON.parse(text.replace(/^﻿/, ''));
         } catch (e) {
             this.showMsg('JSON 파싱 실패: ' + e.message, 'bad');
             return;
