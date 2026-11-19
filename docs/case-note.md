@@ -103,6 +103,12 @@ case = {
 - `getDefaultDashboardPrefs()` 가 기본값(정렬=드래그순서, 상태필터=전체, 보이는 열) 정의. `loadDatabase()`에 하위호환 방어(`activityLog`/`dashboardPrefs` 없으면 기본값) 추가됨.
 - 검증: Playwright로 테이블 렌더/열 숨김/활동 로그 집계/헤더 메뉴 열고닫기/퀸 저장-재로드 라운드트립까지 확인. 기존 `check_people/check_forms/check_casenote_export/check_migration` 전부 재통과(회귀 없음). `check_vars.js` 는 본 작업 이전부터 깨져 있던 스크립트(오래된 API 참조)로 무관.
 - **(같은 날, 후속) 상단 수평 툴바 → 좌측 필터 사이드바로 재배치**: 검색창/상태 필터/정렬/표시 열 설정을 `.list-toolbar`(가로 한 줄)에서 `<aside class="filter-sidebar">`(테이블 왼쪽, 190px 고정폭)로 이동. 상태 필터는 `<select>` 대신 건수가 보이는 세로 pill 목록(`#statusFilterPills`, `app.renderStatusFilterPills()`)으로 교체 — 상태값은 더 이상 DOM 에서 읽지 않고 `app.activeStatusFilter` 상태로 직접 관리(`app.setStatusFilter(value)`), `dashboardPrefs.tableStatus` 에 계속 영속화됨. 정렬 셀렉트·표시 열 버튼은 그대로 사이드바 안으로 이동. "+ 새 사건" 버튼도 사이드바 맨 위로 이동.
+- **(같은 날, 재후속) 기능 기준 3단 그리드로 전면 재배치**: 사용자 요청 — "애매하게 원래 배치 따라가지 말고 아예 새로 디자인 후 기능/위젯 배치". `#listView` 내부를 `.dash-grid`(`display:flex`, 3열)로 교체:
+  - **좌측 레일**(`.rail-left`, 200px) = "현황/필터" 묶음 — 통계 4개를 2×2 컴팩트 숫자 그리드(`.stat-compact-grid`)로 압축 + 상태 pill 목록(`#statusFilterPills`).
+  - **중앙**(`.dash-main`, flex:1) = "목록 조작/본문" 묶음 — 검색창·정렬·표시열·새 사건 버튼을 한 줄 툴바(`.table-toolbar`)로, 그 아래 `.case-table`. `#case-list-body`는 `overflow:auto`(가로 포함)로 바뀌어 좁은 화면에서는 테이블이 가로 스크롤됨(열이 잘리지 않고 스크롤로 이동).
+  - **우측 레일**(`.rail-right`, 300px, 1400px 이하에서 260px) = "개인 작업 추적" 묶음 — `오늘의 할 일` 패널(`flex:1`로 늘어남) + 그 아래 활동 기여 그래프(셀 10px로 축소해 좁은 레일 폭에 맞춤).
+  - 모든 하위 요소의 `id`는 그대로 유지(`statTotalCases` 등)해 JS 렌더 함수는 변경 없음 — 구조(부모 컨테이너)만 재배치.
+  - 검증: 1600px/1280px 두 폭에서 스크린샷 확인(좁은 폭에서 테이블 가로 스크롤 정상 동작, 레일 카드가 뷰포트 밖으로 넘치지 않음), 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션/퀸 라운드트립) 전부 재통과.
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.

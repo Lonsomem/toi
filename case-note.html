@@ -1856,7 +1856,8 @@
         .activity-cell.level-4 { background: #216e39; }
 
         /* --- 사건 목록: 밀도 높은 테이블 --- */
-        .case-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; background: var(--bg-surface); }
+        #case-list-body.case-cards-grid { display: block; overflow: auto; }
+        .case-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 0.78rem; background: var(--bg-surface); }
         .case-table thead th {
             text-align: left; padding: 0.45rem 0.6rem; font-size: 0.68rem; font-weight: 700;
             color: var(--text-muted); border-bottom: 1px solid var(--border-color); white-space: nowrap;
@@ -1921,6 +1922,40 @@
         .sidebar-link-btn:hover { background: var(--bg-body); }
         .sidebar-dropdown { position: absolute; left: 0; right: 0; top: calc(100% + 4px); }
         .list-table-area { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+
+        /* --- 기능 기반 3단 대시보드 레이아웃 (좌: 현황/필터, 중앙: 목록, 우: 개인 작업) --- */
+        .dash-grid { flex: 1; min-height: 0; display: flex; gap: 0.9rem; align-items: stretch; }
+        .rail { display: flex; flex-direction: column; gap: 0.75rem; flex-shrink: 0; min-height: 0; }
+        .rail-left { width: 200px; }
+        .rail-right { width: 300px; }
+        .rail-card {
+            background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 10px;
+            padding: 0.8rem 0.85rem; flex-shrink: 0;
+        }
+        .rail-card-title {
+            font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.04em; margin-bottom: 0.6rem;
+        }
+        .stat-compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
+        .stat-compact { display: flex; flex-direction: column; gap: 0.1rem; }
+        .stat-compact-value { font-size: 1.15rem; font-weight: 800; color: var(--text-main); }
+        .stat-compact-label { font-size: 0.65rem; color: var(--text-muted); font-weight: 600; }
+
+        .dash-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.7rem; min-height: 0; }
+        .table-toolbar { display: flex; align-items: center; gap: 0.5rem; }
+        .table-search { flex: 1; max-width: 360px; }
+        .table-sort { width: 170px; flex-shrink: 0; }
+        .table-toolbar .column-menu-wrap { flex-shrink: 0; }
+        .table-toolbar .sidebar-link-btn { width: auto; white-space: nowrap; }
+        .table-column-dropdown { left: auto; right: 0; }
+        .table-new-btn { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
+
+        .rail-flex-card { flex: 1; min-height: 0; width: 100% !important; }
+        .rail-right .activity-graph-card { flex-shrink: 0; margin-bottom: 0; }
+        .rail-right .activity-graph-grid { grid-template-rows: repeat(7, 10px); gap: 2px; }
+        .rail-right .activity-cell { width: 10px; height: 10px; }
+
+        @media (max-width: 1400px) { .rail-right { width: 260px; } }
 
         /* --- 표시 열 선택 드롭다운 --- */
         .column-menu-wrap { position: relative; }
@@ -2020,140 +2055,106 @@
              VIEW 1: 그래픽 사건 목록 대시보드 (CASE LIST VIEW)
              ====================================================================== -->
         <section id="listView" class="view-section active">
-            <!-- 상단 그래픽 KPI 카드 4종 -->
-            <div class="stats-bar">
-                <div class="stat-widget">
-                    <div>
-                        <div class="stat-label">전체 관리 사건</div>
-                        <div class="stat-value" id="statTotalCases">0건</div>
-                    </div>
-                    <div class="stat-graphic-icon" style="background: var(--primary-light); color: var(--primary);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
-                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                    </div>
-                </div>
-                <div class="stat-widget stat-active">
-                    <div>
-                        <div class="stat-label">수사중 · 영장진행</div>
-                        <div class="stat-value" id="statActiveCases" style="color: var(--primary);">0건</div>
-                    </div>
-                    <div class="stat-graphic-icon" style="background: #e0f2fe; color: #0284c7;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <polyline points="12 6 12 12 16 14"></polyline>
-                        </svg>
-                    </div>
-                </div>
-                <div class="stat-widget stat-done">
-                    <div>
-                        <div class="stat-label">송치완료 · 타관이송</div>
-                        <div class="stat-value" id="statCompletedCases" style="color: var(--success);">0건</div>
-                    </div>
-                    <div class="stat-graphic-icon" style="background: var(--success-bg); color: var(--success);">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                        </svg>
-                    </div>
-                </div>
-                <div class="stat-widget stat-avg">
-                    <div>
-                        <div class="stat-label">전체 평균 진행률</div>
-                        <div class="stat-value" id="statAvgProgress" style="color: #d97706;">0%</div>
-                    </div>
-                    <div class="stat-graphic-icon" style="background: var(--warning-bg); color: #d97706;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
-                            <line x1="18" y1="20" x2="18" y2="10"></line>
-                            <line x1="12" y1="20" x2="12" y2="4"></line>
-                            <line x1="6" y1="20" x2="6" y2="14"></line>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-
-            <div class="activity-graph-card">
-                <div class="activity-graph-head">
-                    <span>📈 활동 기여 그래프</span>
-                    <span class="activity-graph-sub">최근 18주 · 완료한 할 일 + 새로 등록한 사건 기준</span>
-                </div>
-                <div id="activityGraphContainer" class="activity-graph-body"></div>
-            </div>
-
-            <div class="list-split">
-                <!-- 좌측: 할 일 패널 (다음 할 일 / 전체 할 일) -->
-                <aside class="todo-panel">
-                    <div class="todo-panel-head">
-                        <div class="todo-panel-title">
-                            <span>🎯 오늘의 할 일</span>
-                            <span id="priorityTodoCount" class="priority-count-pill">0건</span>
-                        </div>
-                        <div id="todoPanelSub" class="todo-panel-sub"></div>
-                        <div class="todo-tabs">
-                            <button type="button" id="todoTabToday" class="todo-tab active" onclick="app.setTodoTab('today')">★ 오늘<b id="todoTabTodayCount">0</b></button>
-                            <button type="button" id="todoTabNext" class="todo-tab" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
-                            <button type="button" id="todoTabAll" class="todo-tab" onclick="app.setTodoTab('all')">전체 할 일<b id="todoTabAllCount">0</b></button>
-                            <label id="todoDoneToggle" class="todo-done-toggle" style="display:none;"><input type="checkbox" onchange="app.toggleTodoShowDone(this.checked)"> 완료 포함</label>
+            <div class="dash-grid">
+                <!-- 좌측 레일: 현황(통계) + 상태로 좁혀보기 -->
+                <aside class="rail rail-left">
+                    <div class="rail-card">
+                        <div class="rail-card-title">현황</div>
+                        <div class="stat-compact-grid">
+                            <div class="stat-compact">
+                                <span class="stat-compact-value" id="statTotalCases">0건</span>
+                                <span class="stat-compact-label">전체 사건</span>
+                            </div>
+                            <div class="stat-compact">
+                                <span class="stat-compact-value" id="statActiveCases" style="color: var(--accent);">0건</span>
+                                <span class="stat-compact-label">수사중·영장</span>
+                            </div>
+                            <div class="stat-compact">
+                                <span class="stat-compact-value" id="statCompletedCases" style="color: var(--success);">0건</span>
+                                <span class="stat-compact-label">송치·이송</span>
+                            </div>
+                            <div class="stat-compact">
+                                <span class="stat-compact-value" id="statAvgProgress" style="color: var(--warning);">0%</span>
+                                <span class="stat-compact-label">평균 진행률</span>
+                            </div>
                         </div>
                     </div>
-                    <div id="priorityTodoList" class="todo-scroll"></div>
+
+                    <div class="rail-card">
+                        <div class="rail-card-title">상태로 보기</div>
+                        <div id="statusFilterPills" class="status-pill-list"></div>
+                    </div>
                 </aside>
 
-                <!-- 우측: 좌측 필터 사이드바 + 사건 테이블 -->
-                <div class="list-main">
-                    <div class="list-content-row">
-                        <!-- 필터 사이드바 (검색·상태·정렬·표시 열) -->
-                        <aside class="filter-sidebar">
-                            <button type="button" class="btn btn-primary sidebar-new-btn" onclick="app.createNewCase()">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
-                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                </svg>
-                                새 사건
-                            </button>
-
-                            <div class="sidebar-search">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <circle cx="11" cy="11" r="8"></circle>
-                                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                </svg>
-                                <input type="search" id="searchInput" placeholder="사건번호, 제목, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
-                            </div>
-
-                            <div class="sidebar-section">
-                                <div class="sidebar-section-title">상태</div>
-                                <div id="statusFilterPills" class="status-pill-list"></div>
-                            </div>
-
-                            <div class="sidebar-section">
-                                <div class="sidebar-section-title">정렬</div>
-                                <select id="sortFilter" class="sidebar-select" onchange="app.currentPage=1; app.saveDashboardSortPref()">
-                                    <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
-                                    <option value="UPDATED_DESC">최근 수정일순</option>
-                                    <option value="CASENUM_DESC">사건번호순</option>
-                                    <option value="PROGRESS_ASC">진행률 낮은순</option>
-                                    <option value="PROGRESS_DESC">진행률 높은순</option>
-                                </select>
-                            </div>
-
-                            <div class="sidebar-section column-menu-wrap">
-                                <button type="button" class="sidebar-link-btn" onclick="app.toggleColumnMenu()">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                                    </svg>
-                                    표시 열 설정
-                                </button>
-                                <div id="columnMenuDropdown" class="column-menu-dropdown sidebar-dropdown"></div>
-                            </div>
-                        </aside>
-
-                        <div class="list-table-area">
-                            <div id="case-list-body" class="case-cards-grid"></div>
-                            <div id="paginationBar" class="pagination-bar"></div>
+                <!-- 중앙: 사건 목록 (검색·정렬·표시열 조작 + 테이블) -->
+                <main class="dash-main">
+                    <div class="table-toolbar">
+                        <div class="sidebar-search table-search">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <input type="search" id="searchInput" placeholder="사건번호, 제목, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
                         </div>
+                        <select id="sortFilter" class="sidebar-select table-sort" onchange="app.currentPage=1; app.saveDashboardSortPref()">
+                            <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
+                            <option value="UPDATED_DESC">최근 수정일순</option>
+                            <option value="CASENUM_DESC">사건번호순</option>
+                            <option value="PROGRESS_ASC">진행률 낮은순</option>
+                            <option value="PROGRESS_DESC">진행률 높은순</option>
+                        </select>
+                        <div class="column-menu-wrap">
+                            <button type="button" class="sidebar-link-btn" onclick="app.toggleColumnMenu()" title="표시할 열 선택">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                표시 열
+                            </button>
+                            <div id="columnMenuDropdown" class="column-menu-dropdown table-column-dropdown"></div>
+                        </div>
+                        <button type="button" class="btn btn-primary table-new-btn" onclick="app.createNewCase()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            새 사건
+                        </button>
                     </div>
-                </div>
+
+                    <div class="list-table-area">
+                        <div id="case-list-body" class="case-cards-grid"></div>
+                        <div id="paginationBar" class="pagination-bar"></div>
+                    </div>
+                </main>
+
+                <!-- 우측 레일: 오늘 할 일 + 활동 기여 그래프 (개인 작업 추적) -->
+                <aside class="rail rail-right">
+                    <div class="todo-panel rail-flex-card">
+                        <div class="todo-panel-head">
+                            <div class="todo-panel-title">
+                                <span>🎯 오늘의 할 일</span>
+                                <span id="priorityTodoCount" class="priority-count-pill">0건</span>
+                            </div>
+                            <div id="todoPanelSub" class="todo-panel-sub"></div>
+                            <div class="todo-tabs">
+                                <button type="button" id="todoTabToday" class="todo-tab active" onclick="app.setTodoTab('today')">★ 오늘<b id="todoTabTodayCount">0</b></button>
+                                <button type="button" id="todoTabNext" class="todo-tab" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
+                                <button type="button" id="todoTabAll" class="todo-tab" onclick="app.setTodoTab('all')">전체 할 일<b id="todoTabAllCount">0</b></button>
+                                <label id="todoDoneToggle" class="todo-done-toggle" style="display:none;"><input type="checkbox" onchange="app.toggleTodoShowDone(this.checked)"> 완료 포함</label>
+                            </div>
+                        </div>
+                        <div id="priorityTodoList" class="todo-scroll"></div>
+                    </div>
+
+                    <div class="activity-graph-card rail-card">
+                        <div class="activity-graph-head">
+                            <span>📈 활동 기여</span>
+                            <span class="activity-graph-sub">최근 18주</span>
+                        </div>
+                        <div id="activityGraphContainer" class="activity-graph-body"></div>
+                    </div>
+                </aside>
             </div>
         </section>
 
