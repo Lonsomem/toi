@@ -117,6 +117,18 @@ case = {
   - 모든 렌더 대상 id 는 그대로 유지(구조 재배치만), 기존 회귀 테스트 전부 재통과.
 - **(같은 날, 네 번째 — 반응형 수정) 태블릿/모바일에서 레이아웃이 깨지는 문제**: `.github-profile-layout`(flex row, 사이드바 260px 고정)이 좁은 화면에서 `.profile-main`을 거의 0px로 짜부라뜨림(375px 폭에서 43px까지). 기존 `@media (max-width: 1100px)` 블록(이미 `html,body`/`.main-container`를 `overflow:auto`로 풀어 한 화면 고정을 해제하던 지점)에 편승해 `.github-profile-layout { flex-direction: column; }`로 세로 1단 전환(사이드바 위, 본문 아래, 페이지 전체 스크롤). `@media (max-width: 640px)`를 추가로 둬서 "사건" 섹션 툴바(검색/정렬/표시항목/새사건)를 세로로 쌓고 폭 100%로, 헤더의 파일 동기화 배지는 숨김(⋮ 메뉴로 여전히 접근 가능). 1024/820/428/375px 네 폭에서 가로 스크롤 없음·메뉴 안 잘림·본문 폭 정상 확인, 기존 회귀 테스트 전부 재통과.
 
+## 5-2. 사건 상태(수사중/영장신청/…) 커스터마이즈 (2026-11-19)
+- `template.statusOptions: [{id, value, emoji, badgeClass, group}]` 추가 (`getDefaultStatusOptions()` 가 기존 5개값 그대로 기본값: 수사중/영장신청/송치완료/타관이송/중지각하). `badgeClass` 는 기존 5개 CSS 색상 클래스(`status-ing/-warrant/-done/-transfer/-hold`) 중 하나만 재사용(완전 자유 색상은 아님). `group` 은 `active`(현황의 "수사중·영장" 집계) / `done`(현황의 "송치·이송" 집계 + 할 일 패널에서 종결 제외) / `hold`(집계 제외) 중 하나.
+- `loadDatabase()` 에 `ensureTemplateStatusOptions()` 하위호환 가드 추가(없으면 기본값, 항목별 누락 필드 보정).
+- 하드코딩되어 있던 상태 문자열 비교(`c.status === '수사중' || ...`)를 전부 `this.getStatusGroup(status)`/`this.getStatusBadgeClass(status)` 조회로 교체: 현황 통계(activeCount/doneCount), 할 일 패널의 `isClosed`/`stClass`, 상세화면 `isFinished`, `getStatusBadgeClass()` 자체, `renderStatusFilterPills()`의 상태 목록, `#detailStatus` 셀렉트(`renderDetailStatusOptions()`로 동적 렌더, 과거 값이 목록에 없으면 "(설정에 없음)" 임시 옵션으로 데이터 보존).
+- 템플릿 모달에 **"0. 사건 상태 설정"** 섹션 추가(`#tplStatusOptionsList`): 상태별 이모지·이름·색상(5종 중 선택)·분류(진행중/종결/기타) 행 + `[+ 상태 추가]`. `app.addTemplateStatusOption()/updateTemplateStatusOption(id,field,value)/removeTemplateStatusOption(id)`.
+  - **이름(`value`) 변경 시 기존 사건들의 `status` 문자열도 함께 변경**(cascade) — 그래야 이미 "수사중"으로 저장된 사건들이 이름을 "검토중"으로 바꿨을 때 끊기지 않고 따라감.
+  - **삭제**는 cascade 하지 않음(최소 1개는 항상 남겨야 함, `showToast` 경고) — 이미 그 상태를 쓰던 사건은 `status` 문자열이 그대로 남아 상세화면에서 "(설정에 없음)"으로 표시되고 데이터 자체는 보존.
+  - `resetDefaultTemplate()` 은 `getDefaultMasterTemplate()` 전체를 다시 쓰므로 `statusOptions` 도 기본 5개로 복원됨(단, `globalForms` 는 보존하던 기존 동작 그대로).
+- `createNewCase()` 의 기본 상태값을 하드코딩 `'수사중'` 대신 `this.getStatusOptions()[0].value` 로 변경(사용자가 목록 맨 앞을 바꾸면 새 사건도 그 값으로 시작).
+- `dynamicContainerIds` 에 `detailStatus`(이제 옵션을 JS 로 그리는 select), `tplStatusOptionsList` 추가.
+- 검증: 템플릿 모달에서 추가/이름변경(cascade 확인)/색상·분류 변경/최소 1개 제한/상세화면 셀렉트 반영/상태 pill 반영/현황 통계 반영까지 Playwright로 확인, 퀸 저장→재로드 라운드트립으로 `statusOptions` 보존 확인, 기존 회귀 테스트 전부 재통과.
+
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
 2. 데이터 변경 끝에 `onStateChanged()`; 목록 갱신이 필요하면 `renderCaseList()`, 상세면 `renderCaseDetail()`/`renderDetailChecklist()`.

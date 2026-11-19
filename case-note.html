@@ -2288,13 +2288,7 @@
                     <div class="hero-meta-row">
                         <input type="text" id="detailCaseNumber" class="inline-case-num" placeholder="사건번호" oninput="app.updateCurrentCaseField('caseNumber', this.value)">
                         <input type="text" id="detailCharge" class="inline-charge-input" placeholder="죄명 (예: 사기)" oninput="app.updateCurrentCaseField('charge', this.value)" onblur="app.autoLoadChargeForms()" title="죄명 입력 후 포커스를 벗어나면, 이 죄명에 설정된 우선 양식이 자동으로 불러와집니다.">
-                        <select id="detailStatus" class="inline-status-select" onchange="app.updateCurrentCaseField('status', this.value)">
-                            <option value="수사중">🔵 수사중</option>
-                            <option value="영장신청">🟣 영장신청</option>
-                            <option value="송치완료">🟢 송치완료</option>
-                            <option value="타관이송">💠 타관이송</option>
-                            <option value="중지/각하">🟠 중지/각하</option>
-                        </select>
+                        <select id="detailStatus" class="inline-status-select" onchange="app.updateCurrentCaseField('status', this.value)"></select>
                         <span id="saveStatusBadge" style="font-size: 0.72rem; color: var(--success); font-weight: 700;">● 자동저장됨</span>
                         <span id="detailUpdatedAt" style="font-size: 0.7rem; color: var(--text-muted); margin-left: auto;"></span>
                     </div>
@@ -2600,6 +2594,16 @@
                 <button type="button" class="btn btn-ghost" onclick="app.closeTemplateModal()">✕</button>
             </div>
             <div class="modal-body">
+                <!-- 0. 사건 상태 설정 -->
+                <div style="margin-bottom: 1.4rem;">
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">0. 사건 상태 설정 (목록·상세화면 상태값 커스텀)</h3>
+                    <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        상태 이름·이모지·색상·분류(진행중/종결/기타)를 바꿀 수 있습니다. "분류"는 좌측 현황 통계(수사중·영장진행 / 송치완료·타관이송)와 오늘 할 일에서 종결 사건 제외 여부에 쓰입니다. 이미 쓰인 상태를 지우면 해당 사건들은 상세화면에서 "(설정에 없음)"으로 표시되어 데이터는 보존됩니다.
+                    </p>
+                    <div id="tplStatusOptionsList" style="display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem;"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="app.addTemplateStatusOption()">+ 상태 추가</button>
+                </div>
+
                 <!-- 1. 사건별 공통 현출 추가 항목 -->
                 <div style="margin-bottom: 1.4rem;">
                     <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">1. 사건별 공통 현출 추가 항목 (우측 하단 위젯에 탭으로 자동 현출)</h3>
@@ -2828,8 +2832,19 @@
             return Object.assign(createPersonRecord(role, subLabel, slug), { fieldValues: fieldValues });
         }
 
+        function getDefaultStatusOptions() {
+            return [
+                { id: 'st_ing', value: '수사중', emoji: '🔵', badgeClass: 'status-ing', group: 'active' },
+                { id: 'st_warrant', value: '영장신청', emoji: '🟣', badgeClass: 'status-warrant', group: 'active' },
+                { id: 'st_done', value: '송치완료', emoji: '🟢', badgeClass: 'status-done', group: 'done' },
+                { id: 'st_transfer', value: '타관이송', emoji: '💠', badgeClass: 'status-transfer', group: 'done' },
+                { id: 'st_hold', value: '중지/각하', emoji: '🟠', badgeClass: 'status-hold', group: 'hold' }
+            ];
+        }
+
         function getDefaultMasterTemplate() {
             return {
+                statusOptions: getDefaultStatusOptions(),
                 checklist: [
                     '사건 배당 확인 및 고소장·증거자료 초기 검토',
                     '고소인(피해자) 출석 조율 및 진술조서 작성',
@@ -3025,7 +3040,7 @@
             renderStatusFilterPills() {
                 const container = document.getElementById('statusFilterPills');
                 if (!container) return;
-                const statuses = ['ALL', '수사중', '영장신청', '송치완료', '타관이송', '중지/각하'];
+                const statuses = ['ALL', ...this.getStatusOptions().map(o => o.value)];
                 const labels = { ALL: '전체' };
                 const active = this.activeStatusFilter || 'ALL';
                 container.innerHTML = statuses.map(st => {
@@ -3077,6 +3092,7 @@
                         this.template.globalForms = getDefaultMasterTemplate().globalForms;
                     }
                     this.template.globalForms.forEach(gf => { if (!Array.isArray(gf.autoCharges)) gf.autoCharges = []; });
+                    this.ensureTemplateStatusOptions();
                     this.ensureTemplatePersonRoleFields();
                     this.cases.forEach(cs => {
                         if (typeof cs.charge !== 'string') cs.charge = '';
@@ -3283,7 +3299,9 @@
                     'eiKeyMapContainer',
                     'activityGraphContainer',
                     'columnMenuDropdown',
-                    'statusFilterPills'
+                    'statusFilterPills',
+                    'detailStatus',
+                    'tplStatusOptionsList'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -3451,11 +3469,29 @@
             },
 
             getStatusBadgeClass(status) {
-                if (status === '영장신청') return 'status-warrant';
-                if (status === '송치완료') return 'status-done';
-                if (status === '타관이송') return 'status-transfer';
-                if (status === '중지/각하') return 'status-hold';
-                return 'status-ing';
+                const opt = this.getStatusOptions().find(o => o.value === status);
+                return opt ? opt.badgeClass : 'status-ing';
+            },
+
+            getStatusGroup(status) {
+                const opt = this.getStatusOptions().find(o => o.value === status);
+                return opt ? opt.group : 'active';
+            },
+
+            /**
+             * 상세화면 상태 셀렉트를 template.statusOptions 기준으로 다시 그림.
+             * 현재 값이 목록에 없는(과거 설정에서 삭제/변경된) 상태면, 데이터 유실 없이 그대로 보이도록 임시 옵션을 추가.
+             */
+            renderDetailStatusOptions(currentStatus) {
+                const sel = document.getElementById('detailStatus');
+                if (!sel) return;
+                const opts = this.getStatusOptions();
+                let html = opts.map(o => `<option value="${this.escapeAttr(o.value)}">${o.emoji} ${this.escapeHtml(o.value)}</option>`).join('');
+                if (currentStatus && !opts.some(o => o.value === currentStatus)) {
+                    html += `<option value="${this.escapeAttr(currentStatus)}">⚪ ${this.escapeHtml(currentStatus)} (설정에 없음)</option>`;
+                }
+                sel.innerHTML = html;
+                sel.value = currentStatus || (opts[0] && opts[0].value) || '';
             },
 
             /**
@@ -3529,8 +3565,8 @@
                 this.renderStatusFilterPills();
 
                 const total = this.cases.length;
-                const activeCount = this.cases.filter(c => c.status === '수사중' || c.status === '영장신청').length;
-                const doneCount = this.cases.filter(c => c.status === '송치완료' || c.status === '타관이송').length;
+                const activeCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'active').length;
+                const doneCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'done').length;
                 let sumPct = 0;
                 this.cases.forEach(c => { sumPct += this.calculateProgress(c).percent; });
                 const avgPct = total > 0 ? Math.round(sumPct / total) : 0;
@@ -3853,8 +3889,13 @@
                     const orderB = typeof b.priorityOrder === 'number' ? b.priorityOrder : this.cases.indexOf(b);
                     return orderA - orderB;
                 });
-                const isClosed = c => c.status === '송치완료' || c.status === '타관이송';
-                const stClass = c => c.status === '영장신청' ? 'st-warrant' : (c.status === '중지/각하' ? 'st-hold' : '');
+                const isClosed = c => this.getStatusGroup(c.status) === 'done';
+                const stClass = c => {
+                    const bc = this.getStatusBadgeClass(c.status);
+                    if (bc === 'status-warrant') return 'st-warrant';
+                    if (bc === 'status-hold') return 'st-hold';
+                    return '';
+                };
                 const chargeChip = c => c.charge ? `<span class="charge-chip" style="font-size:0.64rem;">${this.escapeHtml(c.charge)}</span>` : '';
 
                 const nextActions = [];
@@ -4202,7 +4243,7 @@
                 const newCase = {
                     id: 'case_' + Date.now(),
                     caseNumber: `${year}-${randomNum}`,
-                    status: '수사중',
+                    status: this.getStatusOptions()[0].value,
                     title: '신규 배당 사건 (사건개요 및 피해 현황 요약 입력)',
                     overview: '',
                     charge: '',
@@ -4263,7 +4304,7 @@
                 if (!current) return;
 
                 document.getElementById('detailCaseNumber').value = current.caseNumber || '';
-                document.getElementById('detailStatus').value = current.status || '수사중';
+                this.renderDetailStatusOptions(current.status);
                 document.getElementById('detailTitle').value = current.title || '';
                 document.getElementById('detailCharge').value = current.charge || '';
                 document.getElementById('detailCrimeFact').value = current.crimeFact || '';
@@ -4308,7 +4349,7 @@
                     { label: '송치·종결', threshold: 100 }
                 ];
 
-                const isFinished = current.status === '송치완료' || current.status === '타관이송';
+                const isFinished = this.getStatusGroup(current.status) === 'done';
                 const stepperEl = document.getElementById('heroPipelineStepper');
                 if (!stepperEl) return;
 
@@ -4635,6 +4676,93 @@
                (template.personRoleFields) + 사람별 값 덮어쓰기(fieldValues) / 제외(removedFieldIds)
                / 그 사람만의 추가 필드(extraFields). 서식에서는 {{식별자(slug).필드명}} 으로 사용.
                ====================================================================== */
+            ensureTemplateStatusOptions() {
+                if (!Array.isArray(this.template.statusOptions) || !this.template.statusOptions.length) {
+                    this.template.statusOptions = getDefaultStatusOptions();
+                }
+                this.template.statusOptions.forEach((opt, i) => {
+                    if (!opt.id) opt.id = 'st_custom_' + Date.now() + '_' + i;
+                    if (!opt.badgeClass) opt.badgeClass = 'status-ing';
+                    if (!opt.group) opt.group = 'active';
+                    if (!opt.emoji) opt.emoji = '⚪';
+                });
+            },
+
+            getStatusOptions() {
+                if (!Array.isArray(this.template.statusOptions) || !this.template.statusOptions.length) {
+                    return getDefaultStatusOptions();
+                }
+                return this.template.statusOptions;
+            },
+
+            renderTemplateStatusOptions() {
+                this.ensureTemplateStatusOptions();
+                const list = document.getElementById('tplStatusOptionsList');
+                if (!list) return;
+                const colorOptions = [
+                    { v: 'status-ing', label: '🔵 파랑' },
+                    { v: 'status-warrant', label: '🟣 보라' },
+                    { v: 'status-done', label: '🟢 초록' },
+                    { v: 'status-transfer', label: '🩵 하늘' },
+                    { v: 'status-hold', label: '🟠 주황' }
+                ];
+                const groupOptions = [
+                    { v: 'active', label: '진행중 (현황에 "수사중·영장" 집계)' },
+                    { v: 'done', label: '종결 (현황에 "송치·이송" 집계, 할 일 패널 제외)' },
+                    { v: 'hold', label: '기타 (현황 집계 제외)' }
+                ];
+                list.innerHTML = this.template.statusOptions.map((opt, idx) => `
+                    <div style="display: flex; gap: 0.4rem; align-items: center; background: var(--bg-subtle); padding: 0.4rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); flex-wrap: nowrap;">
+                        <input type="text" value="${this.escapeAttr(opt.emoji)}" style="width: 44px; flex: none; text-align: center;" title="이모지" oninput="app.updateTemplateStatusOption('${opt.id}', 'emoji', this.value)">
+                        <input type="text" value="${this.escapeAttr(opt.value)}" placeholder="상태 이름" style="width: 110px; flex: none; font-weight: 700;" oninput="app.updateTemplateStatusOption('${opt.id}', 'value', this.value)">
+                        <select onchange="app.updateTemplateStatusOption('${opt.id}', 'badgeClass', this.value)" style="width: 110px; flex: none;">
+                            ${colorOptions.map(c => `<option value="${c.v}" ${c.v === opt.badgeClass ? 'selected' : ''}>${c.label}</option>`).join('')}
+                        </select>
+                        <select onchange="app.updateTemplateStatusOption('${opt.id}', 'group', this.value)" style="width: auto; flex: 1; min-width: 0;">
+                            ${groupOptions.map(g => `<option value="${g.v}" ${g.v === opt.group ? 'selected' : ''}>${g.label}</option>`).join('')}
+                        </select>
+                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger); flex: none;" onclick="app.removeTemplateStatusOption('${opt.id}')" title="삭제 (이미 사용 중인 사건의 데이터는 보존됩니다)">삭제</button>
+                    </div>
+                `).join('');
+            },
+
+            addTemplateStatusOption() {
+                this.ensureTemplateStatusOptions();
+                this.template.statusOptions.push({
+                    id: 'st_custom_' + Date.now(),
+                    value: '새 상태',
+                    emoji: '⚪',
+                    badgeClass: 'status-ing',
+                    group: 'active'
+                });
+                this.onStateChanged();
+                this.renderTemplateStatusOptions();
+            },
+
+            updateTemplateStatusOption(id, field, value) {
+                const opt = (this.template.statusOptions || []).find(o => o.id === id);
+                if (!opt) return;
+                if (field === 'value') {
+                    const oldValue = opt.value;
+                    if (oldValue && oldValue !== value) {
+                        this.cases.forEach(c => { if (c.status === oldValue) c.status = value; });
+                    }
+                }
+                opt[field] = value;
+                this.onStateChanged();
+                if (field === 'badgeClass' || field === 'group') this.renderTemplateStatusOptions();
+            },
+
+            removeTemplateStatusOption(id) {
+                if (!this.template.statusOptions || this.template.statusOptions.length <= 1) {
+                    this.showToast('최소 1개의 상태는 있어야 합니다.');
+                    return;
+                }
+                this.template.statusOptions = this.template.statusOptions.filter(o => o.id !== id);
+                this.onStateChanged();
+                this.renderTemplateStatusOptions();
+            },
+
             ensureTemplatePersonRoleFields() {
                 if (!this.template.personRoleFields || typeof this.template.personRoleFields !== 'object') {
                     this.template.personRoleFields = JSON.parse(JSON.stringify(getDefaultMasterTemplate().personRoleFields));
@@ -5339,6 +5467,8 @@
             },
 
             renderTemplateModalContent() {
+                this.renderTemplateStatusOptions();
+
                 const cfList = document.getElementById('tplCustomFieldsList');
                 const customFields = this.template.customFields || [];
                 cfList.innerHTML = customFields.map((f, idx) => `
