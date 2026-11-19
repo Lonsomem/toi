@@ -1742,6 +1742,150 @@
         /* --- 모달: 살짝 더 또렷한 입체감 --- */
         .modal-dialog { box-shadow: var(--shadow-lg); }
         .modal-backdrop { background: rgba(28, 38, 58, 0.45); }
+
+        /* ======================================================================
+           깃허브 스타일 리디자인 — 차분하고 밀도 높은 대시보드 톤 (외부 리소스 없음)
+           이전 "겨울 시즌" 장식을 걷어내고 색상 토큰만 교체. 레이아웃 크기는 그대로.
+           ====================================================================== */
+        .winter-snowfall { display: none !important; }
+        html, body { background: var(--bg-body) !important; }
+        :root {
+            --radius-sm: 6px;
+            --radius-md: 6px;
+            --radius-lg: 8px;
+            --bg-body: #f6f8fa;
+            --bg-surface: #ffffff;
+            --primary: #1f883d;
+            --primary-light: #dafbe1;
+            --accent: #0969da;
+            --success: #1f883d;
+            --success-bg: #dafbe1;
+            --warning: #9a6700;
+            --warning-bg: #fff8c5;
+            --danger: #cf222e;
+            --danger-bg: #ffebe9;
+            --purple: #8250df;
+            --border-color: #d0d7de;
+            --text-main: #1f2328;
+            --text-secondary: #57606a;
+            --text-muted: #6e7781;
+            --shadow-sm: 0 1px 0 rgba(31,35,40,0.04);
+            --shadow-md: 0 3px 6px rgba(140,149,159,0.15);
+            --shadow-lg: 0 8px 24px rgba(140,149,159,0.2);
+        }
+        .app-header {
+            background: #24292f !important;
+            padding: 0 1rem !important;
+            min-height: 48px !important;
+            box-shadow: none !important;
+            border-bottom: 1px solid #1b1f23;
+        }
+        .app-header::before { display: none; }
+        .brand-text h1 { font-size: 0.92rem !important; }
+        .brand-text h1::after { content: ''; }
+        #capacityInfoText { color: #8b949e !important; }
+
+        /* --- 헤더 우측: 숨긴 기능을 모은 메뉴 --- */
+        .header-menu-wrap { position: relative; }
+        .header-menu-btn {
+            width: 32px; height: 32px; border-radius: 6px; border: 1px solid transparent;
+            background: transparent; color: #c9d1d9; display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+        }
+        .header-menu-btn:hover { background: rgba(255,255,255,0.08); }
+        .header-menu-dropdown {
+            display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
+            background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px;
+            box-shadow: var(--shadow-md); min-width: 240px; padding: 0.3rem; flex-direction: column;
+        }
+        .header-menu-dropdown.open { display: flex; }
+        .header-menu-dropdown button {
+            text-align: left; background: none; border: none; padding: 0.5rem 0.6rem; border-radius: 6px;
+            font-size: 0.78rem; color: var(--text-main); cursor: pointer; font-weight: 500;
+        }
+        .header-menu-dropdown button:hover { background: #f6f8fa; }
+        .btn { transition: background-color 0.12s ease, border-color 0.12s ease; }
+        .btn-primary {
+            background: var(--primary);
+            box-shadow: none;
+        }
+        .btn-primary:hover { background: #1a7f37; transform: none; box-shadow: none; }
+        .btn-secondary { background: #f6f8fa; border: 1px solid var(--border-color); color: var(--text-main); }
+        .btn-secondary:hover { background: #f3f4f6; }
+        .stat-widget, .case-graphic-card, .todo-panel, .modal-dialog, .activity-graph-card {
+            box-shadow: none !important;
+            border: 1px solid var(--border-color) !important;
+        }
+        ::-webkit-scrollbar-thumb { background: #d0d7de; }
+        ::-webkit-scrollbar-thumb:hover { background: #afb8c1; }
+        .modal-backdrop { background: rgba(27, 31, 36, 0.5); }
+
+        /* --- 기여 그래프(잔디) 카드 --- */
+        .activity-graph-card {
+            background: var(--bg-surface);
+            border-radius: 10px;
+            padding: 0.9rem 1.1rem;
+            margin-bottom: 0.9rem;
+        }
+        .activity-graph-head {
+            display: flex;
+            align-items: baseline;
+            gap: 0.6rem;
+            font-weight: 700;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            margin-bottom: 0.55rem;
+        }
+        .activity-graph-sub { font-size: 0.72rem; font-weight: 500; color: var(--text-muted); }
+        .activity-graph-body { overflow-x: auto; }
+        .activity-graph-grid {
+            display: grid;
+            grid-template-rows: repeat(7, 11px);
+            grid-auto-flow: column;
+            gap: 3px;
+            width: max-content;
+        }
+        .activity-cell {
+            width: 11px; height: 11px; border-radius: 2px;
+            background: #ebedf0;
+        }
+        .activity-cell.level-future { background: transparent; }
+        .activity-cell.level-1 { background: #9be9a8; }
+        .activity-cell.level-2 { background: #40c463; }
+        .activity-cell.level-3 { background: #30a14e; }
+        .activity-cell.level-4 { background: #216e39; }
+
+        /* --- 사건 목록: 밀도 높은 테이블 --- */
+        .case-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; background: var(--bg-surface); }
+        .case-table thead th {
+            text-align: left; padding: 0.45rem 0.6rem; font-size: 0.68rem; font-weight: 700;
+            color: var(--text-muted); border-bottom: 1px solid var(--border-color); white-space: nowrap;
+        }
+        .case-table tbody tr.case-row {
+            cursor: pointer; border-bottom: 1px solid var(--border-color);
+        }
+        .case-table tbody tr.case-row:hover { background: #f6f8fa; }
+        .case-table td { padding: 0.5rem 0.6rem; vertical-align: middle; }
+        .case-table .col-casenum { font-family: monospace; color: var(--text-muted); white-space: nowrap; }
+        .case-table .col-title { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+        .case-table .col-progress { display: flex; align-items: center; gap: 0.4rem; min-width: 110px; }
+        .row-progress-track { flex: 1; height: 6px; background: #ebedf0; border-radius: 999px; overflow: hidden; min-width: 60px; }
+        .row-progress-fill { height: 100%; background: var(--primary); }
+        .row-progress-pct { font-size: 0.68rem; color: var(--text-muted); font-weight: 700; }
+        .todo-count-chip { background: var(--warning-bg); color: var(--warning); font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; }
+        .todo-count-chip.done { background: var(--success-bg); color: var(--success); }
+        .case-table .col-actions { width: 50px; text-align: right; }
+
+        /* --- 표시 열 선택 드롭다운 --- */
+        .column-menu-wrap { position: relative; }
+        .column-menu-dropdown {
+            display: none; position: absolute; top: calc(100% + 4px); right: 0; z-index: 20;
+            background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px;
+            box-shadow: var(--shadow-md); padding: 0.4rem; min-width: 140px;
+        }
+        .column-menu-dropdown.open { display: block; }
+        .column-menu-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; padding: 0.3rem 0.4rem; border-radius: 5px; cursor: pointer; }
+        .column-menu-item:hover { background: #f6f8fa; }
     </style>
 </head>
 <body>
@@ -1786,36 +1930,25 @@
                     <span id="fileSyncText">미연결 (브라우저 임시저장 중)</span>
                 </div>
 
-                <button type="button" class="btn btn-header" style="background: rgba(37, 99, 235, 0.45); border-color: #60a5fa;" onclick="app.connectSelfHtmlFile()" title="실행 중인 .html 파일을 연결하면 수정 시 자동 덮어쓰기됩니다.">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-                    </svg>
-                    <span id="connectFileBtnLabel">현재 HTML 파일 직접 연결 (자동 덮어쓰기 ON)</span>
-                </button>
-
-                <button type="button" class="btn btn-header" style="background: rgba(16, 185, 129, 0.35); border-color: #34d399;" onclick="app.downloadEmbeddedHtmlFile()">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                        <polyline points="7 10 12 15 17 10"></polyline>
-                        <line x1="12" y1="15" x2="12" y2="3"></line>
-                    </svg>
-                    단일 HTML 다운로드
-                </button>
-
-                <button type="button" class="btn btn-header" style="background: rgba(139, 92, 246, 0.45); border-color: #c4b5fd;" onclick="app.openGlobalFormsModal()" title="한글(HWP) 등에서 복사한 공통 서식을 저장해두고 언제든 꺼내 씁니다.">
-                    📚 공통 서식 보관함 (한글 복붙)
-                </button>
-                <button type="button" class="btn btn-header" onclick="app.openTemplateModal()">
-                    ⚙️ 템플릿 설정
-                </button>
-
-                <button type="button" class="btn btn-header" onclick="app.openBackupModal()">
-                    📦 JSON 백업
-                </button>
-                <button type="button" class="btn btn-header" onclick="app.openExternalImportModal()" title="내부 시스템 사건목록 JSON을 가져와 선택한 항목만 새 사건으로 추가">
-                    📥 외부 목록 가져오기
-                </button>
+                <div class="header-menu-wrap">
+                    <button type="button" class="header-menu-btn" onclick="app.toggleHeaderMenu()" title="메뉴">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                            <circle cx="12" cy="5" r="1.8"></circle>
+                            <circle cx="12" cy="12" r="1.8"></circle>
+                            <circle cx="12" cy="19" r="1.8"></circle>
+                        </svg>
+                    </button>
+                    <div id="headerMenuDropdown" class="header-menu-dropdown">
+                        <button type="button" onclick="app.connectSelfHtmlFile(); app.closeHeaderMenu();" title="실행 중인 .html 파일을 연결하면 수정 시 자동 덮어쓰기됩니다.">
+                            <span id="connectFileBtnLabel">현재 HTML 파일 직접 연결 (자동 덮어쓰기 ON)</span>
+                        </button>
+                        <button type="button" onclick="app.downloadEmbeddedHtmlFile(); app.closeHeaderMenu();">단일 HTML 다운로드</button>
+                        <button type="button" onclick="app.openGlobalFormsModal(); app.closeHeaderMenu();" title="한글(HWP) 등에서 복사한 공통 서식을 저장해두고 언제든 꺼내 씁니다.">공통 서식 보관함 (한글 복붙)</button>
+                        <button type="button" onclick="app.openTemplateModal(); app.closeHeaderMenu();">템플릿 설정</button>
+                        <button type="button" onclick="app.openBackupModal(); app.closeHeaderMenu();">JSON 백업</button>
+                        <button type="button" onclick="app.openExternalImportModal(); app.closeHeaderMenu();" title="내부 시스템 사건목록 JSON을 가져와 선택한 항목만 새 사건으로 추가">외부 목록 가져오기</button>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -1893,6 +2026,14 @@
                 </div>
             </div>
 
+            <div class="activity-graph-card">
+                <div class="activity-graph-head">
+                    <span>📈 활동 기여 그래프</span>
+                    <span class="activity-graph-sub">최근 18주 · 완료한 할 일 + 새로 등록한 사건 기준</span>
+                </div>
+                <div id="activityGraphContainer" class="activity-graph-body"></div>
+            </div>
+
             <div class="list-split">
                 <!-- 좌측: 할 일 패널 (다음 할 일 / 전체 할 일) -->
                 <aside class="todo-panel">
@@ -1924,7 +2065,7 @@
                         </svg>
                         <input type="search" id="searchInput" placeholder="사건번호, 제목, 피해현황, 계좌번호, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
                     </div>
-                    <select id="statusFilter" style="width: 135px;" onchange="app.currentPage=1; app.renderCaseList()">
+                    <select id="statusFilter" style="width: 135px;" onchange="app.currentPage=1; app.saveDashboardSortPref()">
                         <option value="ALL">전체 상태</option>
                         <option value="수사중">수사중</option>
                         <option value="영장신청">영장신청</option>
@@ -1932,13 +2073,24 @@
                         <option value="타관이송">타관이송</option>
                         <option value="중지/각하">중지/각하</option>
                     </select>
-                    <select id="sortFilter" style="width: 170px;" onchange="app.currentPage=1; app.renderCaseList()">
+                    <select id="sortFilter" style="width: 170px;" onchange="app.currentPage=1; app.saveDashboardSortPref()">
                         <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
                         <option value="UPDATED_DESC">최근 수정일순</option>
                         <option value="CASENUM_DESC">사건번호순</option>
                         <option value="PROGRESS_ASC">진행률 낮은순</option>
                         <option value="PROGRESS_DESC">진행률 높은순</option>
                     </select>
+                </div>
+
+                <div class="column-menu-wrap">
+                    <button type="button" class="btn btn-secondary" title="표시할 열 선택" onclick="app.toggleColumnMenu()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                        표시 열
+                    </button>
+                    <div id="columnMenuDropdown" class="column-menu-dropdown"></div>
                 </div>
 
                 <button type="button" class="btn btn-primary" onclick="app.createNewCase()">
@@ -2603,6 +2755,23 @@
             };
         }
 
+        function getDefaultDashboardPrefs() {
+            return {
+                tableSort: 'MANUAL_ORDER',
+                tableStatus: 'ALL',
+                visibleColumns: {
+                    caseNumber: true,
+                    title: true,
+                    charge: true,
+                    status: true,
+                    progress: true,
+                    todo: true,
+                    people: false,
+                    updatedAt: true
+                }
+            };
+        }
+
         function getInitialSampleCases() {
             return [
                 {
@@ -2650,7 +2819,7 @@
             autoSaveTimer: null,
             pendingRecoveredData: null,
             currentPage: 1,
-            itemsPerPage: 15,
+            itemsPerPage: 500,
             draggedCaseId: null,
             draggedPriorityCaseId: null,
             activeGlobalFormIndex: 0,
@@ -2659,6 +2828,9 @@
             todoCollapsed: {},
             selectedPersonId: null,
             activeRoleFieldsTab: 'case',
+            activityLog: {},
+            dashboardPrefs: null,
+            columnMenuOpen: false,
 
             init() {
                 this.loadDatabase();
@@ -2667,8 +2839,28 @@
                     const lv = document.getElementById('listView');
                     if (!document.hidden && lv && lv.classList.contains('active')) this.renderCaseList();
                 });
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.header-menu-wrap')) this.closeHeaderMenu();
+                    if (!e.target.closest('.column-menu-wrap')) {
+                        this.columnMenuOpen = false;
+                        const cm = document.getElementById('columnMenuDropdown');
+                        if (cm) cm.classList.remove('open');
+                    }
+                });
+                this.applyDashboardPrefsToToolbar();
                 this.renderCaseList();
                 this.updateCapacityIndicator();
+            },
+
+            /**
+             * 저장된 정렬/필터 설정값을 상단 툴바 셀렉트에 반영 (새로고침 시 유지)
+             */
+            applyDashboardPrefsToToolbar() {
+                if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
+                const sortEl = document.getElementById('sortFilter');
+                const statusEl = document.getElementById('statusFilter');
+                if (sortEl && this.dashboardPrefs.tableSort) sortEl.value = this.dashboardPrefs.tableSort;
+                if (statusEl && this.dashboardPrefs.tableStatus) statusEl.value = this.dashboardPrefs.tableStatus;
             },
 
             setupKeyboardShortcuts() {
@@ -2705,6 +2897,9 @@
                 if (loadedFromEmbedded && Array.isArray(loadedFromEmbedded.cases) && loadedFromEmbedded.template) {
                     this.cases = loadedFromEmbedded.cases;
                     this.template = loadedFromEmbedded.template;
+                    this.activityLog = (loadedFromEmbedded.activityLog && typeof loadedFromEmbedded.activityLog === 'object') ? loadedFromEmbedded.activityLog : {};
+                    this.dashboardPrefs = Object.assign(getDefaultDashboardPrefs(), loadedFromEmbedded.dashboardPrefs || {});
+                    if (!this.dashboardPrefs.visibleColumns) this.dashboardPrefs.visibleColumns = getDefaultDashboardPrefs().visibleColumns;
                     if (!Array.isArray(this.template.globalForms)) {
                         this.template.globalForms = getDefaultMasterTemplate().globalForms;
                     }
@@ -2722,6 +2917,8 @@
                 } else {
                     this.template = getDefaultMasterTemplate();
                     this.cases = getInitialSampleCases();
+                    this.activityLog = {};
+                    this.dashboardPrefs = getDefaultDashboardPrefs();
                     this.syncEmbeddedBase64Tag('');
                 }
 
@@ -2749,6 +2946,8 @@
                 if (!this.pendingRecoveredData) return;
                 this.cases = this.pendingRecoveredData.cases;
                 this.template = this.pendingRecoveredData.template || getDefaultMasterTemplate();
+                this.activityLog = this.pendingRecoveredData.activityLog || this.activityLog || {};
+                this.dashboardPrefs = this.pendingRecoveredData.dashboardPrefs || this.dashboardPrefs || getDefaultDashboardPrefs();
                 this.pendingRecoveredData = null;
                 document.getElementById('recoveryBanner').classList.remove('show');
                 this.onStateChanged();
@@ -2768,7 +2967,9 @@
                     version: 4,
                     savedAt: savedAtTimestamp || this.getFormattedNowWithSeconds(),
                     template: this.template,
-                    cases: this.cases
+                    cases: this.cases,
+                    activityLog: this.activityLog,
+                    dashboardPrefs: this.dashboardPrefs
                 };
                 const encoded = encodeDB(payload);
                 const el = document.getElementById('embedded-db-b64');
@@ -2800,6 +3001,33 @@
                     this.updateFileSyncBadge('unsaved');
                     this.updateDetailSaveBadge(`● 내장 반영 (${nowStamp.split(' ')[1]})`);
                 }
+            },
+
+            /**
+             * 기여 그래프(활동 로그)에 하루치 활동을 누적. kind: 'todo'(할 일 완료) | 'case'(사건 생성/수정, caseId당 하루 1회만 집계)
+             */
+            recordActivity(kind, caseId, label) {
+                if (!this.activityLog) this.activityLog = {};
+                const day = this.getFormattedNow().split(' ')[0];
+                if (!this.activityLog[day]) this.activityLog[day] = { todoCount: 0, caseIds: [], items: [] };
+                const log = this.activityLog[day];
+                if (kind === 'todo') {
+                    log.todoCount = (log.todoCount || 0) + 1;
+                    if (label) log.items.unshift(label);
+                } else if (kind === 'case') {
+                    if (!Array.isArray(log.caseIds)) log.caseIds = [];
+                    if (!log.caseIds.includes(caseId)) {
+                        log.caseIds.push(caseId);
+                        if (label) log.items.unshift(label);
+                    }
+                }
+                if (log.items.length > 30) log.items.length = 30;
+            },
+
+            getActivityCount(day) {
+                const log = this.activityLog ? this.activityLog[day] : null;
+                if (!log) return 0;
+                return (log.todoCount || 0) + ((log.caseIds && log.caseIds.length) || 0);
             },
 
             updateCapacityIndicator() {
@@ -2845,7 +3073,9 @@
                     version: 4,
                     savedAt: nowStamp,
                     template: this.template,
-                    cases: this.cases
+                    cases: this.cases,
+                    activityLog: this.activityLog,
+                    dashboardPrefs: this.dashboardPrefs
                 };
                 const encodedB64 = encodeDB(stateObj);
 
@@ -2877,7 +3107,9 @@
                     'peopleSummaryContainer',
                     'peopleListContainer',
                     'personEditorContainer',
-                    'eiKeyMapContainer'
+                    'eiKeyMapContainer',
+                    'activityGraphContainer',
+                    'columnMenuDropdown'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -2898,6 +3130,7 @@
                 if (detailView) detailView.classList.remove('active');
 
                 clone.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
+                clone.querySelectorAll('.header-menu-dropdown.open, .column-menu-dropdown.open').forEach(m => m.classList.remove('open'));
                 const recBanner = clone.querySelector('#recoveryBanner');
                 if (recBanner) recBanner.classList.remove('show');
 
@@ -3051,6 +3284,67 @@
                 return 'status-ing';
             },
 
+            /**
+             * 깃허브 "잔디" 스타일 기여 그래프: 최근 18주(126일)를 7×18 그리드로 표시
+             */
+            renderActivityGraph() {
+                const container = document.getElementById('activityGraphContainer');
+                if (!container) return;
+                if (!this.activityLog) this.activityLog = {};
+
+                const WEEKS = 18;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                // 그리드의 맨 오른쪽 열이 이번 주가 되도록, 맨 왼쪽 열의 일요일로 시작점을 맞춘다
+                const totalDays = WEEKS * 7;
+                const start = new Date(today);
+                start.setDate(start.getDate() - (totalDays - 1) - today.getDay());
+
+                const fmt = (d) => {
+                    const yyyy = d.getFullYear();
+                    const mm = String(d.getMonth() + 1).padStart(2, '0');
+                    const dd = String(d.getDate()).padStart(2, '0');
+                    return `${yyyy}-${mm}-${dd}`;
+                };
+
+                let maxCount = 1;
+                const cells = [];
+                for (let i = 0; i < totalDays; i++) {
+                    const d = new Date(start);
+                    d.setDate(d.getDate() + i);
+                    const key = fmt(d);
+                    const count = this.getActivityCount(key);
+                    if (count > maxCount) maxCount = count;
+                    cells.push({ key, count, isFuture: d > today });
+                }
+
+                const levelOf = (count) => {
+                    if (count <= 0) return 0;
+                    const ratio = count / maxCount;
+                    if (ratio <= 0.25) return 1;
+                    if (ratio <= 0.5) return 2;
+                    if (ratio <= 0.75) return 3;
+                    return 4;
+                };
+
+                let html = '<div class="activity-graph-grid">';
+                for (let i = 0; i < totalDays; i++) {
+                    const c = cells[i];
+                    if (c.isFuture) {
+                        html += `<span class="activity-cell level-future"></span>`;
+                        continue;
+                    }
+                    const log = this.activityLog[c.key];
+                    let tip = `${c.key} · 활동 ${c.count}건`;
+                    if (log && log.items && log.items.length) {
+                        tip += '\n' + log.items.slice(0, 5).join('\n');
+                    }
+                    html += `<span class="activity-cell level-${levelOf(c.count)}" title="${this.escapeAttr(tip)}"></span>`;
+                }
+                html += '</div>';
+                container.innerHTML = html;
+            },
+
             renderCaseList() {
                 const container = document.getElementById('case-list-body');
                 if (!container) return;
@@ -3072,6 +3366,7 @@
                 document.getElementById('statAvgProgress').textContent = `${avgPct}%`;
 
                 this.renderPriorityTodoBoard();
+                this.renderActivityGraph();
 
                 const filtered = this.cases.filter(c => {
                     const matchStatus = statusFilter === 'ALL' || c.status === statusFilter;
@@ -3117,109 +3412,109 @@
                     return;
                 }
 
-                const circumference = 94.2; // r=15
+                const cols = (this.dashboardPrefs && this.dashboardPrefs.visibleColumns) || getDefaultDashboardPrefs().visibleColumns;
+                const colDefs = [
+                    { key: 'caseNumber', label: '사건번호' },
+                    { key: 'title', label: '제목' },
+                    { key: 'charge', label: '죄명' },
+                    { key: 'status', label: '상태' },
+                    { key: 'progress', label: '진행률' },
+                    { key: 'todo', label: '할 일' },
+                    { key: 'people', label: '관계인' },
+                    { key: 'updatedAt', label: '수정일' }
+                ];
+                const activeCols = colDefs.filter(cd => cols[cd.key]);
 
-                container.innerHTML = pageItems.map(c => {
+                let theadHtml = '<tr>' + activeCols.map(cd => `<th>${cd.label}</th>`).join('') + '<th class="col-actions"></th></tr>';
+
+                const rowsHtml = pageItems.map(c => {
                     const prog = this.calculateProgress(c);
                     const badgeClass = this.getStatusBadgeClass(c.status);
-                    const offset = circumference - (prog.percent / 100) * circumference;
-                    const strokeColor = prog.percent === 100 ? '#10b981' : '#2563eb';
-                    const chkList = c.checklist || [];
+                    const pendingCount = (c.checklist || []).filter(it => !it.done).length;
+                    const peopleCount = Array.isArray(c.people) ? c.people.length : 0;
 
-                    const dotsHtml = chkList.slice(0, 8).map(item =>
-                        `<span class="mini-step-dot ${item.done ? (prog.percent === 100 ? 'complete' : 'done') : ''}" title="${this.escapeAttr(item.text)}"></span>`
-                    ).join('');
-
-                    // 미완료 할 일 추출 (첫 페이지에서 바로 확인 및 체크 가능)
-                    const pendingTasks = [];
-                    chkList.forEach((item, originalIdx) => {
-                        if (!item.done) pendingTasks.push({ item, originalIdx });
-                    });
-
-                    pendingTasks.sort((a, b) => (this.isTodayItem(b.item) ? 1 : 0) - (this.isTodayItem(a.item) ? 1 : 0));
-                    let todoItemsHtml = '';
-                    if (pendingTasks.length === 0) {
-                        todoItemsHtml = `
-                            <div style="font-size: 0.72rem; color: var(--success); font-weight: 800; padding: 0.2rem 0.15rem; display: flex; align-items: center; gap: 0.3rem;">
-                                <span>✅ 모든 할 일 완료!</span>
-                            </div>
-                        `;
-                    } else {
-                        todoItemsHtml = pendingTasks.slice(0, 2).map((pt, i) => `
-                            <div class="card-todo-item ${(i === 0 || this.isTodayItem(pt.item)) ? 'next-up' : ''}" onclick="event.stopPropagation();">
-                                <button type="button" class="inline-todo-check" onclick="event.stopPropagation(); app.toggleTaskFromListView('${c.id}', ${pt.originalIdx})" title="클릭하여 완료 처리">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
-                                    </svg>
-                                </button>
-                                ${this.isTodayItem(pt.item) ? '<span class="next-badge-pill" style="background:#fef3c7;color:#b45309;">오늘</span>' : (i === 0 ? '<span class="next-badge-pill">우선</span>' : '')}
-                                <span class="card-todo-text" onclick="app.openCaseDetail('${c.id}')" title="${this.escapeAttr(pt.item.text)}">${this.escapeHtml(pt.item.text)}</span>
-                                <button type="button" class="star-btn sm ${this.isTodayItem(pt.item) ? 'on' : ''}" onclick="event.stopPropagation(); app.toggleTaskToday('${c.id}', ${pt.originalIdx})" title="오늘 할 일로 지정/해제">${this.isTodayItem(pt.item) ? '★' : '☆'}</button>
-                            </div>
-                        `).join('');
-                        if (pendingTasks.length > 2) {
-                            todoItemsHtml += `<div style="font-size: 0.66rem; color: var(--text-muted); text-align: right; font-weight: 700;">+ 외 ${pendingTasks.length - 2}건 더보기</div>`;
-                        }
-                    }
+                    const cellHtml = {
+                        caseNumber: `<td class="col-casenum">${this.escapeHtml(c.caseNumber || '미지정')}</td>`,
+                        title: `<td class="col-title" title="${this.escapeAttr(c.title || '')}">${this.escapeHtml(c.title || '(제목 없는 사건)')}</td>`,
+                        charge: `<td>${c.charge ? `<span class="charge-chip" title="${this.escapeAttr(c.charge)}">⚖ ${this.escapeHtml(c.charge)}</span>` : '<span class="charge-chip empty">미입력</span>'}</td>`,
+                        status: `<td><span class="status-badge ${badgeClass}">${this.escapeHtml(c.status || '수사중')}</span></td>`,
+                        progress: `<td class="col-progress"><div class="row-progress-track"><div class="row-progress-fill" style="width:${prog.percent}%;"></div></div><span class="row-progress-pct">${prog.percent}%</span></td>`,
+                        todo: `<td class="col-todo">${pendingCount > 0 ? `<span class="todo-count-chip">${pendingCount}건</span>` : '<span class="todo-count-chip done">완료</span>'}</td>`,
+                        people: `<td class="col-people">${peopleCount > 0 ? peopleCount + '명' : '-'}</td>`,
+                        updatedAt: `<td class="col-updated">${this.escapeHtml((c.updatedAt || '-').split(' ')[0])}</td>`
+                    };
 
                     return `
-                        <div class="case-graphic-card ${badgeClass}-card"
-                             draggable="true"
-                             data-case-id="${c.id}"
-                             ondragstart="app.onCaseDragStart(event, '${c.id}')"
-                             ondragover="app.onCaseDragOver(event)"
-                             ondragleave="app.onCaseDragLeave(event)"
-                             ondrop="app.onCaseDrop(event, '${c.id}')"
-                             ondragend="app.onCaseDragEnd(event)"
-                             onclick="app.openCaseDetail('${c.id}')">
-                            <div class="card-top-row">
-                                <div style="display:flex; align-items:center; gap:0.25rem;">
-                                    <span class="drag-handle-icon" title="드래그하여 사건 순서 변경">⠿</span>
-                                    <span class="case-num-badge">${this.escapeHtml(c.caseNumber || '미지정')}</span>
-                                </div>
-                                <span class="status-badge ${badgeClass}">${this.escapeHtml(c.status || '수사중')}</span>
-                            </div>
-
-                            <div class="card-body-row">
-                                <!-- 미니 SVG 도넛 게이지 -->
-                                <div style="position: relative; width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-                                    <svg width="38" height="38" viewBox="0 0 38 38" style="transform: rotate(-90deg);">
-                                        <circle cx="19" cy="19" r="15" fill="none" stroke="#e2e8f0" stroke-width="4"></circle>
-                                        <circle cx="19" cy="19" r="15" fill="none" stroke="${strokeColor}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"></circle>
-                                    </svg>
-                                    <span style="position: absolute; font-size: 0.62rem; font-weight: 900; color: var(--text-main);">${prog.percent}%</span>
-                                </div>
-
-                                <div class="card-title-group">
-                                    <div class="card-title">${this.escapeHtml(c.title || '(제목 없는 사건)')}</div>
-                                    <div class="card-charge">${c.charge ? `<span class="charge-chip" title="${this.escapeAttr(c.charge)}">⚖ ${this.escapeHtml(c.charge)}</span>` : '<span class="charge-chip empty">죄명 미입력</span>'}</div>
-                                    <div class="card-overview" title="${this.escapeAttr(c.crimeFact || c.overview || '')}">${c.crimeFact ? `<span class="card-fact-label">범죄사실</span>${this.escapeHtml(c.crimeFact)}` : this.escapeHtml(c.overview || '범죄사실을 입력하세요.')}</div>
-                                    <div class="mini-step-dots">${dotsHtml}</div>
-                                </div>
-                            </div>
-
-                            <!-- 첫 화면 인라인 할 일(To-Do) 보드 -->
-                            <div class="card-todo-box" onclick="event.stopPropagation();">
-                                <div class="card-todo-header">
-                                    <span>📌 남은 할 일 (${pendingTasks.length}건)</span>
-                                    <span style="color: var(--primary); cursor: pointer;" onclick="app.openCaseDetail('${c.id}')">상세 →</span>
-                                </div>
-                                ${todoItemsHtml}
-                                <div class="card-quick-input-row">
-                                    <input type="text" id="quickTodoInput_${c.id}" placeholder="할 일 추가 Enter..." onkeydown="if(event.key==='Enter'){event.preventDefault(); app.addQuickTaskFromListView('${c.id}');}">
-                                    <button type="button" class="btn btn-primary btn-sm" style="padding: 0.18rem 0.42rem;" onclick="app.addQuickTaskFromListView('${c.id}')">+</button>
-                                </div>
-                            </div>
-
-                            <div class="card-footer-row">
-                                <span>진행 ${prog.done}/${prog.total} · ${this.escapeHtml((c.updatedAt || '-').split(' ')[0])}</span>
-                                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger); padding: 0.05rem 0.35rem; font-size: 0.68rem;" onclick="event.stopPropagation(); app.confirmDeleteCase('${c.id}')">삭제</button>
-                            </div>
-                        </div>
+                        <tr class="case-row ${badgeClass}-row"
+                            draggable="true"
+                            data-case-id="${c.id}"
+                            ondragstart="app.onCaseDragStart(event, '${c.id}')"
+                            ondragover="app.onCaseDragOver(event)"
+                            ondragleave="app.onCaseDragLeave(event)"
+                            ondrop="app.onCaseDrop(event, '${c.id}')"
+                            ondragend="app.onCaseDragEnd(event)"
+                            onclick="app.openCaseDetail('${c.id}')">
+                            ${activeCols.map(cd => cellHtml[cd.key]).join('')}
+                            <td class="col-actions" onclick="event.stopPropagation();">
+                                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="app.confirmDeleteCase('${c.id}')">삭제</button>
+                            </td>
+                        </tr>
                     `;
                 }).join('');
 
+                container.innerHTML = `<table class="case-table"><thead>${theadHtml}</thead><tbody>${rowsHtml}</tbody></table>`;
+                this.renderColumnMenu();
+
                 this.renderPaginationBar(totalFiltered, totalPages);
+            },
+
+            /**
+             * 테이블 열 표시/숨김 설정 토글 + 저장
+             */
+            toggleHeaderMenu() {
+                const menu = document.getElementById('headerMenuDropdown');
+                if (menu) menu.classList.toggle('open');
+            },
+
+            closeHeaderMenu() {
+                const menu = document.getElementById('headerMenuDropdown');
+                if (menu) menu.classList.remove('open');
+            },
+
+            toggleColumnMenu() {
+                this.columnMenuOpen = !this.columnMenuOpen;
+                this.renderColumnMenu();
+                const menu = document.getElementById('columnMenuDropdown');
+                if (menu) menu.classList.toggle('open', this.columnMenuOpen);
+            },
+
+            renderColumnMenu() {
+                const menu = document.getElementById('columnMenuDropdown');
+                if (!menu) return;
+                const cols = (this.dashboardPrefs && this.dashboardPrefs.visibleColumns) || getDefaultDashboardPrefs().visibleColumns;
+                const labels = { caseNumber: '사건번호', title: '제목', charge: '죄명', status: '상태', progress: '진행률', todo: '할 일', people: '관계인', updatedAt: '수정일' };
+                menu.innerHTML = Object.keys(labels).map(key => `
+                    <label class="column-menu-item">
+                        <input type="checkbox" ${cols[key] ? 'checked' : ''} onchange="app.toggleColumnVisible('${key}', this.checked)">
+                        ${labels[key]}
+                    </label>
+                `).join('');
+            },
+
+            toggleColumnVisible(key, checked) {
+                if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
+                this.dashboardPrefs.visibleColumns[key] = checked;
+                this.onStateChanged();
+                this.renderCaseList();
+            },
+
+            saveDashboardSortPref() {
+                if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
+                this.dashboardPrefs.tableSort = document.getElementById('sortFilter')?.value || 'MANUAL_ORDER';
+                this.dashboardPrefs.tableStatus = document.getElementById('statusFilter')?.value || 'ALL';
+                this.onStateChanged();
+                this.currentPage = 1;
+                this.renderCaseList();
             },
 
             /**
@@ -3704,6 +3999,7 @@
                 task.done = !task.done;
                 task.date = task.done ? this.getShortMonthDay() : '';
                 targetCase.updatedAt = this.getFormattedNow();
+                if (task.done) this.recordActivity('todo', targetCase.id, `할 일 완료: [${targetCase.caseNumber}] ${task.text}`);
 
                 this.onStateChanged();
                 this.renderCaseList();
@@ -3768,6 +4064,7 @@
                 this.ensureCasePeople(newCase);
 
                 this.cases.unshift(newCase);
+                this.recordActivity('case', newCase.id, `사건 생성: [${newCase.caseNumber}]`);
                 this.onStateChanged();
                 this.openCaseDetail(newCase.id);
                 this.showToast('새 사건 대시보드가 생성되었습니다.');
@@ -3952,6 +4249,7 @@
                 item.done = !item.done;
                 item.date = item.done ? this.getShortMonthDay() : '';
                 current.updatedAt = this.getFormattedNow();
+                if (item.done) this.recordActivity('todo', current.id, `할 일 완료: [${current.caseNumber}] ${item.text}`);
                 this.onStateChanged();
                 this.renderDetailChecklist();
             },

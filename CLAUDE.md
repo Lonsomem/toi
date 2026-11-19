@@ -6,7 +6,7 @@
 ## 구성
 | 파일 | 설명 | 상세 문서 |
 |---|---|---|
-| `case-note.html` | 사건 관리 노트 (단일 HTML, 자기 자신을 덮어쓰는 Quine 구조). **📥 외부 사건목록 가져오기** 모달 내장(콘솔 스크립트로 JSON 파일 저장 → 파일 불러오기 → 키를 사건 필드에 매핑 → 새 사건으로 추가, 사건번호 중복은 스킵) | `docs/case-note.md` |
+| `case-note.html` | 사건 관리 노트 (단일 HTML, 자기 자신을 덮어쓰는 Quine 구조). **📥 외부 사건목록 가져오기** 모달 내장(콘솔 스크립트로 JSON 파일 저장 → 파일 불러오기 → 키를 사건 필드에 매핑 → 새 사건으로 추가, 사건번호 중복은 스킵). (2026-11-19) **깃허브 스타일 대시보드로 전면 개편**: 사건 목록은 밀도 높은 테이블(표시 열 선택 가능) + 활동 기여 그래프(잔디) + 할 일 패널 조합, 헤더 버튼들은 `⋮` 메뉴 하나로 정리 | `docs/case-note.md` |
 | `qr-receiver.html` | QR 수신기(폰/웹캠 PC). **빌드 산출물**. (송신은 별도 파일 없이 `pdf-manual-search.html` 의 [📡 QR로 전송] 에 내장 — `qr-sender.html` 은 제거됨) | `docs/qr-transfer.md` |
 | `qr-tools/src/*` | 수신기 소스 + **공유 코어**(`core.js` QX, `qr-encoder.js`: 검색기 빌드도 사용). 수정 후 `python3 qr-tools/build.py` | 〃 |
 | `pdf-manual-search.html` | 다중 PDF 매뉴얼 검색기(PDF.js 내장, 표 인식). **빌드 산출물** | `docs/pdf-search.md` |

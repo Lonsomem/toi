@@ -5,10 +5,11 @@
 
 ## 1. 아키텍처 (훼손 금지)
 - 외부 의존 0: CSS/HTML/Vanilla JS/SVG 아이콘 전부 한 파일.
-- **내장 DB**: 하단 `<script id="embedded-db-b64" type="text/plain">` 안에 `encodeDB({version:4, savedAt, template, cases})` 결과(UTF-8 안전 Base64: `btoa(unescape(encodeURIComponent(JSON)))`). `decodeDB` 는 역변환.
+- **내장 DB**: 하단 `<script id="embedded-db-b64" type="text/plain">` 안에 `encodeDB({version:4, savedAt, template, cases, activityLog, dashboardPrefs})` 결과(UTF-8 안전 Base64: `btoa(unescape(encodeURIComponent(JSON)))`). `decodeDB` 는 역변환.
 - **자기 덮어쓰기**: File System Access API. `connectSelfHtmlFile()` → 핸들 저장, `writeSelfHtmlToFileHandle()` 가 `buildCleanHtmlDocumentString()` 결과를 디스크에 기록. `onStateChanged()` 에서 0.5초 디바운스 + Ctrl+S(`saveOrConnectHtmlFile`).
 - **buildCleanHtmlDocumentString()**: DOM 을 `cloneNode(true)` → `dynamicContainerIds` 컨테이너 innerHTML 비움 + 입력값 초기화 + `#priorityTodoList` 비움 → `#embedded-db-b64` 만 갱신. (동적으로 그리는 영역을 새로 만들면 id 를 이 배열에 꼭 추가 — 안 하면 렌더된 HTML 이 파일에 박혀 오염.)
-  현재 목록: `case-list-body, paginationBar, detailChecklistContainer, boilerplateTabs, customFieldsTabBar, customFieldsContainer, heroPipelineStepper, tplCustomFieldsList, tplChecklistList, tplFormsList, toastContainer, globalFormsListContainer, priorityTodoCount, todoTabNextCount, todoTabTodayCount, todoPanelSub, todoTabAllCount`
+  현재 목록: `case-list-body, paginationBar, detailChecklistContainer, boilerplateTabs, customFieldsTabBar, customFieldsContainer, heroPipelineStepper, tplCustomFieldsList, tplChecklistList, tplFormsList, toastContainer, globalFormsListContainer, priorityTodoCount, todoTabNextCount, todoTabTodayCount, todoPanelSub, todoTabAllCount, exportCaseListContainer, tplRoleFieldsTabBar, tplRoleFieldsList, peopleSummaryContainer, peopleListContainer, personEditorContainer, eiKeyMapContainer, activityGraphContainer, columnMenuDropdown`
+  (열고 닫는 `.open` 클래스만 쓰는 `headerMenuDropdown`/`columnMenuDropdown` 은 내용이 정적이라 목록 대상이 아니고, `buildCleanHtmlDocumentString()` 에서 `.open` 클래스만 별도로 제거한다.)
 - **브라우저 임시 백업**: `localStorage` 키 `CASE_NOTE_SINGLE_FILE_B64_V4`(데이터) / `CASE_NOTE_SINGLE_FILE_META_V4`(`{savedAt, unsaved}`). 파일 미연결 상태에서 변경 시 저장되고, 내장본보다 새로우면 `#recoveryBanner` 로 복구 제안(`applyRecoveredData`/`dismissRecoveryBanner`).
 - **onStateChanged()** 가 한 번에: Base64 태그 갱신 + localStorage 백업 + 용량 표시 + 파일 자동 덮어쓰기 예약. 데이터를 바꾸면 항상 마지막에 호출.
 - **loadDatabase()**: 내장 DB 디코딩 → 하위호환 방어 코드(없으면 기본값). 새 속성 추가 시 여기에 `if (!x) x = 기본값` 추가. 현재 보정 항목: `template.globalForms`, `case.charge`, `case.crimeFact`(문자열), `case.checklist[].id`(없으면 생성).
@@ -91,6 +92,16 @@ case = {
 - 겨울 테마: 안개 낀 아이스블루~크림 배경 그라데이션, 황혼 느낌 헤더(남색→더스티블루 그라데이션 + 서리 입자 패턴 `::before`), 버튼은 그라데이션 채움 + 호버 시 살짝 떠오르는 효과, 기존 인디고(`#4f46e5` 등) 계열 포인트 색을 더스티블루/플럼 톤으로 교체. `body` 바로 아래 `.winter-snowfall`(`position:fixed; z-index:-1`)에 눈송이 10개를 CSS `@keyframes`로 천천히 흘려보냄 — 클릭 불가(`pointer-events:none`)·레이아웃 비관여, 카드 사이 여백에서만 은은하게 비침.
 - `.todo-panel`(350px), `.case-cards-grid`(auto-fill minmax 255px), `.star-btn`, `.today-badge`, `.overdue-box` 등.
 - 검증: Playwright로 JS 오류 없음, 기존 원페이지 핏 테스트(700~900px 높이, 태블릿 해상도 3종) 전부 재확인 — 회귀 없음.
+
+## 5-1. 깃허브 스타일 대시보드 리디자인 (2026-11-19)
+- 색상 토큰(`:root`)을 겨울 팔레트 위에 한 번 더 덮어씀(`<style>` 맨 끝, "깃허브 스타일 리디자인" 블록) — 플랫한 회백/흰색 배경, 초록 포인트(`#1f883d`), 테두리 위주 카드(그림자 제거), `--radius-*` 6~8px 로 축소해 각진 느낌. `.winter-snowfall` 은 `display:none`, `html,body` 배경 그라데이션도 `var(--bg-body)` 단색으로 재지정(겨울 블록이 `!important` 라 캐스케이드 순서로만 이김).
+- **헤더 정리**: 기존에 한 줄로 늘어서 있던 7개 버튼(파일연결·다운로드·공통서식함·템플릿설정·JSON백업·외부가져오기)을 전부 제거하고, 우측 상단 `⋮` 아이콘 하나(`.header-menu-wrap` → `#headerMenuDropdown`)로 모음. 기능은 그대로(각 버튼 onclick 유지), 클릭 시 드롭다운. `app.toggleHeaderMenu()/closeHeaderMenu()`, 바깥 클릭 시 자동 닫힘(`init()`의 전역 `document.click` 리스너 — `.header-menu-wrap`/`.column-menu-wrap` 바깥이면 각각 닫음). 저장 시 `.open` 클래스는 `buildCleanHtmlDocumentString()`에서 제거.
+- **사건 목록을 카드 그리드 → 밀도 높은 `<table>`(`.case-table`)로 교체**. 컬럼: 사건번호/제목/죄명/상태/진행률/할일/관계인(기본 숨김)/수정일 + 삭제. 드래그 재정렬(`onCaseDragStart` 등)은 `<tr>` 에 그대로 적용. `itemsPerPage` 를 15→500 으로 올려 사실상 페이지네이션 없이 전체를 한 번에 보여줌(사건이 많아져도 "전체 보기" 화면을 따로 두지 않기로 함).
+- **표시 열 선택**: 툴바의 ⚙️ "표시 열" 버튼 → `#columnMenuDropdown` 체크박스. 상태는 `app.dashboardPrefs.visibleColumns` 에 저장되어 DB(퀸 저장본)에 영속화됨. `app.toggleColumnVisible(key, checked)`.
+- **정렬/상태 필터 기억**: 상단 `statusFilter`/`sortFilter` 선택값이 바뀔 때 `app.saveDashboardSortPref()` 가 `dashboardPrefs.tableSort/tableStatus` 에 저장하고 `onStateChanged()`. 다음 로드 시 `applyDashboardPrefsToToolbar()`(`init()`에서 호출)가 셀렉트 값을 복원.
+- **활동 기여 그래프(깃허브 잔디 스타일)**: `#activityGraphContainer`(`app.renderActivityGraph()`)가 최근 18주(7×18 셀)를 그려줌. 데이터는 `app.activityLog = { 'YYYY-MM-DD': { todoCount, caseIds:[], items:[] } }` — DB 최상위에 저장(공유 JSON v1 과는 무관, 퀸 저장본 전용 필드). `app.recordActivity('todo'|'case', caseId, label)` 을 호출하는 지점: 할 일 완료 처리(목록뷰 `toggleTaskFromListView`, 상세뷰 체크리스트 토글) + 새 사건 생성(`createNewCase`, caseId 당 하루 1회만 집계). 셀에 마우스를 올리면 그날 활동 요약(`title` 속성, 최대 5개) 툴팁. 색상 4단계는 그날 최대값 대비 상대 비율로 계산(`levelOf`).
+- `getDefaultDashboardPrefs()` 가 기본값(정렬=드래그순서, 상태필터=전체, 보이는 열) 정의. `loadDatabase()`에 하위호환 방어(`activityLog`/`dashboardPrefs` 없으면 기본값) 추가됨.
+- 검증: Playwright로 테이블 렌더/열 숨김/활동 로그 집계/헤더 메뉴 열고닫기/퀸 저장-재로드 라운드트립까지 확인. 기존 `check_people/check_forms/check_casenote_export/check_migration` 전부 재통과(회귀 없음). `check_vars.js` 는 본 작업 이전부터 깨져 있던 스크립트(오래된 API 참조)로 무관.
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
