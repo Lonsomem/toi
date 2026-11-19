@@ -1957,6 +1957,64 @@
 
         @media (max-width: 1400px) { .rail-right { width: 260px; } }
 
+        /* --- 깃허브 프로필 페이지 레이아웃 (아바타+현황 사이드바 / 기여그래프+리포지토리 목록 메인) --- */
+        .github-profile-layout { flex: 1; min-height: 0; display: flex; gap: 2rem; }
+        .profile-sidebar {
+            width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0;
+            overflow-y: auto; min-height: 0;
+        }
+        .profile-avatar {
+            width: 80px; height: 80px; border-radius: 50%; background: #24292f; color: #fff;
+            display: flex; align-items: center; justify-content: center; margin-bottom: 0.9rem;
+        }
+        .profile-name { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
+        .profile-sub { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.9rem; }
+        .profile-sub #statTotalCases { color: var(--text-main); font-weight: 700; }
+        .profile-section {
+            border-top: 1px solid var(--border-color); padding-top: 0.85rem; margin-top: 0.85rem;
+        }
+        .profile-section-title {
+            font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
+            letter-spacing: 0.04em; margin-bottom: 0.5rem;
+        }
+        .profile-stat-row {
+            display: flex; justify-content: space-between; align-items: baseline;
+            font-size: 0.78rem; color: var(--text-secondary); padding: 0.28rem 0;
+        }
+        .profile-stat-row strong { color: var(--text-main); font-size: 0.92rem; }
+        .profile-sidebar .todo-panel {
+            border: none !important; box-shadow: none !important; background: transparent !important;
+            border-radius: 0; width: 100% !important; flex-shrink: 0;
+        }
+        .profile-sidebar .todo-panel-head { padding: 0; }
+        .profile-sidebar .todo-scroll { max-height: 280px; }
+
+        .profile-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.4rem; overflow-y: auto; min-height: 0; }
+        .main-section-title { font-size: 1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.6rem; }
+        .repo-section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+        .repo-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.3rem; }
+        .repo-toolbar { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+        .repo-toolbar .table-search { width: 220px; flex: none; }
+        .repo-toolbar .table-sort { width: 150px; }
+
+        .repo-list { border-top: 1px solid var(--border-color); }
+        .repo-row { position: relative; padding: 0.9rem 0.2rem; border-bottom: 1px solid var(--border-color); cursor: pointer; }
+        .repo-row:hover { background: #f6f8fa; }
+        .repo-row-main { display: flex; align-items: center; gap: 0.6rem; }
+        .repo-name { color: var(--accent); font-weight: 700; font-size: 0.95rem; }
+        .repo-row:hover .repo-name { text-decoration: underline; }
+        .repo-row .status-badge { font-size: 0.64rem; padding: 0.05rem 0.5rem; }
+        .repo-desc { color: var(--text-secondary); font-size: 0.8rem; margin: 0.3rem 0 0.5rem; max-width: 640px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .repo-meta-row { display: flex; flex-wrap: wrap; gap: 0.9rem; font-size: 0.72rem; color: var(--text-muted); }
+        .repo-meta-item { display: flex; align-items: center; }
+        .repo-meta-chip { background: var(--bg-body); padding: 0.1rem 0.5rem; border-radius: 999px; font-weight: 600; }
+        .repo-progress-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.3rem; }
+        .repo-row-delete {
+            position: absolute; top: 0.9rem; right: 0.2rem; font-size: 0.7rem; color: var(--danger);
+            background: none; border: none; cursor: pointer; opacity: 0; transition: opacity 0.12s;
+        }
+        .repo-row:hover .repo-row-delete { opacity: 1; }
+
         /* --- 표시 열 선택 드롭다운 --- */
         .column-menu-wrap { position: relative; }
         .column-menu-dropdown {
@@ -2055,82 +2113,27 @@
              VIEW 1: 그래픽 사건 목록 대시보드 (CASE LIST VIEW)
              ====================================================================== -->
         <section id="listView" class="view-section active">
-            <div class="dash-grid">
-                <!-- 좌측 레일: 현황(통계) + 상태로 좁혀보기 -->
-                <aside class="rail rail-left">
-                    <div class="rail-card">
-                        <div class="rail-card-title">현황</div>
-                        <div class="stat-compact-grid">
-                            <div class="stat-compact">
-                                <span class="stat-compact-value" id="statTotalCases">0건</span>
-                                <span class="stat-compact-label">전체 사건</span>
-                            </div>
-                            <div class="stat-compact">
-                                <span class="stat-compact-value" id="statActiveCases" style="color: var(--accent);">0건</span>
-                                <span class="stat-compact-label">수사중·영장</span>
-                            </div>
-                            <div class="stat-compact">
-                                <span class="stat-compact-value" id="statCompletedCases" style="color: var(--success);">0건</span>
-                                <span class="stat-compact-label">송치·이송</span>
-                            </div>
-                            <div class="stat-compact">
-                                <span class="stat-compact-value" id="statAvgProgress" style="color: var(--warning);">0%</span>
-                                <span class="stat-compact-label">평균 진행률</span>
-                            </div>
-                        </div>
+            <div class="github-profile-layout">
+                <!-- 좌측: 깃허브 프로필 사이드바 느낌 (아이덴티티 + 현황 + 할 일 + 상태 필터) -->
+                <aside class="profile-sidebar">
+                    <div class="profile-avatar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="34" height="34">
+                            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+                            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+                            <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+                            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+                        </svg>
+                    </div>
+                    <div class="profile-name">사건 관리 노트</div>
+                    <div class="profile-sub">총 <span id="statTotalCases">0건</span> 관리 중</div>
+
+                    <div class="profile-section">
+                        <div class="profile-stat-row"><span>수사중 · 영장진행</span><strong id="statActiveCases">0건</strong></div>
+                        <div class="profile-stat-row"><span>송치완료 · 타관이송</span><strong id="statCompletedCases">0건</strong></div>
+                        <div class="profile-stat-row"><span>평균 진행률</span><strong id="statAvgProgress">0%</strong></div>
                     </div>
 
-                    <div class="rail-card">
-                        <div class="rail-card-title">상태로 보기</div>
-                        <div id="statusFilterPills" class="status-pill-list"></div>
-                    </div>
-                </aside>
-
-                <!-- 중앙: 사건 목록 (검색·정렬·표시열 조작 + 테이블) -->
-                <main class="dash-main">
-                    <div class="table-toolbar">
-                        <div class="sidebar-search table-search">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <circle cx="11" cy="11" r="8"></circle>
-                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                            </svg>
-                            <input type="search" id="searchInput" placeholder="사건번호, 제목, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
-                        </div>
-                        <select id="sortFilter" class="sidebar-select table-sort" onchange="app.currentPage=1; app.saveDashboardSortPref()">
-                            <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
-                            <option value="UPDATED_DESC">최근 수정일순</option>
-                            <option value="CASENUM_DESC">사건번호순</option>
-                            <option value="PROGRESS_ASC">진행률 낮은순</option>
-                            <option value="PROGRESS_DESC">진행률 높은순</option>
-                        </select>
-                        <div class="column-menu-wrap">
-                            <button type="button" class="sidebar-link-btn" onclick="app.toggleColumnMenu()" title="표시할 열 선택">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                                </svg>
-                                표시 열
-                            </button>
-                            <div id="columnMenuDropdown" class="column-menu-dropdown table-column-dropdown"></div>
-                        </div>
-                        <button type="button" class="btn btn-primary table-new-btn" onclick="app.createNewCase()">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            새 사건
-                        </button>
-                    </div>
-
-                    <div class="list-table-area">
-                        <div id="case-list-body" class="case-cards-grid"></div>
-                        <div id="paginationBar" class="pagination-bar"></div>
-                    </div>
-                </main>
-
-                <!-- 우측 레일: 오늘 할 일 + 활동 기여 그래프 (개인 작업 추적) -->
-                <aside class="rail rail-right">
-                    <div class="todo-panel rail-flex-card">
+                    <div class="profile-section todo-panel">
                         <div class="todo-panel-head">
                             <div class="todo-panel-title">
                                 <span>🎯 오늘의 할 일</span>
@@ -2147,14 +2150,69 @@
                         <div id="priorityTodoList" class="todo-scroll"></div>
                     </div>
 
-                    <div class="activity-graph-card rail-card">
-                        <div class="activity-graph-head">
-                            <span>📈 활동 기여</span>
-                            <span class="activity-graph-sub">최근 18주</span>
-                        </div>
-                        <div id="activityGraphContainer" class="activity-graph-body"></div>
+                    <div class="profile-section">
+                        <div class="profile-section-title">상태</div>
+                        <div id="statusFilterPills" class="status-pill-list"></div>
                     </div>
                 </aside>
+
+                <!-- 우측: 메인 컬럼 (기여 그래프 + 사건 목록, 깃허브 리포지토리 리스트 느낌) -->
+                <main class="profile-main">
+                    <div class="main-section">
+                        <div class="main-section-title">기여 현황</div>
+                        <div class="activity-graph-card">
+                            <div class="activity-graph-head">
+                                <span>📈 활동 기여</span>
+                                <span class="activity-graph-sub">최근 18주 · 완료한 할 일 + 새로 등록한 사건 기준</span>
+                            </div>
+                            <div id="activityGraphContainer" class="activity-graph-body"></div>
+                        </div>
+                    </div>
+
+                    <div class="main-section repo-section">
+                        <div class="repo-section-header">
+                            <div class="main-section-title">사건</div>
+                            <div class="repo-toolbar">
+                                <div class="sidebar-search table-search">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                    </svg>
+                                    <input type="search" id="searchInput" placeholder="사건번호, 제목, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
+                                </div>
+                                <select id="sortFilter" class="sidebar-select table-sort" onchange="app.currentPage=1; app.saveDashboardSortPref()">
+                                    <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
+                                    <option value="UPDATED_DESC">최근 수정일순</option>
+                                    <option value="CASENUM_DESC">사건번호순</option>
+                                    <option value="PROGRESS_ASC">진행률 낮은순</option>
+                                    <option value="PROGRESS_DESC">진행률 높은순</option>
+                                </select>
+                                <div class="column-menu-wrap">
+                                    <button type="button" class="sidebar-link-btn" onclick="app.toggleColumnMenu()" title="표시할 항목 선택">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                        </svg>
+                                        표시 항목
+                                    </button>
+                                    <div id="columnMenuDropdown" class="column-menu-dropdown table-column-dropdown"></div>
+                                </div>
+                                <button type="button" class="btn btn-primary table-new-btn" onclick="app.createNewCase()">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                    새 사건
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="list-table-area">
+                            <div id="case-list-body" class="case-cards-grid"></div>
+                            <div id="paginationBar" class="pagination-bar"></div>
+                        </div>
+                    </div>
+                </main>
             </div>
         </section>
 
@@ -3488,19 +3546,6 @@
                 }
 
                 const cols = (this.dashboardPrefs && this.dashboardPrefs.visibleColumns) || getDefaultDashboardPrefs().visibleColumns;
-                const colDefs = [
-                    { key: 'caseNumber', label: '사건번호' },
-                    { key: 'title', label: '제목' },
-                    { key: 'charge', label: '죄명' },
-                    { key: 'status', label: '상태' },
-                    { key: 'progress', label: '진행률' },
-                    { key: 'todo', label: '할 일' },
-                    { key: 'people', label: '관계인' },
-                    { key: 'updatedAt', label: '수정일' }
-                ];
-                const activeCols = colDefs.filter(cd => cols[cd.key]);
-
-                let theadHtml = '<tr>' + activeCols.map(cd => `<th>${cd.label}</th>`).join('') + '<th class="col-actions"></th></tr>';
 
                 const rowsHtml = pageItems.map(c => {
                     const prog = this.calculateProgress(c);
@@ -3508,19 +3553,15 @@
                     const pendingCount = (c.checklist || []).filter(it => !it.done).length;
                     const peopleCount = Array.isArray(c.people) ? c.people.length : 0;
 
-                    const cellHtml = {
-                        caseNumber: `<td class="col-casenum">${this.escapeHtml(c.caseNumber || '미지정')}</td>`,
-                        title: `<td class="col-title" title="${this.escapeAttr(c.title || '')}">${this.escapeHtml(c.title || '(제목 없는 사건)')}</td>`,
-                        charge: `<td>${c.charge ? `<span class="charge-chip" title="${this.escapeAttr(c.charge)}">⚖ ${this.escapeHtml(c.charge)}</span>` : '<span class="charge-chip empty">미입력</span>'}</td>`,
-                        status: `<td><span class="status-badge ${badgeClass}">${this.escapeHtml(c.status || '수사중')}</span></td>`,
-                        progress: `<td class="col-progress"><div class="row-progress-track"><div class="row-progress-fill" style="width:${prog.percent}%;"></div></div><span class="row-progress-pct">${prog.percent}%</span></td>`,
-                        todo: `<td class="col-todo">${pendingCount > 0 ? `<span class="todo-count-chip">${pendingCount}건</span>` : '<span class="todo-count-chip done">완료</span>'}</td>`,
-                        people: `<td class="col-people">${peopleCount > 0 ? peopleCount + '명' : '-'}</td>`,
-                        updatedAt: `<td class="col-updated">${this.escapeHtml((c.updatedAt || '-').split(' ')[0])}</td>`
-                    };
+                    const meta = [];
+                    if (cols.charge) meta.push(`<span class="repo-meta-chip">${c.charge ? '⚖ ' + this.escapeHtml(c.charge) : '죄명 미입력'}</span>`);
+                    if (cols.progress) meta.push(`<span class="repo-meta-item"><span class="repo-progress-dot" style="background:${prog.percent === 100 ? 'var(--success)' : 'var(--accent)'};"></span>진행 ${prog.percent}%</span>`);
+                    if (cols.todo) meta.push(`<span class="repo-meta-item">${pendingCount > 0 ? '할 일 ' + pendingCount + '건' : '할 일 완료'}</span>`);
+                    if (cols.people) meta.push(`<span class="repo-meta-item">관계인 ${peopleCount}명</span>`);
+                    if (cols.updatedAt) meta.push(`<span class="repo-meta-item">업데이트 ${this.escapeHtml((c.updatedAt || '-').split(' ')[0])}</span>`);
 
                     return `
-                        <tr class="case-row ${badgeClass}-row"
+                        <div class="repo-row"
                             draggable="true"
                             data-case-id="${c.id}"
                             ondragstart="app.onCaseDragStart(event, '${c.id}')"
@@ -3529,15 +3570,18 @@
                             ondrop="app.onCaseDrop(event, '${c.id}')"
                             ondragend="app.onCaseDragEnd(event)"
                             onclick="app.openCaseDetail('${c.id}')">
-                            ${activeCols.map(cd => cellHtml[cd.key]).join('')}
-                            <td class="col-actions" onclick="event.stopPropagation();">
-                                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="app.confirmDeleteCase('${c.id}')">삭제</button>
-                            </td>
-                        </tr>
+                            <button type="button" class="repo-row-delete" onclick="event.stopPropagation(); app.confirmDeleteCase('${c.id}')">삭제</button>
+                            <div class="repo-row-main">
+                                <span class="repo-name">${this.escapeHtml(c.caseNumber || '미지정')}</span>
+                                <span class="status-badge ${badgeClass}">${this.escapeHtml(c.status || '수사중')}</span>
+                            </div>
+                            <div class="repo-desc" title="${this.escapeAttr(c.title || '')}">${this.escapeHtml(c.title || '(제목 없는 사건)')}</div>
+                            <div class="repo-meta-row">${meta.join('')}</div>
+                        </div>
                     `;
                 }).join('');
 
-                container.innerHTML = `<table class="case-table"><thead>${theadHtml}</thead><tbody>${rowsHtml}</tbody></table>`;
+                container.innerHTML = `<div class="repo-list">${rowsHtml}</div>`;
                 this.renderColumnMenu();
 
                 this.renderPaginationBar(totalFiltered, totalPages);
@@ -3567,7 +3611,7 @@
                 const menu = document.getElementById('columnMenuDropdown');
                 if (!menu) return;
                 const cols = (this.dashboardPrefs && this.dashboardPrefs.visibleColumns) || getDefaultDashboardPrefs().visibleColumns;
-                const labels = { caseNumber: '사건번호', title: '제목', charge: '죄명', status: '상태', progress: '진행률', todo: '할 일', people: '관계인', updatedAt: '수정일' };
+                const labels = { charge: '죄명', progress: '진행률', todo: '할 일', people: '관계인', updatedAt: '수정일' };
                 menu.innerHTML = Object.keys(labels).map(key => `
                     <label class="column-menu-item">
                         <input type="checkbox" ${cols[key] ? 'checked' : ''} onchange="app.toggleColumnVisible('${key}', this.checked)">
