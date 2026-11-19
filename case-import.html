@@ -63,7 +63,12 @@
 <main>
     <div class="card">
         <h2>1. 데이터 가져오기</h2>
-        <div class="tabs">
+
+        <label style="font-size:0.82rem; color: var(--text-secondary); display:block; margin-bottom:0.3rem;">데이터 경로 (선택 — 비워두면 자동 탐지)</label>
+        <input type="text" id="dataPathInput" placeholder="예: data.myCaseListVo">
+        <p class="hint" style="margin-top:0.3rem;">JSON 안에서 사건 배열이 들어있는 위치를 직접 지정합니다. 점(.)으로 단계를 구분합니다 (예: <code>data.myCaseListVo</code>는 <code>{"data":{"myCaseListVo":[...]}}</code> 구조를 가리킴). 비워두면 자동으로 배열을 찾습니다.</p>
+
+        <div class="tabs" style="margin-top:0.8rem;">
             <button type="button" class="tab-btn active" id="tabBtnUrl" onclick="app.switchTab('url')">🌐 URL로 가져오기</button>
             <button type="button" class="tab-btn" id="tabBtnPaste" onclick="app.switchTab('paste')">📋 직접 붙여넣기</button>
         </div>
@@ -114,9 +119,32 @@
         <h2 id="previewTitle">3. 미리보기</h2>
         <div id="previewTableWrap" class="table-wrap"></div>
         <div class="row">
-            <button type="button" class="btn" onclick="app.downloadResult()">💾 선택한 키만 JSON으로 저장</button>
+            <button type="button" class="btn" onclick="app.downloadResult()">💾 JSON으로 저장</button>
         </div>
-        <p class="hint">여기서 저장한 JSON은 사건번호 등 선택한 키만 담은 목록입니다. 사건 관리 노트의 상세 정보(범죄사실·체크리스트 등)와 사건번호로 매칭해 불러오는 기능은 다음 단계에서 추가될 예정입니다.</p>
+        <p class="hint">사건 관리 노트와 사건번호로 매칭해 불러오는 기능은 다음 단계에서 추가될 예정입니다.</p>
+    </div>
+
+    <div class="card hidden" id="detailFetchCard">
+        <h2>4. 사건별 상세정보 가져오기 (선택)</h2>
+        <p class="hint">사건번호 등 "사건번호로 쓸 키"로 지정한 값을 URL에 넣어, 사건마다 상세 정보를 추가로 가져옵니다. URL 안에 <code>{값}</code> 이라고 쓰면 그 자리에 각 사건의 매칭 키 값이 들어갑니다. 사건 수만큼 순서대로 접속하므로 수가 많으면 시간이 걸릴 수 있고, 각 사건 접속도 동일한 교차출처 정책(CORS) 제약을 받습니다.</p>
+        <input type="text" id="detailUrlTemplate" placeholder="예: https://내부시스템주소/detail?caseNo={값}">
+        <div class="row">
+            <button type="button" class="btn" onclick="app.fetchAllDetails()">전체 사건 상세정보 가져오기</button>
+        </div>
+        <div id="detailProgress" class="hint"></div>
+        <div id="detailMsg" class="msg"></div>
+
+        <div id="detailKeySelectWrap" class="hidden">
+            <p class="hint" style="margin-top:0.7rem;">상세 응답에서 발견된 키 중 결과에 포함할 것을 선택하세요. (이미 있는 키 이름과 겹치면 <code>상세_</code>를 붙여 구분합니다)</p>
+            <div class="row">
+                <button type="button" class="btn secondary sm" onclick="app.selectAllDetailKeys(true)">전체 선택</button>
+                <button type="button" class="btn secondary sm" onclick="app.selectAllDetailKeys(false)">전체 해제</button>
+            </div>
+            <div id="detailKeyListContainer" class="key-list"></div>
+            <div class="row">
+                <button type="button" class="btn" onclick="app.applyDetailKeys()">상세 정보 반영해서 미리보기 갱신</button>
+            </div>
+        </div>
     </div>
 </main>
 
@@ -127,6 +155,9 @@ var app = {
     selectedKeys: new Set(),
     matchKey: '',
     previewRows: [],
+    detailResults: {},
+    detailKeys: [],
+    selectedDetailKeys: new Set(),
 
     init: function () {
         try {
@@ -136,6 +167,10 @@ var app = {
         this.matchKey = localStorage.getItem('CASE_IMPORT_MATCH_KEY') || '';
         var lastUrl = localStorage.getItem('CASE_IMPORT_LAST_URL');
         if (lastUrl) document.getElementById('sourceUrl').value = lastUrl;
+        var lastPath = localStorage.getItem('CASE_IMPORT_DATA_PATH');
+        if (lastPath) document.getElementById('dataPathInput').value = lastPath;
+        var lastDetailTpl = localStorage.getItem('CASE_IMPORT_DETAIL_TEMPLATE');
+        if (lastDetailTpl) document.getElementById('detailUrlTemplate').value = lastDetailTpl;
     },
 
     switchTab: function (tab) {
@@ -203,9 +238,21 @@ var app = {
             this.showMsg('JSON 파싱 실패: ' + e.message, 'bad');
             return;
         }
-        var found = this.findCaseArray(data);
+
+        var pathStr = (document.getElementById('dataPathInput').value || '').trim();
+        var found = null, pathFailMsg = '';
+        if (pathStr) {
+            localStorage.setItem('CASE_IMPORT_DATA_PATH', pathStr);
+            var atPath = this.getArrayAtPath(data, pathStr);
+            if (atPath) {
+                found = { rows: atPath, pathLabel: '지정한 경로 "' + pathStr + '"' };
+            } else {
+                pathFailMsg = '지정한 경로 "' + pathStr + '"에서 배열을 찾지 못했습니다 — 자동 탐지로 전환합니다. ';
+            }
+        }
+        if (!found) found = this.findCaseArray(data);
         if (!found) {
-            this.showMsg('사건 목록으로 보이는 배열을 찾지 못했습니다. 최상위가 배열이거나, 배열 형태의 속성이 있어야 합니다.', 'bad');
+            this.showMsg(pathFailMsg + '사건 목록으로 보이는 배열을 찾지 못했습니다. 최상위가 배열이거나, 배열 형태의 속성이 있어야 합니다.', 'bad');
             return;
         }
         this.rows = found.rows;
@@ -213,31 +260,56 @@ var app = {
         this.renderKeySelect();
         document.getElementById('keySelectCard').classList.remove('hidden');
         document.getElementById('previewCard').classList.add('hidden');
-        this.showMsg('가져오기 성공: ' + found.pathLabel + '에서 ' + this.rows.length + '건 발견', 'ok');
+        document.getElementById('detailFetchCard').classList.add('hidden');
+        this.showMsg(pathFailMsg + '가져오기 성공: ' + found.pathLabel + '에서 ' + this.rows.length + '건 발견', pathFailMsg ? 'warn' : 'ok');
     },
 
-    // 최상위가 배열이면 그대로, 객체면 "객체 배열"로 보이는 속성을 찾는다 (여러 개면 가장 긴 것 자동 선택)
-    findCaseArray: function (data) {
-        if (Array.isArray(data)) {
-            return { rows: data.filter(function (x) { return x && typeof x === 'object'; }), pathLabel: '최상위 배열' };
+    // "data.myCaseListVo" 같은 점(.) 경로를 따라가 배열을 찾는다. "items[0].list" 처럼 배열 인덱스도 지원.
+    getArrayAtPath: function (data, pathStr) {
+        var segs = [];
+        pathStr.split('.').forEach(function (part) {
+            part = part.trim();
+            if (!part) return;
+            var m = part.match(/^([^\[]+)((?:\[\d+\])*)$/);
+            if (!m) { segs.push(part); return; }
+            if (m[1]) segs.push(m[1]);
+            (m[2].match(/\[(\d+)\]/g) || []).forEach(function (im) { segs.push(parseInt(im.slice(1, -1), 10)); });
+        });
+        var cur = data;
+        for (var i = 0; i < segs.length; i++) {
+            if (cur === null || typeof cur !== 'object') return null;
+            cur = cur[segs[i]];
         }
-        if (data && typeof data === 'object') {
-            var candidates = [];
-            Object.keys(data).forEach(function (k) {
-                var v = data[k];
-                if (Array.isArray(v) && v.length && v[0] && typeof v[0] === 'object') {
-                    candidates.push({ key: k, arr: v });
-                }
-            });
-            if (candidates.length === 1) {
-                return { rows: candidates[0].arr, pathLabel: '"' + candidates[0].key + '" 속성' };
-            }
-            if (candidates.length > 1) {
-                candidates.sort(function (a, b) { return b.arr.length - a.arr.length; });
-                return { rows: candidates[0].arr, pathLabel: '"' + candidates[0].key + '" 속성 (배열 후보 ' + candidates.length + '개 중 가장 긴 것 자동 선택)' };
-            }
-        }
+        if (Array.isArray(cur) && cur.length && cur[0] && typeof cur[0] === 'object') return cur;
         return null;
+    },
+
+    // 최상위가 배열이면 그대로, 아니면 객체 트리를 재귀적으로 훑어 "객체로 이루어진 배열"을 전부 찾는다.
+    // 후보가 여럿이면 가장 긴 배열을 자동 선택하고, 메시지에 다른 후보 경로도 알려줘서 "데이터 경로" 칸에 직접 지정할 수 있게 한다.
+    findCaseArray: function (data) {
+        var candidates = [];
+        (function walk(node, pathSegs, depth) {
+            if (depth > 6) return;
+            if (Array.isArray(node)) {
+                if (node.length && node[0] && typeof node[0] === 'object') {
+                    candidates.push({ path: pathSegs.slice(), arr: node });
+                }
+                return;
+            }
+            if (node && typeof node === 'object') {
+                Object.keys(node).forEach(function (k) { walk(node[k], pathSegs.concat([k]), depth + 1); });
+            }
+        })(data, [], 0);
+
+        if (!candidates.length) return null;
+        candidates.sort(function (a, b) { return b.arr.length - a.arr.length; });
+        var top = candidates[0];
+        var label = top.path.length ? ('"' + top.path.join('.') + '"' + ' 경로') : '최상위 배열';
+        if (candidates.length > 1) {
+            var others = candidates.slice(0, 5).map(function (c) { return c.path.join('.') || '(최상위)'; }).join(', ');
+            label += ' (배열 후보 ' + candidates.length + '개 중 가장 긴 것 자동 선택 — 다른 걸 원하면 "데이터 경로" 칸에 직접 입력: ' + others + (candidates.length > 5 ? ' 등' : '') + ')';
+        }
+        return { rows: top.arr, pathLabel: label };
     },
 
     discoverKeys: function () {
@@ -305,6 +377,14 @@ var app = {
         });
         this.renderPreviewTable(keys);
         document.getElementById('previewCard').classList.remove('hidden');
+
+        this.detailResults = {};
+        this.detailKeys = [];
+        this.selectedDetailKeys = new Set();
+        document.getElementById('detailProgress').textContent = '';
+        document.getElementById('detailKeySelectWrap').classList.add('hidden');
+        if (this.matchKey) document.getElementById('detailFetchCard').classList.remove('hidden');
+        else document.getElementById('detailFetchCard').classList.add('hidden');
     },
 
     renderPreviewTable: function (keys) {
@@ -338,6 +418,115 @@ var app = {
         a.download = '사건목록_가져오기_' + this.getCompactDate() + '.json';
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+    },
+
+    showDetailMsg: function (text, kind) {
+        var el = document.getElementById('detailMsg');
+        el.textContent = text;
+        el.className = 'msg ' + (kind || '');
+    },
+
+    // 매칭 키 값을 URL 템플릿의 {값} 자리에 넣어 사건마다 순서대로 상세정보를 가져온다
+    fetchAllDetails: async function () {
+        if (!this.matchKey) { this.showDetailMsg('먼저 2단계에서 "사건번호로 쓸 키"를 지정하고 미리보기를 만드세요.', 'warn'); return; }
+        var template = (document.getElementById('detailUrlTemplate').value || '').trim();
+        if (!template) { this.showDetailMsg('URL을 입력하세요.', 'warn'); return; }
+        if (template.indexOf('{값}') === -1) { this.showDetailMsg('URL 안에 {값} 자리표시자를 포함해 입력하세요. (예: .../detail?caseNo={값})', 'warn'); return; }
+        localStorage.setItem('CASE_IMPORT_DETAIL_TEMPLATE', template);
+
+        var self = this;
+        this.detailResults = {};
+        var rowsToFetch = this.rows.filter(function (r) {
+            return r[self.matchKey] !== undefined && r[self.matchKey] !== null && String(r[self.matchKey]).trim() !== '';
+        });
+        var total = rowsToFetch.length;
+        if (!total) { this.showDetailMsg('가져올 사건이 없습니다 (매칭 키 값이 비어있는 사건뿐입니다).', 'warn'); return; }
+
+        var done = 0, okCount = 0, failCount = 0;
+        document.getElementById('detailKeySelectWrap').classList.add('hidden');
+        document.getElementById('detailProgress').textContent = '처리 중... 0 / ' + total;
+
+        for (var i = 0; i < rowsToFetch.length; i++) {
+            var val = String(rowsToFetch[i][this.matchKey]);
+            var url = template.replace('{값}', encodeURIComponent(val));
+            try {
+                var res = await fetch(url);
+                if (!res.ok) throw new Error('서버 응답 오류 (' + res.status + ')');
+                var text = await res.text();
+                var json = JSON.parse(text);
+                this.detailResults[val] = { ok: true, data: json };
+                okCount++;
+            } catch (e) {
+                this.detailResults[val] = { ok: false, error: (e && e.message) ? e.message : String(e) };
+                failCount++;
+            }
+            done++;
+            document.getElementById('detailProgress').textContent = '처리 중... ' + done + ' / ' + total;
+        }
+
+        document.getElementById('detailProgress').textContent = '완료: 성공 ' + okCount + '건 · 실패 ' + failCount + '건';
+        if (failCount) this.showDetailMsg('실패 ' + failCount + '건은 교차출처 정책(CORS) 등으로 접속이 막혔을 수 있습니다. 성공한 사건만 상세 정보가 반영됩니다.', 'warn');
+        else this.showDetailMsg('모든 사건의 상세정보를 가져왔습니다.', 'ok');
+
+        this.discoverDetailKeys();
+        if (this.detailKeys.length) {
+            this.renderDetailKeySelect();
+            document.getElementById('detailKeySelectWrap').classList.remove('hidden');
+        }
+    },
+
+    discoverDetailKeys: function () {
+        var keySet = {}, order = [];
+        var self = this;
+        Object.keys(this.detailResults).forEach(function (val) {
+            var r = self.detailResults[val];
+            if (r.ok && r.data && typeof r.data === 'object' && !Array.isArray(r.data)) {
+                Object.keys(r.data).forEach(function (k) { if (!keySet[k]) { keySet[k] = true; order.push(k); } });
+            }
+        });
+        this.detailKeys = order;
+        this.selectedDetailKeys = new Set();
+    },
+
+    renderDetailKeySelect: function () {
+        var box = document.getElementById('detailKeyListContainer');
+        var self = this;
+        box.innerHTML = this.detailKeys.map(function (k) {
+            var checked = self.selectedDetailKeys.has(k) ? 'checked' : '';
+            return '<label class="key-row"><input type="checkbox" value="' + self.escapeAttr(k) + '" ' + checked + ' onchange="app.toggleDetailKey(this)"><b>' + self.escapeHtml(k) + '</b></label>';
+        }).join('');
+    },
+
+    toggleDetailKey: function (el) {
+        if (el.checked) this.selectedDetailKeys.add(el.value); else this.selectedDetailKeys.delete(el.value);
+    },
+
+    selectAllDetailKeys: function (on) {
+        var self = this;
+        this.detailKeys.forEach(function (k) { if (on) self.selectedDetailKeys.add(k); else self.selectedDetailKeys.delete(k); });
+        this.renderDetailKeySelect();
+    },
+
+    // 선택한 상세 키를 각 사건의 미리보기 행에 합쳐 넣는다 (매칭 키 값으로 detailResults 조회)
+    applyDetailKeys: function () {
+        var keys = Array.from(this.selectedDetailKeys);
+        if (!keys.length) { this.showDetailMsg('반영할 상세 키를 1개 이상 선택하세요.', 'warn'); return; }
+        var self = this;
+        var existingCols = this.previewRows.length ? Object.keys(this.previewRows[0]) : [];
+        var colNameFor = {};
+        keys.forEach(function (k) { colNameFor[k] = existingCols.indexOf(k) !== -1 ? ('상세_' + k) : k; });
+
+        this.previewRows.forEach(function (row) {
+            var val = String(row[self.matchKey]);
+            var detail = self.detailResults[val];
+            keys.forEach(function (k) {
+                row[colNameFor[k]] = (detail && detail.ok && detail.data) ? detail.data[k] : undefined;
+            });
+        });
+
+        var allCols = existingCols.concat(keys.map(function (k) { return colNameFor[k]; }));
+        this.renderPreviewTable(allCols);
+        this.showDetailMsg('상세 정보가 미리보기·저장 결과에 반영되었습니다.', 'ok');
     },
 
     escapeHtml: function (s) {
