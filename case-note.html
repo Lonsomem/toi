@@ -3582,7 +3582,6 @@
                 const container = document.getElementById('caseCalendarContainer');
                 const label = document.getElementById('caseCalMonthLabel');
                 if (!container || !current) return;
-                if (!Array.isArray(current.schedules)) current.schedules = [];
 
                 const vd = this.caseCalendarViewDate;
                 if (label) label.textContent = `${vd.getFullYear()}.${pad2(vd.getMonth() + 1)}`;
@@ -3633,7 +3632,6 @@
                 if (!current || !dateStr || !input) return;
                 const title = input.value.trim();
                 if (!title) return;
-                if (!Array.isArray(current.schedules)) current.schedules = [];
                 current.schedules.push({ id: 'sch_' + Date.now(), date: dateStr, title, memo: '' });
                 current.updatedAt = this.getFormattedNow();
                 this.onStateChanged();
@@ -3755,19 +3753,6 @@
                 return opt ? opt.group : 'active';
             },
 
-            ensureTemplateStatusOptions() {
-                if (!Array.isArray(this.template.statusOptions) || !this.template.statusOptions.length) {
-                    this.template.statusOptions = getDefaultStatusOptions();
-                }
-                this.template.statusOptions.forEach((opt, i) => {
-                    if (!opt.id) opt.id = 'st_custom_' + Date.now() + '_' + i;
-                    if (!opt.badgeClass) opt.badgeClass = 'status-ing';
-                    if (!opt.group) opt.group = 'active';
-                    if (!opt.emoji) opt.emoji = '⚪';
-                    if (typeof opt.closedTab !== 'boolean') opt.closedTab = (opt.value === '종결');
-                });
-            },
-
             /**
              * 이 상태값의 사건이 "종결된 사건" 탭으로 분류되는지. 상태 이름이 바뀌어도
              * (그룹 분류와는 별개로) statusOptions[].closedTab 플래그로만 판정 — 설정에 없는
@@ -3779,14 +3764,11 @@
             },
 
             getStatusOptions() {
-                if (!Array.isArray(this.template.statusOptions) || !this.template.statusOptions.length) {
-                    return getDefaultStatusOptions();
-                }
+                // db-core 정규화가 1개 이상을 보장(삭제 화면도 마지막 1개는 못 지움)
                 return this.template.statusOptions;
             },
 
             renderTemplateStatusOptions() {
-                this.ensureTemplateStatusOptions();
                 const list = document.getElementById('tplStatusOptionsList');
                 if (!list) return;
                 const colorOptions = [
@@ -3823,7 +3805,6 @@
             },
 
             addTemplateStatusOption() {
-                this.ensureTemplateStatusOptions();
                 this.template.statusOptions.push({
                     id: 'st_custom_' + Date.now(),
                     value: '새 상태',
@@ -4609,7 +4590,6 @@
 
                 const targetCase = this.cases.find(c => c.id === caseId);
                 if (!targetCase) return;
-                if (!targetCase.checklist) targetCase.checklist = [];
 
                 targetCase.checklist.push({
                     id: 'chk_' + Date.now(),
@@ -4675,7 +4655,6 @@
                 this.renderCrimeFactMissingBar();
                 document.getElementById('detailReference').value = current.reference || '';
                 document.getElementById('detailUpdatedAt').textContent = current.updatedAt || '';
-                if (!Array.isArray(current.schedules)) current.schedules = [];
                 this.caseCalendarSelectedDate = null;
                 this.renderCaseCalendar();
 
@@ -4768,7 +4747,6 @@
                     '서식을 공통 보관함으로 이동',
                     `[${caseObj.caseNumber}] 사건이 종결 처리됩니다. 이 사건에 등록된 서식 ${forms.length}건을 📚 공통 서식 보관함으로 복사해 두시겠습니까? (복사해도 이 사건의 서식은 그대로 남습니다. 나중에 [⋮ 템플릿 설정] 근처 공통서식함에서 확인 가능)`,
                     () => {
-                        if (!Array.isArray(this.template.globalForms)) this.template.globalForms = [];
                         let added = 0;
                         forms.forEach(f => {
                             const dup = this.template.globalForms.some(g => g.title === f.title && g.content === f.content);
@@ -4830,7 +4808,6 @@
 
                 const current = this.getCurrentCase();
                 if (!current) return;
-                if (!current.checklist) current.checklist = [];
 
                 current.checklist.push({
                     id: 'chk_' + Date.now(),
@@ -4895,7 +4872,6 @@
             syncTemplateChecklistToCase() {
                 const current = this.getCurrentCase();
                 if (!current) return;
-                if (!current.checklist) current.checklist = [];
 
                 const existing = new Set(current.checklist.map(i => i.text.trim()));
                 let added = 0;
@@ -5005,7 +4981,6 @@
             addCaseFormTab() {
                 const current = this.getCurrentCase();
                 if (!current) return;
-                if (!current.forms) current.forms = [];
 
                 current.forms.push({
                     id: 'form_' + Date.now(),
@@ -5078,53 +5053,6 @@
                (template.personRoleFields) + 사람별 값 덮어쓰기(fieldValues) / 제외(removedFieldIds)
                / 그 사람만의 추가 필드(extraFields). 서식에서는 {{식별자(slug).필드명}} 으로 사용.
                ====================================================================== */
-            ensureTemplatePersonRoleFields() {
-                if (!this.template.personRoleFields || typeof this.template.personRoleFields !== 'object') {
-                    this.template.personRoleFields = JSON.parse(JSON.stringify(getDefaultMasterTemplate().personRoleFields));
-                }
-                PERSON_ROLE_ORDER.forEach(role => {
-                    if (!Array.isArray(this.template.personRoleFields[role])) this.template.personRoleFields[role] = [];
-                });
-                if (Array.isArray(this.template.variables) && this.template.variables.length) {
-                    const caseFields = this.template.personRoleFields.case;
-                    this.template.variables.forEach(v => {
-                        if (!caseFields.some(f => f.id === v.id || f.name === v.name)) caseFields.push(v);
-                    });
-                }
-                delete this.template.variables;
-            },
-
-            ensureCasePeople(cs) {
-                if (!Array.isArray(cs.people)) cs.people = [];
-                if (!cs.people.some(p => p.role === 'case')) {
-                    cs.people.unshift(createPersonRecord('case', '사건', '사건'));
-                }
-                cs.people.forEach(p => {
-                    if (!p.fieldValues || typeof p.fieldValues !== 'object') p.fieldValues = {};
-                    if (!Array.isArray(p.removedFieldIds)) p.removedFieldIds = [];
-                    if (!Array.isArray(p.extraFields)) p.extraFields = [];
-                    if (typeof p.label !== 'string') p.label = '';
-                });
-            },
-
-            // 구버전(평면 변수) 호환: 사건의 variableValues/removedVariableIds/extraVariables 를 사건공통 관계인으로 흡수
-            migrateCaseFlatVariables(cs) {
-                this.ensureCasePeople(cs);
-                const casePerson = cs.people.find(p => p.role === 'case');
-                if (cs.variableValues && typeof cs.variableValues === 'object' && Object.keys(cs.variableValues).length) {
-                    Object.assign(casePerson.fieldValues, cs.variableValues);
-                }
-                if (Array.isArray(cs.removedVariableIds) && cs.removedVariableIds.length) {
-                    casePerson.removedFieldIds = casePerson.removedFieldIds.concat(cs.removedVariableIds.filter(id => !casePerson.removedFieldIds.includes(id)));
-                }
-                if (Array.isArray(cs.extraVariables) && cs.extraVariables.length) {
-                    casePerson.extraFields = casePerson.extraFields.concat(cs.extraVariables);
-                }
-                delete cs.variableValues;
-                delete cs.removedVariableIds;
-                delete cs.extraVariables;
-            },
-
             generatePersonSlug(caseObj, role) {
                 const roleInfo = PERSON_ROLES[role];
                 const existing = new Set(caseObj.people.map(p => p.slug));
@@ -5150,7 +5078,6 @@
                 const current = this.getCurrentCase();
                 const box = document.getElementById('peopleSummaryContainer');
                 if (!current || !box) return;
-                this.ensureCasePeople(current);
 
                 box.innerHTML = PERSON_ROLE_ORDER.map(role => {
                     const roleInfo = PERSON_ROLES[role];
@@ -5173,7 +5100,6 @@
             openPeopleModal(personId) {
                 const current = this.getCurrentCase();
                 if (!current) return;
-                this.ensureCasePeople(current);
                 this.selectedPersonId = personId || (current.people[0] && current.people[0].id) || null;
                 this.renderPeopleModal();
                 document.getElementById('peopleModal').classList.add('open');
@@ -5302,7 +5228,6 @@
                     const f = (person.extraFields || []).find(x => x.id === fieldId);
                     if (f) f.value = val;
                 } else {
-                    if (!person.fieldValues) person.fieldValues = {};
                     person.fieldValues[fieldId] = val;
                 }
                 current.updatedAt = this.getFormattedNow();
@@ -5339,7 +5264,6 @@
                 const name = (nameEl.value || '').trim();
                 if (!name) { this.showToast('필드명을 입력하세요.'); return; }
                 if (this.getEffectivePersonFields(person).some(f => f.name === name)) { this.showToast('이미 같은 이름의 필드가 있습니다.'); return; }
-                if (!person.extraFields) person.extraFields = [];
                 person.extraFields.push({ id: 'pfx_' + Date.now(), name: name, value: (valEl.value || '').trim() });
                 current.updatedAt = this.getFormattedNow();
                 this.onStateChanged();
@@ -5407,16 +5331,8 @@
                 this.copyToClipboard(resolved, `[${form.title}] 서식 내용이 복사되었습니다.`);
             },
 
-            ensureGlobalForms() {
-                if (!this.template) this.template = getDefaultMasterTemplate();
-                if (!Array.isArray(this.template.globalForms)) {
-                    this.template.globalForms = getDefaultMasterTemplate().globalForms;
-                }
-                return this.template.globalForms;
-            },
-
             openGlobalFormsModal() {
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 if (this.activeGlobalFormIndex >= list.length) {
                     this.activeGlobalFormIndex = Math.max(0, list.length - 1);
                 }
@@ -5430,7 +5346,7 @@
             },
 
             renderGlobalFormsList() {
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const countBadge = document.getElementById('globalFormsCountBadge');
                 if (countBadge) countBadge.textContent = `${list.length}건`;
 
@@ -5483,7 +5399,7 @@
             },
 
             renderActiveGlobalFormEditor() {
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const catEl = document.getElementById('globalFormCategoryInput');
                 const titleEl = document.getElementById('globalFormTitleInput');
                 const contentEl = document.getElementById('globalFormContentInput');
@@ -5515,7 +5431,7 @@
             },
 
             addGlobalFormItem() {
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 list.unshift({
                     id: 'gf_' + Date.now(),
                     category: '한글서식',
@@ -5537,7 +5453,7 @@
             },
 
             updateActiveGlobalForm(key, val) {
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const active = list[this.activeGlobalFormIndex];
                 if (!active) return;
                 if (key === 'autoCharges') {
@@ -5552,7 +5468,7 @@
             },
 
             deleteActiveGlobalForm() {
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const active = list[this.activeGlobalFormIndex];
                 if (!active) return;
 
@@ -5571,7 +5487,7 @@
             },
 
             quickCopyGlobalFormByIndex(idx) {
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const item = list[idx];
                 if (!item) return;
                 const current = this.getCurrentCase();
@@ -5580,7 +5496,7 @@
             },
 
             copyActiveGlobalForm(withVariableReplace) {
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const active = list[this.activeGlobalFormIndex];
                 if (!active) return;
 
@@ -5599,7 +5515,7 @@
                     this.showToast('먼저 사건 상세 화면을 연 상태에서 삽입 기능을 사용할 수 있습니다.');
                     return;
                 }
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const active = list[this.activeGlobalFormIndex];
                 if (!active) return;
 
@@ -5620,11 +5536,10 @@
                     this.showToast('먼저 사건 상세 화면을 연 상태에서 복제할 수 있습니다.');
                     return;
                 }
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const active = list[this.activeGlobalFormIndex];
                 if (!active) return;
 
-                if (!current.forms) current.forms = [];
                 current.forms.push({
                     id: 'form_' + Date.now(),
                     title: active.title || '공통서식 복제본',
@@ -5641,14 +5556,8 @@
                죄명이 늘어도 서식함이 지저분해지지 않도록, 사건 상세의 "범죄사실"란
                전용으로 죄명↔예문을 1:N(죄명 하나에 여러 예문 가능)으로 관리한다.
                ====================================================================== */
-            ensureChargeFactExamples() {
-                if (!this.template) this.template = getDefaultMasterTemplate();
-                if (!Array.isArray(this.template.chargeFactExamples)) this.template.chargeFactExamples = [];
-                return this.template.chargeFactExamples;
-            },
-
             openChargeFactModal() {
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 if (this.activeChargeFactIndex >= list.length) {
                     this.activeChargeFactIndex = Math.max(0, list.length - 1);
                 }
@@ -5662,7 +5571,7 @@
             },
 
             renderChargeFactList() {
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 const countBadge = document.getElementById('chargeFactCountBadge');
                 if (countBadge) countBadge.textContent = `${list.length}건`;
 
@@ -5714,7 +5623,7 @@
             },
 
             renderChargeFactEditor() {
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 const container = document.getElementById('chargeFactEditorContainer');
                 if (!container) return;
                 const active = list[this.activeChargeFactIndex];
@@ -5749,7 +5658,7 @@
             },
 
             addChargeFactItem() {
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 const current = this.getCurrentCase();
                 list.unshift({
                     id: 'cf_ex_' + Date.now(),
@@ -5767,7 +5676,7 @@
             },
 
             updateActiveChargeFact(key, val) {
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 const active = list[this.activeChargeFactIndex];
                 if (!active) return;
                 active[key] = val;
@@ -5776,7 +5685,7 @@
             },
 
             deleteActiveChargeFact() {
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 const active = list[this.activeChargeFactIndex];
                 if (!active) return;
                 this.openConfirmModal(
@@ -5794,7 +5703,7 @@
             },
 
             quickCopyChargeFactByIndex(idx) {
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 const item = list[idx];
                 if (!item) return;
                 const current = this.getCurrentCase();
@@ -5803,7 +5712,7 @@
             },
 
             copyActiveChargeFact() {
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 const active = list[this.activeChargeFactIndex];
                 if (!active) return;
                 const current = this.getCurrentCase();
@@ -5817,7 +5726,7 @@
                     this.showToast('먼저 사건 상세 화면을 연 상태에서 삽입할 수 있습니다.');
                     return;
                 }
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
                 const active = list[this.activeChargeFactIndex];
                 if (!active) return;
 
@@ -5839,7 +5748,7 @@
                 const current = this.getCurrentCase();
                 if (!current) return;
                 const charge = (current.charge || '').trim();
-                const list = this.ensureChargeFactExamples();
+                const list = this.template.chargeFactExamples;
 
                 if (!charge) {
                     this.showToast('먼저 사건의 죄명을 입력하세요.');
@@ -5885,12 +5794,10 @@
                 const charge = (current.charge || '').trim();
                 if (!charge) return;
 
-                const list = this.ensureGlobalForms();
+                const list = this.template.globalForms;
                 const matched = list.filter(gf => Array.isArray(gf.autoCharges) && gf.autoCharges.some(c => (c || '').trim() === charge));
                 if (!matched.length) return;
 
-                if (!current.forms) current.forms = [];
-                if (!Array.isArray(current.autoLoadedFormIds)) current.autoLoadedFormIds = [];
                 let added = 0;
                 matched.forEach(gf => {
                     if (current.autoLoadedFormIds.includes(gf.id)) return;
@@ -6041,7 +5948,6 @@
             },
 
             renderTemplateRoleFields() {
-                this.ensureTemplatePersonRoleFields();
                 const tabBar = document.getElementById('tplRoleFieldsTabBar');
                 const list = document.getElementById('tplRoleFieldsList');
                 if (!tabBar || !list) return;
@@ -6107,7 +6013,6 @@
                 const input = document.getElementById('tplNewChecklistText');
                 const text = (input.value || '').trim();
                 if (!text) return;
-                if (!this.template.checklist) this.template.checklist = [];
                 this.template.checklist.push(text);
                 input.value = '';
                 this.onStateChanged();
@@ -6128,7 +6033,6 @@
             },
 
             addTemplateFormItem() {
-                if (!this.template.forms) this.template.forms = [];
                 this.template.forms.push({
                     id: 'form_tpl_' + Date.now(),
                     title: '새 기본 서식',
@@ -6159,9 +6063,11 @@
                     '기본 템플릿 복원',
                     '기본 템플릿 설정을 초기값으로 되돌리시겠습니까? (기존 사건 데이터는 유지됩니다)',
                     () => {
-                        const keepGlobal = this.template && this.template.globalForms;
-                        this.template = getDefaultMasterTemplate();
-                        if (Array.isArray(keepGlobal)) this.template.globalForms = keepGlobal;
+                        // 공통 서식 보관함·범죄사실 예문은 별도 보관함이라 초기화하지 않는다 (전에는 예문이 지워졌음)
+                        const fresh = getDefaultMasterTemplate();
+                        fresh.globalForms = this.template.globalForms;
+                        fresh.chargeFactExamples = this.template.chargeFactExamples;
+                        this.template = DBCore.normalizeTemplate(fresh);
                         this.onStateChanged();
                         this.renderTemplateModalContent();
                         this.showToast('기본 템플릿이 초기화되었습니다.');
@@ -6480,92 +6386,6 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 this.showToast(scope === 'template' ? '템플릿 JSON이 내보내졌습니다.' : 'JSON 백업 파일이 다운로드되었습니다.');
-            },
-
-            normalizeImportedStatus(st) {
-                const alias = { '진행중': '수사중', '이송': '이송판단', '불송치': '불송치(불입건)결정', '송치': '송치결정' };
-                return alias[st] || st || '수사중';
-            },
-
-            normalizeImportedTemplate(t) {
-                t = t || {};
-                const forms = (Array.isArray(t.forms) ? t.forms : []).filter(f => f && typeof f === 'object')
-                    .map((f, i) => ({ id: f.id || ('form_imp_' + Date.now() + '_' + i), title: String(f.title || ''), content: String(f.content || '') }));
-                const cfs = (Array.isArray(t.customFields) ? t.customFields : []).filter(f => f && typeof f === 'object')
-                    .map((f, i) => ({ id: f.id || ('cf_imp_' + Date.now() + '_' + i), label: String(f.label || ''), placeholder: String(f.placeholder || '') }));
-                const chk = (Array.isArray(t.checklist) ? t.checklist : [])
-                    .map(x => typeof x === 'string' ? x : (x && x.text) || '').filter(Boolean);
-                const out = { checklist: chk, forms, customFields: cfs };
-                if (Array.isArray(t.globalForms)) {
-                    out.globalForms = t.globalForms.filter(f => f && typeof f === 'object')
-                        .map((f, i) => ({
-                            id: f.id || ('gf_imp_' + Date.now() + '_' + i),
-                            category: String(f.category || ''),
-                            title: String(f.title || ''),
-                            content: String(f.content || ''),
-                            autoCharges: Array.isArray(f.autoCharges) ? f.autoCharges.map(String).filter(Boolean) : []
-                        }));
-                }
-                const normFields = (arr, prefix) => (Array.isArray(arr) ? arr : []).filter(v => v && typeof v === 'object')
-                    .map((v, i) => ({ id: v.id || (prefix + '_imp_' + Date.now() + '_' + i), name: String(v.name || ''), defaultValue: String(v.defaultValue || '') }))
-                    .filter(v => v.name);
-                const personRoleFields = {};
-                PERSON_ROLE_ORDER.forEach(role => {
-                    personRoleFields[role] = normFields(t.personRoleFields && t.personRoleFields[role], 'pf_' + role);
-                });
-                if (Array.isArray(t.variables)) { // 구버전(평면 변수) 호환: 사건공통 역할로 흡수
-                    normFields(t.variables, 'var').forEach(v => {
-                        if (!personRoleFields.case.some(f => f.name === v.name)) personRoleFields.case.push(v);
-                    });
-                }
-                out.personRoleFields = personRoleFields;
-                return out;
-            },
-
-            normalizeImportedCase(c, idx) {
-                const stamp = Date.now() + '_' + idx;
-                const normalized = Object.assign({}, c, {
-                    id: c.id || ('case_imp_' + stamp),
-                    caseNumber: c.caseNumber || '',
-                    status: this.normalizeImportedStatus(c.status),
-                    title: c.title || '',
-                    overview: c.overview || '',
-                    charge: c.charge || '',
-                    crimeFact: c.crimeFact || '',
-                    reference: c.reference || '',
-                    remarks: c.remarks || '',
-                    updatedAt: c.updatedAt || this.getFormattedNow(),
-                    checklist: (Array.isArray(c.checklist) ? c.checklist : []).map((it, i) => ({
-                        id: (it && it.id) || ('chk_imp_' + stamp + '_' + i),
-                        text: (it && it.text) || '',
-                        done: Boolean(it && it.done),
-                        date: (it && it.date) || '',
-                        todayDate: (it && it.todayDate) || '',
-                        todayOrder: (it && typeof it.todayOrder === 'number') ? it.todayOrder : 0
-                    })),
-                    forms: Array.isArray(c.forms) ? c.forms : [],
-                    customValues: (c.customValues && typeof c.customValues === 'object') ? c.customValues : {},
-                    people: (Array.isArray(c.people) ? c.people : []).filter(p => p && typeof p === 'object' && PERSON_ROLES[p.role])
-                        .map((p, i) => ({
-                            id: p.id || ('person_imp_' + stamp + '_' + i),
-                            role: p.role,
-                            subLabel: p.subLabel || PERSON_ROLES[p.role].subLabels[0],
-                            slug: p.slug || (PERSON_ROLES[p.role].label + (i + 1)),
-                            label: p.label || '',
-                            fieldValues: (p.fieldValues && typeof p.fieldValues === 'object') ? p.fieldValues : {},
-                            removedFieldIds: Array.isArray(p.removedFieldIds) ? p.removedFieldIds.filter(x => typeof x === 'string') : [],
-                            extraFields: (Array.isArray(p.extraFields) ? p.extraFields : []).filter(f => f && typeof f === 'object' && f.name)
-                                .map((f, j) => ({ id: f.id || ('pfx_imp_' + stamp + '_' + i + '_' + j), name: String(f.name || ''), value: String(f.value || '') }))
-                        })),
-                    // 구버전(평면 변수) 호환 필드 — 아래 migrateCaseFlatVariables 가 people 로 흡수한다
-                    variableValues: (c.variableValues && typeof c.variableValues === 'object') ? c.variableValues : {},
-                    removedVariableIds: Array.isArray(c.removedVariableIds) ? c.removedVariableIds.filter(x => typeof x === 'string') : [],
-                    extraVariables: (Array.isArray(c.extraVariables) ? c.extraVariables : []).filter(v => v && typeof v === 'object' && v.name)
-                        .map((v, i) => ({ id: v.id || ('cvar_imp_' + stamp + '_' + i), name: String(v.name || ''), value: String(v.value || '') })),
-                    autoLoadedFormIds: Array.isArray(c.autoLoadedFormIds) ? c.autoLoadedFormIds.filter(x => typeof x === 'string') : []
-                });
-                this.migrateCaseFlatVariables(normalized); // 구버전 평면 변수를 사건공통 관계인으로 흡수 + people 싱글톤 보장
-                return normalized;
             },
 
             importPureJson(event) {

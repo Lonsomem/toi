@@ -216,6 +216,29 @@ const LEGACY = {
     await p.close();
   }
 
+  // ---- R: 기본 템플릿 복원 → 정식 템플릿(db-core), 공통 서식·범죄사실 예문은 유지 / 보정 함수 없이 화면 동작
+  {
+    const p = await open(withEmbedded('r1.html', enc(LEGACY)), () => localStorage.clear());
+    const r = await p.evaluate(() => {
+      app.template.chargeFactExamples.push({ id: 'ex_keep', charge: '사기', title: '유지', content: '본문' });
+      app.template.globalForms.push({ id: 'gf_keep', category: '', title: '유지', content: '본문', autoCharges: [] });
+      app.resetDefaultTemplate(); document.getElementById('confirmModalOkBtn').click();
+      const t = app.template;
+      // 보정 함수가 없어도 각 화면이 그려지는지
+      app.openTemplateModal && app.openTemplateModal(); app.closeTemplateModal && app.closeTemplateModal();
+      app.openChargeFactModal(); app.closeChargeFactModal && app.closeChargeFactModal();
+      app.openGlobalFormsModal(); app.closeGlobalFormsModal();
+      app.openCaseDetail(app.cases[0].id); app.openPeopleModal(); app.closePeopleModal();
+      return { ex: t.chargeFactExamples.some(e => e.id === 'ex_keep'), gf: t.globalForms.some(g => g.id === 'gf_keep'),
+        st: t.statusOptions.every(o => o.id && typeof o.closedTab === 'boolean'), roles: Array.isArray(t.personRoleFields.witness),
+        same: JSON.stringify(DBCore.normalizeTemplate(JSON.parse(JSON.stringify(t)))) === JSON.stringify(t) };
+    });
+    ok(r.ex && r.gf, 'R1 기본 템플릿 복원: 범죄사실 예문·공통 서식 유지');
+    ok(r.st && r.roles && r.same, 'R1 복원된 템플릿은 이미 정규화된 모양');
+    ok(p.errs.length === 0, 'R1 보정 함수 없이 화면 열기 오류 없음 ' + p.errs.join(' | '));
+    await p.close();
+  }
+
   await b.close();
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log(fails ? `\n${fails}건 실패` : '\n전부 통과');

@@ -198,8 +198,8 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
 
 테스트: `tests/case-note/missing-slots.test.js` (T1 개수·항목·숨김, T3 복사 경고, T5 저장본 비어 있음·한 화면 핏). 실행법은 파일 상단 주석. 칩 클릭 순환과 예문 삽입 후 표시는 일회성 스크립트로만 확인(저장소 미포함).
 
-## 14. db-core: 데이터 모양 전담 모듈 (2026-11-24, 진행 중) — ADR-0001
-결정·이유는 `docs/adr/0001-db-core-정규화-단일-모듈.md`. 아키텍처 리뷰에서 "데이터의 올바른 모양"이 7곳에 흩어져 실제 유실 버그를 낸 것이 확인되어, `case-note.html` 안 **`<script id="db-core">`** 한 곳으로 모으는 중.
+## 14. db-core: 데이터 모양 전담 모듈 (2026-11-24 완료) — ADR-0001
+결정·이유는 `docs/adr/0001-db-core-정규화-단일-모듈.md`. 아키텍처 리뷰에서 "데이터의 올바른 모양"이 7곳에 흩어져 실제 유실 버그를 낸 것이 확인되어, `case-note.html` 안 **`<script id="db-core">`** 한 곳으로 모음(1~4단계 완료).
 
 - **위치**: 메인 `<script>` 바로 앞. 순수 코드(DOM·`app`·네트워크 없음). 기존 전역 `encodeDB/decodeDB`, `PERSON_ROLES`, `PERSON_ROLE_ORDER`, `createPersonRecord`, `getDefaultStatusOptions`, `getDefaultMasterTemplate` 가 이 블록으로 **이동**(전역 이름은 그대로라 기존 코드 영향 없음).
 - **인터페이스** `DBCore.*`:
@@ -217,13 +217,14 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
       - 샘플 데이터는 내장 DB 가 **비어 있을 때만**. 백업 복구 시 D-day 도 복원(전에는 누락).
     - [x] 3-2 공유 JSON (2026-11-24): `exportPureJson` → `DBCore.toShareJson(app.currentDB(), …)`, `importPureJson` → `DBCore.applyShareJson`. 덮어쓰기는 파일에 있는 섹션만 교체(상태 설정·예문·관계인 필드·D-day 유지 — **유실 버그 해결**), 병합은 추가만. 덮어쓰기 확인창에 "(파일에 없는 설정은 유지)" 문구. 읽기 전용(손상 DB) 상태에서 가져오기에 성공하면 = 복원으로 보고 읽기 전용 해제.
     - [x] 3-3 새 사건 (2026-11-24): `createNewCase` → `DBCore.makeCase(template)`, `importExternalCases` → 매핑 값을 `fields` 로 모아 `makeCase(template, {fields})`(제목 빈칸·서식 없음은 기존대로). 외부 값의 구버전 상태 이름(송치 등)은 `makeCase` 가 공유 JSON 과 같은 별칭 규칙으로 처리. 외부 목록 사건의 기본 상태는 고정 '수사중' → **상태 설정의 첫 번째 상태**(기본 설정이면 같음).
-  - [ ] 4단계: 남은 보정 삭제 — `ensureTemplateStatusOptions`, `ensureTemplatePersonRoleFields`, `ensureCasePeople`, `migrateCaseFlatVariables`, `ensureGlobalForms`/`ensureChargeFactExamples` 의 보정 부분, `normalizeImported*`, 렌더러 안 `if (!Array.isArray(...))` 보정.
-- **앱 연결 테스트**: `PLAYWRIGHT_DIR=~/.cache/toi-test LANG=C.UTF-8 node tests/case-note/entry-points.test.js` — 내장 DB 를 바꾼 사본을 임시 폴더에 만들어 엶(L1 구버전 DB, L2 손상 DB·백업 복구, L3 빈 DB→샘플, S1 저장 검증 실패, J1~J4 실제 파일 입력·다운로드로 JSON 덮어쓰기/병합/왕복/읽기 전용 복원, N1·N2 새 사건·외부 목록 사건 모양).
+  - [x] 4단계: 남은 보정 삭제 (2026-11-24) — `ensureTemplateStatusOptions`, `ensureTemplatePersonRoleFields`, `ensureCasePeople`, `migrateCaseFlatVariables`, `ensureGlobalForms`, `ensureChargeFactExamples`, `normalizeImportedStatus/Template/Case` 삭제, 화면 코드의 지연 보정(`if (!Array.isArray(current.schedules)) …`, `if (!current.forms) …` 등 13곳) 삭제, `getStatusOptions` 의 빈 목록 대체 삭제. **화면 코드는 이제 데이터가 정식 모양이라고 가정**한다 → 새로 데이터를 만들거나 통째로 바꾸는 코드는 반드시 `DBCore.*` 를 거칠 것.
+    - 함께 고친 버그: **"기본 템플릿 복원"이 범죄사실 예문을 지우던 문제** — 이제 공통 서식 보관함과 같이 예문도 유지, 결과는 `DBCore.normalizeTemplate` 경유.
+- **앱 연결 테스트**: `PLAYWRIGHT_DIR=~/.cache/toi-test LANG=C.UTF-8 node tests/case-note/entry-points.test.js` — 내장 DB 를 바꾼 사본을 임시 폴더에 만들어 엶(L1 구버전 DB, L2 손상 DB·백업 복구, L3 빈 DB→샘플, S1 저장 검증 실패, J1~J4 실제 파일 입력·다운로드로 JSON 덮어쓰기/병합/왕복/읽기 전용 복원, N1·N2 새 사건·외부 목록 사건 모양, R1 기본 템플릿 복원·보정 함수 없이 화면 열기).
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
 2. 데이터 변경 끝에 `onStateChanged()`; 목록 갱신이 필요하면 `renderCaseList()`, 상세면 `renderCaseDetail()`/`renderDetailChecklist()`.
-3. 스키마 추가 → **`db-core`(14절)의 `normalizeTemplate`/`normalizeCase` 한 곳** + `tests/case-note/db-core.test.js` + `docs`·이 문서 갱신. (3단계 완료로 진입점은 전부 db-core 경유 — `loadDatabase()`·`normalizeImported*` 를 따로 고칠 필요 없음. `normalizeImported*`·`ensure*` 는 4단계에서 삭제 예정)
+3. 스키마 추가 → **`db-core`(14절)의 `normalizeTemplate`/`normalizeCase` 한 곳** + `tests/case-note/db-core.test.js` + `docs`·이 문서 갱신. (진입점은 전부 db-core 경유. 화면 코드에 `if (!x) x = []` 식 보정을 다시 넣지 말 것 — 빠진 기본값은 db-core 에서 채움)
 4. 테스트: 저장소에 있는 것은 `tests/case-note/*.test.js`(실행법은 각 파일 상단; Playwright 위치는 `PLAYWRIGHT_DIR` 로 지정 가능). 그 외는 Playwright(headless Chromium)로 `file:///.../case-note.html` 열어 `app.*` 직접 호출. 저장본 생성은 `app.buildCleanHtmlDocumentString()`.
 5. 검증 시 기억: 샘플 데이터는 첫 로드 때 `getInitialSampleCases()` 로 생성. 저장소의 `case-note.html` 은 `#embedded-db-b64` 가 비어 있음(사용자가 쓰던 저장본은 데이터가 들어 있음).
 
