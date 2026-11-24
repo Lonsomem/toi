@@ -149,10 +149,21 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
 사용자 요청: "사건별 '공통 템플릿 항목' 제거, 종결 사건은 별도 탭에서만 보이게, 종결 전환 시 서식을 공통서식함으로 옮길지 판단, 기본 상태를 7종으로."
 
 - **'공통 템플릿 항목' 완전 제거**: 상세화면의 탭 전환형 위젯(`#customFieldsTabBar`/`#customFieldsContainer`) 과 템플릿 설정 모달의 "사건별 공통 현출 추가 항목" 섹션을 삭제. `renderDetailCustomFields/selectCustomFieldTab/updateCustomFieldValue/copyActiveCustomField/addTemplateCustomField/updateTemplateCustomField/removeTemplateCustomField` 함수 전부 제거, `activeCustomFieldIndex` 상태 제거, `dynamicContainerIds`에서 관련 id 제거. **데이터는 보존**: `template.customFields`/`case.customValues` 스키마와 공유 JSON v1 내보내기/가져오기(`customFields`)는 그대로 유지 — 과거 공유 파일 호환 때문에 깨면 안 됨(CLAUDE.md 규칙 4). 단지 UI 진입점이 없어졌을 뿐. 빈 공간은 옆 "서식 및 양식"(flex 1.05→1.5)과 "사건관계인"(flex 0.9→1.4) 카드가 채움.
-- **진행중/종결 탭**: 목록 화면에 `#caseScopeTabs`(진행중 사건 N / 종결된 사건 N) 추가. `app.caseListScope`('active'|'closed', 기본 active) 상태로 `renderCaseList()`의 필터링에 `matchScope` 조건 추가 — **종결 그룹(`getStatusGroup==='done'`) 상태의 사건은 기본(진행중) 탭에 안 보이고 종결 탭에서만 보임**. 탭 전환 시 상태 드롭다운은 'ALL'로 리셋(교차 필터로 0건 되는 혼란 방지). 상단 통계 라벨 "송치완료·타관이송" → "종결 사건"으로 변경(새 상태 체계에 맞춤).
+- **진행중/종결 탭**: 목록 화면에 `#caseScopeTabs`(진행중 사건 N / 종결된 사건 N) 추가. `app.caseListScope`('active'|'closed', 기본 active) 상태로 `renderCaseList()`의 필터링에 `matchScope` 조건 추가. 탭 전환 시 상태 드롭다운은 'ALL'로 리셋(교차 필터로 0건 되는 혼란 방지). 상단 통계 라벨 "송치완료·타관이송" → "종결 사건"으로 변경(새 상태 체계에 맞춤). **(11절에서 분류 기준을 `group` 대신 전용 `closedTab` 플래그로 교체함 — 아래 참고.)**
 - **서식 공통 보관함 이관 판단**: `updateCurrentCaseField('status', value)`에서 상태 변경 전후의 `group`을 비교해, **종결 그룹이 아니다가 종결 그룹으로 바뀌는 순간**(`offerMoveFormsToGlobal`) 그 사건에 서식이 1건이라도 있으면 확인 모달 노출 — "이 사건에 등록된 서식 N건을 공통 서식 보관함으로 복사해 두시겠습니까?". **확인** 시 `template.globalForms`에 복사(제목+내용 완전 일치면 중복 스킵, `category`는 사건 죄명), **사건의 서식은 그대로 남음**(삭제 안 함 — 종결 탭에서 사건을 다시 열면 여전히 보임). 취소해도 데이터 유실 없음.
 - **사건 상태 기본 7종으로 개편**: `getDefaultStatusOptions()` → `수사중(active)/영장신청(active)/불송치(불입건)결정(done)/송치결정(done)/이송판단(done)/수사중지(관리미제)(hold)/종결(done)`. "수사중지(관리미제)"는 `hold` 그룹이라 종결 탭이 아니라 **진행중 탭에 계속 노출**(관리가 더 필요한 미제 사건이라는 취지). 배지 색상 2종 추가(`status-reject` 빨강, `status-susp` 회색) — 템플릿 설정의 색상 선택지에도 반영. `normalizeImportedStatus`(외부 가져오기 별칭 매핑)도 새 상태명에 맞춰 조정. 기존에 커스터마이즈해 둔 사용자의 `template.statusOptions`는 자동 마이그레이션하지 않음(사용자가 이미 정한 값을 존중) — "초기 기본값 복원" 또는 신규 설치 시에만 새 7종이 적용됨.
 - 검증: 신규 설치 시 상태 7종 확인, 공통 템플릿 항목 UI/모달 섹션 완전 제거(JS 오류 없음), 진행중→종결 전환 시 서식 있는 사건은 확인 모달(문구 포함) 노출·확인 시 공통서식함에 중복 없이 추가·사건 서식은 보존, 종결 처리 후 기본 탭에서 사라지고 종결 탭에서만 보임, 통계 라벨 반영까지 Playwright로 확인. 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션/캘린더·D-day/한 화면 핏) 전부 재통과.
+
+## 11. 종결 탭 분류를 전용 플래그로 재작성 + 오늘 할 일에 당일 일정 표시 (2026-11-24)
+사용자 피드백: "10절에서 만든 종결 탭이 `group==='done'`인 4개 상태(불송치/송치결정/이송판단/종결)를 전부 종결 탭으로 보냈는데, '종결'이라고 분류된 사건만 들어가야 한다." + "오늘 할 일에 그날 캘린더 일정도 같이 표시."
+
+- **`statusOptions[].closedTab: boolean` 플래그 신설** — "진행중 통계/할 일 제외 집계"(`group`)와 "종결 탭 분류"(`closedTab`)를 완전히 분리된 두 축으로 재설계. 기본값은 `종결` 상태만 `closedTab:true`, 나머지(불송치/송치결정/이송판단/수사중지 포함)는 전부 `false` — 즉 **"송치결정"으로 바꿔도 더 이상 자동으로 종결 탭에 들어가지 않음**, 사용자가 명시적으로 "종결"로 바꾸거나 템플릿 설정에서 해당 상태의 "종결 탭" 체크박스를 켜야만 종결 탭으로 분류됨.
+  - `ensureTemplateStatusOptions()`: 과거 저장본(10절 버전, `closedTab` 필드 없음)을 열어도 `opt.value==='종결'` 인 것만 `true`로 자동 보정 — 하위호환.
+  - `isCaseInClosedTab(status)`: `statusOptions`에서 값으로 찾아 `closedTab` 반환, 설정에 없는(삭제/과거) 상태값은 안전하게 `false`(진행중 쪽에 남김).
+  - `renderCaseList()`의 `matchScope`, `renderCaseScopeTabs()`의 카운트(`openTabCount`/`closedTabCount`) 전부 `isCaseInClosedTab()` 기준으로 교체. 현황 통계(수사중·영장 / 종결 사건 건수)는 여전히 `group` 기준 그대로 유지(탭 분류와는 별개 개념).
+  - 템플릿 설정 "0. 사건 상태 설정"의 각 상태 행에 **"종결 탭" 체크박스** 추가(`updateTemplateStatusOption(id, 'closedTab', checked)`). "진행중/종결 집계/기타" 분류 선택지 설명 문구도 "탭 분류"와 혼동되지 않게 수정.
+- **오늘 할 일 + 당일 일정 통합 표시**: `renderPriorityTodoBoard()`의 "오늘" 탭 렌더링에 전체 사건의 `schedules` 중 `date === 오늘` 인 항목을 모아 파란색 박스(`.today-sched-box`, 기존 "지난 할 일" 주황 박스와 같은 구조 재사용)로 체크리스트 "오늘 할 일" 목록 **위에** 표시. 각 항목 클릭 시 해당 사건 상세로 이동. 체크리스트의 "오늘 할 일 지정" 개수 배지(`priorityTodoCount`)에는 포함하지 않음(둘은 별개 데이터 — 캘린더 일정은 체크 대상이 아니라 "오늘 있는 일" 안내용).
+- 검증: 상태를 "송치결정"으로 바꿔도 진행중 탭에 남고, "종결"로 바꿔야 종결 탭으로 이동하는 것 확인. 템플릿 설정에 상태 7개 전부 체크박스 노출 확인. 오늘 날짜로 일정 추가 후 "오늘" 탭에 파란 박스로 표시되고 클릭 시 사건 이동 확인. `closedTab` 값이 퀸 저장→재로드에도 보존됨을 확인. 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션/캘린더·D-day/서식 이관/한 화면 핏) 전부 재통과.
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.

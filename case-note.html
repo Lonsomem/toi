@@ -1672,6 +1672,10 @@
         .overdue-row { display: flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.1rem; font-size: 0.76rem; font-weight: 700; color: var(--text-main); }
         .overdue-row .od-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .overdue-row .od-case { font-family: var(--font-mono); font-size: 0.64rem; color: #92400e; flex-shrink: 0; }
+        .today-sched-box { border: 1px dashed var(--primary); background: var(--primary-light); border-radius: var(--radius-sm); padding: 0.45rem; flex-shrink: 0; margin-bottom: 0.5rem; }
+        .today-sched-box .overdue-head { color: var(--primary); }
+        .today-sched-box .overdue-row .od-case { color: var(--primary); }
+        .today-sched-box .overdue-row .od-text { cursor: pointer; }
         .mini-act { border: 1px solid #fde68a; background: #fff; color: #b45309; font-family: inherit; font-size: 0.66rem; font-weight: 800; border-radius: 6px; padding: 0.1rem 0.4rem; cursor: pointer; flex-shrink: 0; }
         .mini-act:hover { background: #fef3c7; }
         .today-empty-btn { margin-top: 0.6rem; }
@@ -2565,13 +2569,13 @@
 
         function getDefaultStatusOptions() {
             return [
-                { id: 'st_ing', value: '수사중', emoji: '🔵', badgeClass: 'status-ing', group: 'active' },
-                { id: 'st_warrant', value: '영장신청', emoji: '🟣', badgeClass: 'status-warrant', group: 'active' },
-                { id: 'st_reject', value: '불송치(불입건)결정', emoji: '🔴', badgeClass: 'status-reject', group: 'done' },
-                { id: 'st_done', value: '송치결정', emoji: '🟢', badgeClass: 'status-done', group: 'done' },
-                { id: 'st_transfer', value: '이송판단', emoji: '🩵', badgeClass: 'status-transfer', group: 'done' },
-                { id: 'st_susp', value: '수사중지(관리미제)', emoji: '⚪', badgeClass: 'status-susp', group: 'hold' },
-                { id: 'st_closed', value: '종결', emoji: '🟠', badgeClass: 'status-hold', group: 'done' }
+                { id: 'st_ing', value: '수사중', emoji: '🔵', badgeClass: 'status-ing', group: 'active', closedTab: false },
+                { id: 'st_warrant', value: '영장신청', emoji: '🟣', badgeClass: 'status-warrant', group: 'active', closedTab: false },
+                { id: 'st_reject', value: '불송치(불입건)결정', emoji: '🔴', badgeClass: 'status-reject', group: 'done', closedTab: false },
+                { id: 'st_done', value: '송치결정', emoji: '🟢', badgeClass: 'status-done', group: 'done', closedTab: false },
+                { id: 'st_transfer', value: '이송판단', emoji: '🩵', badgeClass: 'status-transfer', group: 'done', closedTab: false },
+                { id: 'st_susp', value: '수사중지(관리미제)', emoji: '⚪', badgeClass: 'status-susp', group: 'hold', closedTab: false },
+                { id: 'st_closed', value: '종결', emoji: '🟠', badgeClass: 'status-hold', group: 'done', closedTab: true }
             ];
         }
 
@@ -3354,7 +3358,18 @@
                     if (!opt.badgeClass) opt.badgeClass = 'status-ing';
                     if (!opt.group) opt.group = 'active';
                     if (!opt.emoji) opt.emoji = '⚪';
+                    if (typeof opt.closedTab !== 'boolean') opt.closedTab = (opt.value === '종결');
                 });
+            },
+
+            /**
+             * 이 상태값의 사건이 "종결된 사건" 탭으로 분류되는지. 상태 이름이 바뀌어도
+             * (그룹 분류와는 별개로) statusOptions[].closedTab 플래그로만 판정 — 설정에 없는
+             * (과거/삭제된) 상태값은 안전하게 "진행중" 쪽에 남긴다.
+             */
+            isCaseInClosedTab(status) {
+                const opt = this.getStatusOptions().find(o => o.value === status);
+                return opt ? !!opt.closedTab : false;
             },
 
             getStatusOptions() {
@@ -3378,9 +3393,9 @@
                     { v: 'status-susp', label: '⚪ 회색' }
                 ];
                 const groupOptions = [
-                    { v: 'active', label: '진행중 (현황에 "수사중·영장" 집계, 목록 기본 노출)' },
-                    { v: 'done', label: '종결 (종결 탭으로 분류, 할 일 패널·기본 목록 제외)' },
-                    { v: 'hold', label: '기타 (현황 집계 제외, 목록 기본 노출 — 예: 수사중지)' }
+                    { v: 'active', label: '진행중 (현황에 "수사중·영장" 집계)' },
+                    { v: 'done', label: '종결 집계 (현황에 "종결 사건" 집계, 할 일 패널 제외)' },
+                    { v: 'hold', label: '기타 (현황 집계 제외 — 예: 수사중지)' }
                 ];
                 list.innerHTML = this.template.statusOptions.map((opt) => `
                     <div style="display: flex; gap: 0.4rem; align-items: center; background: var(--bg-subtle); padding: 0.4rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); flex-wrap: nowrap;">
@@ -3392,6 +3407,10 @@
                         <select onchange="app.updateTemplateStatusOption('${opt.id}', 'group', this.value)" style="width: auto; flex: 1; min-width: 0;">
                             ${groupOptions.map(g => `<option value="${g.v}" ${g.v === opt.group ? 'selected' : ''}>${g.label}</option>`).join('')}
                         </select>
+                        <label style="display:flex; align-items:center; gap:0.25rem; font-size:0.72rem; color:var(--text-secondary); flex:none; white-space:nowrap;" title="사건 목록에서 이 상태의 사건을 '종결된 사건' 탭으로 분류합니다 (기본 '진행중' 탭에는 안 보임)">
+                            <input type="checkbox" ${opt.closedTab ? 'checked' : ''} onchange="app.updateTemplateStatusOption('${opt.id}', 'closedTab', this.checked)">
+                            종결 탭
+                        </label>
                         <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger); flex: none;" onclick="app.removeTemplateStatusOption('${opt.id}')" title="삭제 (이미 사용 중인 사건의 데이터는 보존됩니다)">삭제</button>
                     </div>
                 `).join('');
@@ -3404,7 +3423,8 @@
                     value: '새 상태',
                     emoji: '⚪',
                     badgeClass: 'status-ing',
-                    group: 'active'
+                    group: 'active',
+                    closedTab: false
                 });
                 this.onStateChanged();
                 this.renderTemplateStatusOptions();
@@ -3473,13 +3493,13 @@
                 this.renderCaseList();
             },
 
-            renderCaseScopeTabs(openCount, doneCount) {
+            renderCaseScopeTabs(openTabCount, closedTabCount) {
                 const bar = document.getElementById('caseScopeTabs');
                 if (!bar) return;
                 const scope = this.caseListScope || 'active';
                 bar.innerHTML = `
-                    <button type="button" class="scope-tab ${scope === 'active' ? 'active' : ''}" onclick="app.setCaseListScope('active')">진행중 사건 <b>${openCount}</b></button>
-                    <button type="button" class="scope-tab ${scope === 'closed' ? 'active' : ''}" onclick="app.setCaseListScope('closed')">종결된 사건 <b>${doneCount}</b></button>
+                    <button type="button" class="scope-tab ${scope === 'active' ? 'active' : ''}" onclick="app.setCaseListScope('active')">진행중 사건 <b>${openTabCount}</b></button>
+                    <button type="button" class="scope-tab ${scope === 'closed' ? 'active' : ''}" onclick="app.setCaseListScope('closed')">종결된 사건 <b>${closedTabCount}</b></button>
                 `;
             },
 
@@ -3496,7 +3516,8 @@
                 const total = this.cases.length;
                 const activeCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'active').length;
                 const doneCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'done').length;
-                const openCount = this.cases.filter(c => this.getStatusGroup(c.status) !== 'done').length;
+                const closedTabCount = this.cases.filter(c => this.isCaseInClosedTab(c.status)).length;
+                const openTabCount = total - closedTabCount;
                 let sumPct = 0;
                 this.cases.forEach(c => { sumPct += this.calculateProgress(c).percent; });
                 const avgPct = total > 0 ? Math.round(sumPct / total) : 0;
@@ -3507,11 +3528,11 @@
                 document.getElementById('statAvgProgress').textContent = `${avgPct}%`;
 
                 this.renderPriorityTodoBoard();
-                this.renderCaseScopeTabs(openCount, doneCount);
+                this.renderCaseScopeTabs(openTabCount, closedTabCount);
 
                 const scope = this.caseListScope || 'active';
                 const filtered = this.cases.filter(c => {
-                    const matchScope = scope === 'active' ? this.getStatusGroup(c.status) !== 'done' : this.getStatusGroup(c.status) === 'done';
+                    const matchScope = scope === 'active' ? !this.isCaseInClosedTab(c.status) : this.isCaseInClosedTab(c.status);
                     const matchStatus = statusFilter === 'ALL' || c.status === statusFilter;
                     const customStr = c.customValues ? Object.values(c.customValues).join(' ').toLowerCase() : '';
                     const matchQuery = !query ||
@@ -3889,6 +3910,24 @@
 
                 if (this.todoTab === 'today') {
                     let html = '';
+
+                    const todayStr = this.getFormattedNow().split(' ')[0];
+                    const todaySchedules = [];
+                    this.cases.forEach(c => {
+                        (c.schedules || []).forEach(s => {
+                            if (s.date === todayStr) todaySchedules.push({ c, s });
+                        });
+                    });
+                    if (todaySchedules.length) {
+                        html += `<div class="overdue-box today-sched-box">
+                            <div class="overdue-head">📅 오늘 등록된 일정 ${todaySchedules.length}건</div>
+                            ${todaySchedules.map(x => `<div class="overdue-row">
+                                <span class="od-case">${this.escapeHtml(x.c.caseNumber || '')}</span>
+                                <span class="od-text" title="${this.escapeAttr(x.s.title)}" onclick="app.openCaseDetail('${x.c.id}')">${this.escapeHtml(x.s.title)}</span>
+                            </div>`).join('')}
+                        </div>`;
+                    }
+
                     if (overdueItems.length) {
                         html += `<div class="overdue-box">
                             <div class="overdue-head">⏰ 지난 날짜에 지정했지만 못 끝낸 일 ${overdueItems.length}건
