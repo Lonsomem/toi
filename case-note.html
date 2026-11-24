@@ -342,6 +342,12 @@
             display: flex;
         }
 
+        .db-error-banner {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #991b1b;
+        }
+
         .view-section {
             display: none;
             height: 100%;
@@ -1914,6 +1920,15 @@
          ========================================================================== -->
     <main class="main-container">
 
+        <!-- 내장 DB 손상 알림(읽기 전용) — ADR-0001 -->
+        <div id="dbErrorBanner" class="recovery-banner db-error-banner">
+            <div>
+                <strong>⛔ 이 파일에 저장된 사건 데이터를 읽지 못했습니다. 읽기 전용으로 열었고 저장은 중지됩니다.</strong>
+                <span id="dbErrorBannerMsg" style="margin-left: 0.4rem;"></span>
+                <div style="margin-top:0.2rem;">원본 파일은 바뀌지 않았습니다. 아래 임시 백업이 있으면 복구하거나, 이전 저장본/공유 JSON 으로 복원하세요.</div>
+            </div>
+        </div>
+
         <!-- 미저장 임시 데이터 복구 알림 -->
         <div id="recoveryBanner" class="recovery-banner">
             <div>
@@ -3041,6 +3056,8 @@
             mainPanelTab: 'todo',
             caseListScope: 'active',
             ddayTrackers: [],
+            readOnly: false,
+            dbExtra: {},
             dashboardCalendarViewDate: new Date(),
             dashboardCalendarSelectedDate: null,
             caseCalendarViewDate: new Date(),
@@ -3075,44 +3092,43 @@
             },
 
             loadDatabase() {
+                // 데이터 모양은 DBCore(db-core)만 결정한다 (ADR-0001)
                 const b64El = document.getElementById('embedded-db-b64');
                 const rawB64 = b64El ? b64El.textContent.trim() : '';
-                let loadedFromEmbedded = null;
+                const now = this.getFormattedNowWithSeconds();
+                let db = null;
+                let loadError = '';
 
                 if (rawB64) {
                     try {
-                        loadedFromEmbedded = decodeDB(rawB64);
+                        const decoded = decodeDB(rawB64);
+                        if (!decoded || typeof decoded !== 'object' || !Array.isArray(decoded.cases)) {
+                            throw new Error('사건 목록(cases)이 없습니다.');
+                        }
+                        db = DBCore.normalizeDB(decoded, { now });
                     } catch (err) {
-                        console.error('내장 Base64 DB 디코딩 실패:', err);
+                        console.error('내장 DB 읽기 실패:', err);
+                        loadError = (err && err.message) || String(err);
                     }
                 }
 
+                this.readOnly = false;
+                this.dbExtra = {};
                 let embeddedSavedAt = '';
-                if (loadedFromEmbedded && Array.isArray(loadedFromEmbedded.cases) && loadedFromEmbedded.template) {
-                    this.cases = loadedFromEmbedded.cases;
-                    this.template = loadedFromEmbedded.template;
-                    this.ddayTrackers = Array.isArray(loadedFromEmbedded.ddayTrackers) ? loadedFromEmbedded.ddayTrackers : [];
-                    if (!Array.isArray(this.template.globalForms)) {
-                        this.template.globalForms = getDefaultMasterTemplate().globalForms;
-                    }
-                    this.template.globalForms.forEach(gf => { if (!Array.isArray(gf.autoCharges)) gf.autoCharges = []; });
-                    if (!Array.isArray(this.template.chargeFactExamples)) this.template.chargeFactExamples = [];
-                    this.ensureTemplateStatusOptions();
-                    this.ensureTemplatePersonRoleFields();
-                    this.cases.forEach(cs => {
-                        if (typeof cs.charge !== 'string') cs.charge = '';
-                        if (typeof cs.crimeFact !== 'string') cs.crimeFact = '';
-                        if (!Array.isArray(cs.checklist)) cs.checklist = [];
-                        cs.checklist.forEach((it, i) => { if (!it.id) it.id = 'chk_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000); });
-                        if (!Array.isArray(cs.autoLoadedFormIds)) cs.autoLoadedFormIds = [];
-                        if (!Array.isArray(cs.schedules)) cs.schedules = [];
-                        this.migrateCaseFlatVariables(cs);
-                    });
-                    embeddedSavedAt = loadedFromEmbedded.savedAt || '';
+                if (db) {
+                    this.applyNormalizedDB(db);
+                    embeddedSavedAt = db.savedAt || '';
+                } else if (loadError) {
+                    // 손상된 내장 DB: 샘플로 덮지 않는다. 빈 화면 + 저장 중지 + 백업 복구 제안
+                    this.readOnly = true;
+                    this.applyNormalizedDB(DBCore.normalizeDB({ cases: [] }, { now }));
+                    const msgEl = document.getElementById('dbErrorBannerMsg');
+                    if (msgEl) msgEl.textContent = `(${loadError})`;
+                    const errBanner = document.getElementById('dbErrorBanner');
+                    if (errBanner) errBanner.classList.add('show');
                 } else {
-                    this.template = getDefaultMasterTemplate();
-                    this.cases = getInitialSampleCases();
-                    this.ddayTrackers = [];
+                    // 내장 DB 가 비어 있을 때만 샘플
+                    this.applyNormalizedDB(DBCore.normalizeDB({ template: getDefaultMasterTemplate(), cases: getInitialSampleCases() }, { now }));
                     this.syncEmbeddedBase64Tag('');
                 }
 
@@ -3121,13 +3137,14 @@
                     const localB64Str = localStorage.getItem(STORAGE_KEY_B64);
                     if (localMetaStr && localB64Str) {
                         const meta = JSON.parse(localMetaStr);
-                        if (meta.unsaved && meta.savedAt && (!embeddedSavedAt || meta.savedAt > embeddedSavedAt)) {
+                        const newer = meta.unsaved && meta.savedAt && (!embeddedSavedAt || meta.savedAt > embeddedSavedAt);
+                        if (this.readOnly || newer) {
                             const recovered = decodeDB(localB64Str);
                             if (recovered && Array.isArray(recovered.cases)) {
                                 this.pendingRecoveredData = recovered;
                                 const metaEl = document.getElementById('recoveryBannerMeta');
                                 if (metaEl) {
-                                    metaEl.textContent = `(${meta.savedAt} · ${recovered.cases.length}건)`;
+                                    metaEl.textContent = `(${meta.savedAt || '시각 불명'} · ${recovered.cases.length}건)`;
                                 }
                                 document.getElementById('recoveryBanner').classList.add('show');
                             }
@@ -3136,12 +3153,33 @@
                 } catch (e) {}
             },
 
+            /** DBCore.normalizeDB 결과를 앱 상태에 반영. 앱이 모르는 최상위 키는 dbExtra 로 보관해 저장 시 되돌려 넣는다 */
+            applyNormalizedDB(db) {
+                this.template = db.template;
+                this.cases = db.cases;
+                this.ddayTrackers = db.ddayTrackers;
+                const extra = {};
+                Object.keys(db).forEach(k => {
+                    if (['version', 'savedAt', 'template', 'cases', 'ddayTrackers'].indexOf(k) === -1) extra[k] = db[k];
+                });
+                this.dbExtra = extra;
+            },
+
             applyRecoveredData() {
                 if (!this.pendingRecoveredData) return;
-                this.cases = this.pendingRecoveredData.cases;
-                this.template = this.pendingRecoveredData.template || getDefaultMasterTemplate();
+                let db;
+                try {
+                    db = DBCore.normalizeDB(this.pendingRecoveredData, { now: this.getFormattedNowWithSeconds() });
+                } catch (err) {
+                    this.showToast('임시 데이터를 읽을 수 없습니다: ' + ((err && err.message) || err));
+                    return;
+                }
+                this.applyNormalizedDB(db);
                 this.pendingRecoveredData = null;
+                this.readOnly = false;
                 document.getElementById('recoveryBanner').classList.remove('show');
+                const errBanner = document.getElementById('dbErrorBanner');
+                if (errBanner) errBanner.classList.remove('show');
                 this.onStateChanged();
                 this.renderCaseList();
                 if (this.currentCaseId) this.renderCaseDetail();
@@ -3151,26 +3189,59 @@
             dismissRecoveryBanner() {
                 this.pendingRecoveredData = null;
                 document.getElementById('recoveryBanner').classList.remove('show');
-                try { localStorage.removeItem(STORAGE_KEY_META); } catch (e) {}
+                // 읽기 전용(내장 DB 손상) 중에는 백업 표시를 지우지 않는다 — 다시 열면 또 복구 제안
+                if (!this.readOnly) {
+                    try { localStorage.removeItem(STORAGE_KEY_META); } catch (e) {}
+                }
             },
 
-            syncEmbeddedBase64Tag(savedAtTimestamp) {
-                const payload = {
+            /** 저장용 인코딩: 읽기 전용이면 거부, 인코딩 결과를 다시 풀어 검증(DBCore.encodeVerified). 실패 시 예외 */
+            encodeForSave(savedAtTimestamp) {
+                if (this.readOnly) {
+                    throw new Error('읽기 전용: 내장 데이터를 읽지 못해 저장을 중지했습니다. 백업을 복구하거나 원본 파일을 확인하세요.');
+                }
+                const payload = Object.assign({}, this.dbExtra || {}, {
                     version: 4,
                     savedAt: savedAtTimestamp || this.getFormattedNowWithSeconds(),
                     template: this.template,
                     cases: this.cases,
                     ddayTrackers: this.ddayTrackers
-                };
-                const encoded = encodeDB(payload);
+                });
+                return { payload, encoded: DBCore.encodeVerified(payload) };
+            },
+
+            /** 저장이 막혔을 때 안내(같은 메시지는 5초에 한 번만 토스트) */
+            reportSaveBlocked(err) {
+                const msg = '⛔ 저장 안 됨 — ' + ((err && err.message) || err);
+                console.error(msg);
+                this.updateFileSyncBadge('unsaved');
+                this.updateDetailSaveBadge('⛔ 저장 중지');
+                const t = Date.now();
+                if (this._lastSaveBlockMsg !== msg || !this._lastSaveBlockAt || t - this._lastSaveBlockAt > 5000) {
+                    this._lastSaveBlockMsg = msg;
+                    this._lastSaveBlockAt = t;
+                    this.showToast(msg);
+                }
+            },
+
+            syncEmbeddedBase64Tag(savedAtTimestamp) {
+                const result = this.encodeForSave(savedAtTimestamp);
                 const el = document.getElementById('embedded-db-b64');
-                if (el) el.textContent = encoded;
-                return { payload, encoded };
+                if (el) el.textContent = result.encoded;
+                return result;
             },
 
             onStateChanged() {
                 const nowStamp = this.getFormattedNowWithSeconds();
-                const { encoded } = this.syncEmbeddedBase64Tag(nowStamp);
+                let encoded;
+                try {
+                    encoded = this.syncEmbeddedBase64Tag(nowStamp).encoded;
+                } catch (err) {
+                    // 읽기 전용이거나 검증 실패: 내장 DB·임시저장·파일 어느 것도 쓰지 않는다
+                    if (this.autoSaveTimer) clearTimeout(this.autoSaveTimer);
+                    this.reportSaveBlocked(err);
+                    return;
+                }
                 this.updateCapacityIndicator();
 
                 const isFileConnected = Boolean(this.fileHandle);
@@ -3232,15 +3303,8 @@
             },
 
             buildCleanHtmlDocumentString() {
-                const nowStamp = this.getFormattedNowWithSeconds();
-                const stateObj = {
-                    version: 4,
-                    savedAt: nowStamp,
-                    template: this.template,
-                    cases: this.cases,
-                    ddayTrackers: this.ddayTrackers
-                };
-                const encodedB64 = encodeDB(stateObj);
+                // 읽기 전용·검증 실패 시 예외 → 호출부가 파일을 쓰지 않음
+                const encodedB64 = this.encodeForSave(this.getFormattedNowWithSeconds()).encoded;
 
                 const liveB64El = document.getElementById('embedded-db-b64');
                 if (liveB64El) liveB64El.textContent = encodedB64;
@@ -3277,7 +3341,8 @@
                     'ddayWidgetContainer',
                     'caseScopeTabs',
                     'chargeFactListContainer',
-                    'chargeFactEditorContainer'
+                    'chargeFactEditorContainer',
+                    'dbErrorBannerMsg'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -3300,6 +3365,8 @@
                 clone.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
                 const recBanner = clone.querySelector('#recoveryBanner');
                 if (recBanner) recBanner.classList.remove('show');
+                const errBannerClone = clone.querySelector('#dbErrorBanner');
+                if (errBannerClone) errBannerClone.classList.remove('show');
 
                 const cloneB64El = clone.querySelector('#embedded-db-b64');
                 if (cloneB64El) cloneB64El.textContent = encodedB64;
@@ -3356,8 +3423,14 @@
 
             async writeSelfHtmlToFileHandle(showToastMsg) {
                 if (!this.fileHandle) return false;
+                let cleanHtml;
                 try {
-                    const cleanHtml = '\uFEFF' + this.buildCleanHtmlDocumentString();
+                    cleanHtml = '\uFEFF' + this.buildCleanHtmlDocumentString();
+                } catch (err) {
+                    this.reportSaveBlocked(err);
+                    return false;
+                }
+                try {
                     const writable = await this.fileHandle.createWritable();
                     await writable.write(cleanHtml);
                     await writable.close();
@@ -3386,7 +3459,13 @@
             },
 
             downloadEmbeddedHtmlFile() {
-                const cleanHtml = '\uFEFF' + this.buildCleanHtmlDocumentString();
+                let cleanHtml;
+                try {
+                    cleanHtml = '\uFEFF' + this.buildCleanHtmlDocumentString();
+                } catch (err) {
+                    this.reportSaveBlocked(err);
+                    return;
+                }
                 const blob = new Blob([cleanHtml], { type: 'text/html;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
