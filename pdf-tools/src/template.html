@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>다중 PDF 매뉴얼 통합 검색기 (오프라인 · 표 인식 · 긴 문서 안정 추출)</title>
+    <style>
+        :root {
+            --bg-body: #f1f5f9;
+            --bg-surface: #ffffff;
+            --bg-subtle: #f8fafc;
+            --text-main: #0f172a;
+            --text-secondary: #334155;
+            --text-muted: #64748b;
+            --border-color: #cbd5e1;
+            --border-light: #e2e8f0;
+            --primary: #0f766e;
+            --primary-hover: #115e59;
+            --primary-light: #f0fdfa;
+            --primary-border: #99f6e4;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --warning: #d97706;
+            --warning-bg: #fef3c7;
+            --danger: #dc2626;
+            --danger-bg: #fee2e2;
+            --radius: 10px;
+            --font-sans: 'Malgun Gothic', '맑은 고딕', -apple-system, sans-serif;
+            --font-mono: 'Consolas', 'Courier New', monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-body);
+            color: var(--text-main);
+            line-height: 1.55;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-header {
+            background: linear-gradient(135deg, #0f172a 0%, #115e59 100%);
+            color: #fff;
+            padding: 0.7rem 1.25rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.15);
+        }
+        .header-inner {
+            max-width: 1680px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .brand-title h1 { font-size: 1.05rem; font-weight: 900; }
+        .brand-title span { font-size: 0.78rem; color: #99f6e4; }
+        .header-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 0.45rem; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.82rem;
+            font-weight: 800;
+            border-radius: 8px;
+            border: 1.5px solid transparent;
+            cursor: pointer;
+            font-family: inherit;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-accent { background: var(--accent); color: #fff; }
+        .btn-accent:hover { background: #1d4ed8; }
+        .btn-secondary { background: #fff; color: var(--text-main); border-color: var(--border-color); }
+        .btn-secondary:hover { border-color: var(--primary); background: var(--primary-light); }
+        .btn-header { background: rgba(255,255,255,0.14); color: #fff; border-color: rgba(255,255,255,0.28); }
+        .btn-header:hover { background: rgba(255,255,255,0.26); }
+        .btn-danger { background: var(--danger-bg); color: var(--danger); border-color: #fecaca; }
+        .btn-danger:hover { background: var(--danger); color: #fff; }
+        .btn-sm { padding: 0.28rem 0.58rem; font-size: 0.75rem; }
+
+        .engine-pill {
+            padding: 0.36rem 0.75rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 900;
+            background: rgba(245, 158, 11, 0.28);
+            border: 1px solid #fbbf24;
+            color: #fef3c7;
+            cursor: pointer;
+        }
+        .engine-pill.ready {
+            background: rgba(16, 185, 129, 0.35);
+            border-color: #34d399;
+            color: #ecfdf5;
+        }
+
+        input[type="text"], input[type="search"], select, textarea {
+            width: 100%;
+            font-family: inherit;
+            font-size: 0.9rem;
+            padding: 0.5rem 0.75rem;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            color: var(--text-main);
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+        }
+
+        .main-container {
+            max-width: 1680px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0.85rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            flex: 1;
+        }
+
+        .search-hero-card {
+            background: var(--bg-surface);
+            border: 2px solid var(--primary);
+            border-radius: var(--radius);
+            padding: 0.85rem 1.15rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            box-shadow: 0 2px 8px rgba(15, 118, 110, 0.08);
+        }
+        .search-bar-row { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+        .big-search-wrap { flex: 1; min-width: 260px; }
+        .big-search-wrap input { font-size: 1rem; font-weight: 800; padding: 0.58rem 0.9rem; }
+
+        .selected-scope-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.45rem 0.8rem;
+            border-radius: 8px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1.5px solid var(--primary-border);
+            font-size: 0.82rem;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .syntax-help-bar {
+            background: #f8fafc;
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 0.42rem 0.75rem;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            align-items: center;
+        }
+        .syntax-code {
+            font-family: var(--font-mono);
+            font-weight: 900;
+            color: var(--primary);
+            background: var(--primary-light);
+            padding: 0.08rem 0.38rem;
+            border-radius: 4px;
+            border: 1px solid var(--primary-border);
+            cursor: pointer;
+        }
+        .syntax-code:hover { background: var(--primary); color: #fff; }
+
+        .quick-kw-chip {
+            padding: 0.18rem 0.6rem;
+            border-radius: 999px;
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid var(--primary-border);
+            font-size: 0.77rem;
+            font-weight: 800;
+            cursor: pointer;
+        }
+        .quick-kw-chip:hover { background: var(--primary); color: #fff; }
+
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 350px 1.15fr 1.1fr;
+            gap: 0.85rem;
+            align-items: start;
+        }
+        @media (max-width: 1220px) { .workspace-grid { grid-template-columns: 1fr; } }
+
+        .panel-card {
+            background: var(--bg-surface);
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius);
+            padding: 0.85rem 1rem;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            padding-bottom: 0.55rem;
+            margin-bottom: 0.6rem;
+            border-bottom: 2px solid var(--border-light);
+            font-weight: 900;
+            font-size: 0.9rem;
+        }
+
+        .pdf-dropzone {
+            border: 2px dashed var(--primary);
+            background: var(--primary-light);
+            border-radius: 8px;
+            padding: 0.7rem;
+            text-align: center;
+            cursor: pointer;
+            margin-bottom: 0.55rem;
+            transition: background 0.15s;
+        }
+        .pdf-dropzone:hover { background: #ccfbf1; }
+
+        .scroll-box {
+            max-height: calc(100vh - 300px);
+            min-height: 390px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.45rem;
+            padding-right: 0.2rem;
+        }
+
+        .doc-item {
+            padding: 0.55rem 0.7rem;
+            border-radius: 8px;
+            border: 1.5px solid var(--border-light);
+            background: var(--bg-subtle);
+            transition: all 0.14s;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.55rem;
+        }
+        .doc-item:hover { border-color: var(--primary-border); }
+        .doc-item.checked-doc { border-color: var(--primary); background: var(--primary-light); }
+        .doc-item.unchecked-doc { opacity: 0.58; background: #f8fafc; }
+        .doc-checkbox {
+            width: 18px;
+            height: 18px;
+            margin-top: 2px;
+            accent-color: var(--primary);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .doc-item-body { flex: 1; min-width: 0; cursor: pointer; }
+
+        .snippet-card {
+            border: 1.5px solid var(--border-color);
+            border-left: 5px solid var(--primary);
+            border-radius: 8px;
+            padding: 0.75rem 0.9rem;
+            cursor: pointer;
+            background: #fff;
+            transition: all 0.14s;
+        }
+        .snippet-card:hover { border-color: var(--primary); }
+        .snippet-card.active {
+            border-color: var(--accent);
+            border-left-color: var(--accent);
+            background: var(--accent-light);
+        }
+        .toc-breadcrumb {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            margin-top: 0.32rem;
+            padding: 0.18rem 0.55rem;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            border-radius: 6px;
+            font-size: 0.76rem;
+            font-weight: 800;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .prox-dist-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.12rem 0.45rem;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 900;
+            background: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+        }
+        .snippet-body {
+            margin-top: 0.4rem;
+            font-size: 0.9rem;
+            line-height: 1.65;
+            background: var(--bg-subtle);
+            padding: 0.5rem 0.7rem;
+            border-radius: 6px;
+            word-break: keep-all;
+        }
+
+        mark.hit {
+            background: #fde047;
+            color: #713f12;
+            font-weight: 900;
+            padding: 0.05rem 0.28rem;
+            border-radius: 4px;
+            border: 1px solid #facc15;
+        }
+
+        .toc-drawer-box {
+            background: #f0fdf4;
+            border: 1.5px solid #86efac;
+            border-radius: 8px;
+            padding: 0.55rem 0.75rem;
+            margin-bottom: 0.55rem;
+            max-height: 180px;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .toc-drawer-box.open { display: flex; }
+        .toc-jump-item {
+            font-size: 0.79rem;
+            font-weight: 800;
+            color: #14532d;
+            padding: 0.22rem 0.45rem;
+            border-radius: 5px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.4rem;
+        }
+        .toc-jump-item:hover { background: #dcfce7; }
+
+        .reader-box {
+            max-height: calc(100vh - 300px);
+            min-height: 390px;
+            overflow-y: auto;
+            background: var(--bg-subtle);
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.9rem 1.05rem;
+            font-size: 0.92rem;
+            line-height: 1.78;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .native-pdf-frame-wrap {
+            display: none;
+            flex-direction: column;
+            gap: 0.5rem;
+            height: calc(100vh - 300px);
+            min-height: 390px;
+        }
+        .native-pdf-frame-wrap.active { display: flex; }
+        .native-pdf-iframe {
+            flex: 1;
+            width: 100%;
+            border: 1.5px solid var(--primary);
+            border-radius: 8px;
+            background: #334155;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(2px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 300;
+            padding: 1rem;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal-dialog {
+            background: #fff;
+            border-radius: 14px;
+            max-width: 740px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+        }
+
+        .toast-container {
+            position: fixed;
+            bottom: 1.2rem;
+            right: 1.2rem;
+            z-index: 400;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        .toast {
+            background: #0f172a;
+            color: #fff;
+            padding: 0.65rem 1rem;
+            border-radius: 8px;
+            font-size: 0.84rem;
+            font-weight: 800;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        }
+
+        /* ---- 신규: 옵션 행 / 진행 바 / 리더 표 / 보고서 ---- */
+        .opt-row { display:flex; gap:0.7rem; flex-wrap:wrap; font-size:0.76rem; font-weight:700; color:var(--text-secondary); padding:0.15rem 0.1rem 0.45rem; }
+        .opt-row label { display:flex; align-items:center; gap:0.25rem; cursor:pointer; }
+        .progress-bar { height:12px; background:#e2e8f0; border-radius:99px; overflow:hidden; margin:0.6rem 0; }
+        .progress-fill { height:100%; width:0; background:linear-gradient(90deg,#2563eb,#0ea5e9); transition:width .15s; }
+        .reader-box .rline { min-height:1.2em; }
+        .reader-box .rtbl { border-collapse:collapse; margin:0.45rem 0; width:100%; font-size:0.88rem; line-height:1.55; white-space:normal; background:#fff; }
+        .reader-box .rtbl td { border:1px solid #94a3b8; padding:0.3rem 0.5rem; vertical-align:top; word-break:keep-all; overflow-wrap:anywhere; }
+        .reader-box .rtbl tr:first-child td { background:#eef2ff; font-weight:800; }
+        .reader-box .pg-note { color:var(--text-muted); font-weight:800; text-align:center; padding:2rem 0; }
+        .snippet-body { white-space:pre-wrap; }
+        .rep-doc { border:1.5px solid var(--border-color); border-radius:8px; padding:0.6rem 0.75rem; margin-bottom:0.55rem; background:var(--bg-subtle); }
+        .rep-ok { color:#047857; font-weight:900; } .rep-warn { color:#b45309; font-weight:900; } .rep-bad { color:#b91c1c; font-weight:900; }
+        /* ---- QR 전송 모달 ---- */
+        .qr-dialog { max-width: 1120px; width: 96vw; }
+        .qr-grid { display:grid; grid-template-columns: 330px 1fr; gap:1rem; margin-top:0.6rem; }
+        .qr-side { display:flex; flex-direction:column; gap:0.5rem; font-size:0.82rem; }
+        .qr-box { border:1.5px solid var(--border-color); background:var(--bg-subtle); border-radius:8px; padding:0.55rem 0.7rem; line-height:1.6; }
+        .qr-opt { display:flex; gap:0.4rem; align-items:flex-start; font-weight:700; cursor:pointer; }
+        .qr-adv { border:1px dashed var(--border-color); border-radius:8px; padding:0.45rem 0.6rem; }
+        .qr-adv summary { cursor:pointer; font-weight:800; color:var(--primary); }
+        .qr-adv-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.4rem 0.6rem; margin:0.5rem 0; }
+        .qr-adv-grid label { display:flex; flex-direction:column; font-size:0.74rem; color:var(--text-secondary); font-weight:700; gap:0.15rem; }
+        .qr-note { font-size:0.74rem; color:var(--text-secondary); margin:0.3rem 0; line-height:1.5; }
+        .qr-stage { height: min(62vh, 640px); background:#fff; border:1.5px solid var(--border-color); border-radius:10px; display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
+        .qr-stage canvas { display:none; max-width:100%; max-height:100%; image-rendering:pixelated; image-rendering:crisp-edges; background:#fff; }
+        .qr-stage.live canvas { display:block; }
+        .qr-stage.live .qr-stage-ph { display:none; }
+        .qr-stage-ph { color:var(--text-muted); text-align:center; padding:1rem; }
+        .qr-stage-info { position:absolute; left:0; right:0; bottom:0; padding:0.3rem 0.6rem; font-size:0.78rem; background:rgba(255,255,255,0.92); text-align:center; display:none; }
+        .qr-stage.live .qr-stage-info { display:block; }
+        .qr-stage:fullscreen { background:#fff; border:none; border-radius:0; height:100vh; }
+        @media (max-width: 900px) { .qr-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="header-inner">
+            <div class="brand-title">
+                <h1>📚 다중 PDF 매뉴얼 통합 검색기 (오프라인 · 표 인식 · 긴 문서 안정 추출 · 자동목차 · 다중검색)</h1>
+                <span id="headerSummary">등록된 매뉴얼 0권 | 내장 색인: 0.0 KB</span>
+            </div>
+            <div class="header-actions">
+                <span id="engineBadge" class="engine-pill" onclick="app.openReportModal()" title="클릭하여 문서별 추출 보고서(쪽수·빈 쪽·표·실패 쪽) 보기">
+                    🛠️ 엔진 확인 중…
+                </span>
+                <button type="button" class="btn btn-header" style="background: rgba(37, 99, 235, 0.55); border-color: #93c5fd;" onclick="app.openPasteModal()">
+                    📝 텍스트 직접 붙여넣기 등록
+                </button>
+                <button type="button" class="btn btn-header" style="background: rgba(16, 185, 129, 0.45); border-color: #6ee7b7;" onclick="app.downloadEmbeddedHtml()">
+                    💾 매뉴얼 내장 단일 HTML 저장
+                </button>
+                <button type="button" class="btn btn-header" style="background: rgba(245, 158, 11, 0.55); border-color: #fcd34d;" onclick="QRSEND.open()" title="체크한 매뉴얼을 압축해 QR 영상으로 전송합니다 (수신기: qr-receiver.html)">
+                    📡 QR로 전송
+                </button>
+                <button type="button" class="btn btn-header" onclick="app.exportJsonIndex()" title="좌측 목록에서 체크된 매뉴얼만 내보냅니다">
+                    📦 체크된 매뉴얼 색인 JSON 백업
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <input type="file" id="pdfInput" accept=".pdf,.txt,.json" multiple style="display:none;" onchange="app.handleFiles(this.files); this.value='';">
+
+    <main class="main-container">
+
+        <!-- 상단 검색 히어로 바 -->
+        <section class="search-hero-card">
+            <div class="search-bar-row">
+                <div class="big-search-wrap">
+                    <input type="search" id="searchInput" placeholder="검색어 입력 (예: 보완 + 기한, 보완 ~40 연장, 이송 | 반려, &quot;보완수사 요구&quot;)..." oninput="app.searchDebounced()">
+                </div>
+                <select id="proxLimitSelect" style="width:auto; font-weight:800; background:#eef2ff; border-color:#a5b4fc; color:#3730a3;" onchange="app.search()" title="다중 검색어 입력 시 단어들 사이의 최대 허용 글자 간격">
+                    <option value="50">다중단어 간격: 50자 이내 (밀접)</option>
+                    <option value="120" selected>다중단어 간격: 120자 이내 (권장)</option>
+                    <option value="250">다중단어 간격: 250자 이내 (문단)</option>
+                    <option value="0">간격 무제한 (같은 페이지 내)</option>
+                </select>
+                <select id="radiusSelect" style="width:auto; font-weight:800;" onchange="app.search()">
+                    <option value="60">미리보기 앞뒤 60자</option>
+                    <option value="110" selected>미리보기 앞뒤 110자</option>
+                    <option value="220">미리보기 앞뒤 220자</option>
+                </select>
+                <span id="selectedScopeBadge" class="selected-scope-pill" title="좌측 체크박스로 선택된 검색 대상 매뉴얼 수">
+                    ☑️ 선택된 0/0권 내 검색 중
+                </span>
+            </div>
+
+            <!-- 다중 검색 형식 안내 -->
+            <div class="syntax-help-bar">
+                <strong style="color:var(--text-main);">🔎 다중·근접 검색 문법:</strong>
+                <span onclick="app.quickSearch('보완 + 기한')" title="클릭하여 예시 실행"><code class="syntax-code">단어1 + 단어2</code> 또는 <code class="syntax-code">공백</code> : 지정 간격 내 동시 포함</span>
+                <span onclick="app.quickSearch('보완 ~40 연장')" title="클릭하여 예시 실행"><code class="syntax-code">단어1 ~숫자 단어2</code> : 정확히 N자 이내 인접(예: <code>보완 ~40 연장</code>)</span>
+                <span onclick="app.quickSearch('이송 | 반려')" title="클릭하여 예시 실행"><code class="syntax-code">단어1 | 단어2</code> : 둘 중 하나라도 포함(OR)</span>
+                <span style="margin-left:auto; display:flex; gap:0.35rem; flex-wrap:wrap;">
+                    <span class="quick-kw-chip" onclick="app.quickSearch('보완 + 기한')">#보완+기한</span>
+                    <span class="quick-kw-chip" onclick="app.quickSearch('이송 ~60 반려')">#이송~60반려</span>
+                    <span class="quick-kw-chip" onclick="app.quickSearch('통신 + 보충성')">#통신+보충성</span>
+                </span>
+            </div>
+        </section>
+
+        <!-- 3단 워크스페이스 -->
+        <section class="workspace-grid">
+
+            <!-- 좌측: 체크박스 선택형 매뉴얼 목록 및 PDF 드롭존 -->
+            <div class="panel-card">
+                <div class="panel-header">
+                    <span>📂 검색 대상 매뉴얼 (<span id="checkedCountText">0/0</span>)</span>
+                    <div style="display:flex; gap:0.25rem;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="app.toggleAllDocsCheck(true)">전체선택</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="app.toggleAllDocsCheck(false)">선택해제</button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="app.confirmDeleteSelectedDocs()" title="체크박스로 선택된 매뉴얼만 삭제합니다">선택삭제</button>
+                    </div>
+                </div>
+
+                <div class="pdf-dropzone"
+                     onclick="document.getElementById('pdfInput').click()"
+                     ondragover="event.preventDefault()"
+                     ondrop="event.preventDefault(); app.handleFiles(event.dataTransfer.files)">
+                    <div style="font-weight:900; color:var(--primary); font-size:0.86rem;">📥 PDF 다중 드롭 (자동파싱 + 원본 열람/복붙)</div>
+                    <div id="dropzoneSubHint" style="font-size:0.74rem; color:var(--text-secondary); margin-top:0.2rem;">
+                        내장 PDF 엔진이 쪽 단위로 자동 추출합니다(표·병합 셀 인식, 빈 쪽 포함 쪽 번호 유지). 우측 원본 뷰어에서 <code>Ctrl+A</code> · <code>Ctrl+C</code> 복붙 파싱도 가능합니다.
+                    </div>
+                </div>
+
+                <div class="opt-row">
+                    <label title="PDF 안의 표 테두리 선을 읽어 셀 단위로 묶습니다 (병합 셀 지원)"><input type="checkbox" id="optRuled" checked> 선 표 인식</label>
+                    <label title="테두리 없이 글자 정렬만으로 된 표를 추정합니다 (오탐 가능)"><input type="checkbox" id="optBorderless" checked> 선 없는 표 추정</label>
+                    <label title="체크 해제 시 같은 이름의 매뉴얼을 덮어씁니다. 체크하면 이름 뒤에 번호를 붙여 따로 보관합니다"><input type="checkbox" id="optKeepBoth"> 동명 파일 별도 보관</label>
+                </div>
+
+                <!-- 체크박스 매뉴얼 리스트 -->
+                <div id="docList" class="scroll-box"></div>
+            </div>
+
+            <!-- 중앙: 자동 목차 + 주변 문맥 미리보기 검색 결과 -->
+            <div class="panel-card">
+                <div class="panel-header">
+                    <span>🎯 검색 결과 & 소속 목차 · 문맥 미리보기 (<span id="hitCount">0</span>건)</span>
+                </div>
+                <div id="resultList" class="scroll-box"></div>
+            </div>
+
+            <!-- 우측: 페이지 원문 열람 & 원본 PDF 복붙 뷰어 -->
+            <div class="panel-card">
+                <div class="panel-header">
+                    <span id="readerTitle">📖 페이지 전체 원문</span>
+                    <div style="display:flex; gap:0.3rem; align-items:center; flex-wrap:wrap;">
+                        <button type="button" id="toggleTocDrawerBtn" class="btn btn-secondary btn-sm" onclick="app.toggleTocDrawer()" title="현재 문서에서 자동 추출된 전체 목차 보기">
+                            📑 추출 목차 (<span id="readerTocCount">0</span>)
+                        </button>
+                        <button type="button" id="togglePdfViewBtn" class="btn btn-secondary btn-sm" style="display:none;" onclick="app.toggleNativePdfViewer()">
+                            📄 원본 PDF 뷰어
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="app.movePage(-1)">◀</button>
+                        <span id="pageIndicator" style="font-size:0.78rem;">-/-</span>
+                        <input type="number" id="pageJump" min="1" placeholder="쪽" title="PDF 쪽 번호로 이동 (Enter)" style="width:62px; padding:0.2rem 0.3rem; font-size:0.78rem;" onkeydown="if(event.key==='Enter') app.jumpToPage(this.value)">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="app.movePage(1)">▶</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="app.copyReaderPage()">📋 복사</button>
+                    </div>
+                </div>
+
+                <!-- 현재 페이지 소속 목차 경로 배너 -->
+                <div id="readerCurrentSectionBar" class="toc-breadcrumb" style="margin-bottom:0.5rem; display:none;"></div>
+
+                <!-- 문서 전체 자동 추출 목차 드로어 -->
+                <div id="tocDrawerBox" class="toc-drawer-box"></div>
+
+                <!-- 1) 텍스트 원문 리더 박스 -->
+                <div id="readerBox" class="reader-box">검색 결과 카드를 클릭하면 해당 페이지 전체 원문이 표시됩니다.</div>
+
+                <!-- 2) 브라우저 원본 PDF 뷰어 + 원클릭 클립보드 복붙 파싱 바 -->
+                <div id="nativePdfWrap" class="native-pdf-frame-wrap">
+                    <div style="background: #eff6ff; border: 1.5px solid #93c5fd; border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.8rem; color: #1e3a8a; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.4rem;">
+                        <span>
+                            💡 <strong>한글 깨짐 0% 복붙 파싱:</strong> 아래 PDF 화면 클릭 → <code>Ctrl+A</code>(전체선택) → <code>Ctrl+C</code>(복사) 후 우측 버튼을 누르면 깨끗한 텍스트로 덮어써집니다!
+                        </span>
+                        <div style="display:flex; gap:0.35rem;">
+                            <button type="button" class="btn btn-accent btn-sm" onclick="app.captureClipboardToActivePdf()">
+                                ⚡ 클립보드 텍스트 즉시 파싱·등록
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.openPasteModalWithCurrentPdfName()">
+                                ✏️ 직접 붙여넣기 창
+                            </button>
+                        </div>
+                    </div>
+                    <iframe id="nativePdfIframe" class="native-pdf-iframe" title="내장 PDF 뷰어"></iframe>
+                </div>
+            </div>
+
+        </section>
+    </main>
+
+    <!-- ==========================================================================
+         MODAL 1: 텍스트 직접 붙여넣기 등록 모달 (복붙 파싱)
+         ========================================================================== -->
+    <div id="pasteModal" class="modal-backdrop">
+        <div class="modal-dialog">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:1rem; font-weight:900;">📝 매뉴얼 텍스트 복붙 파싱 등록 (한글 깨짐 0% · 목차 자동추출)</h3>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.closePasteModal()">✕</button>
+            </div>
+            <p style="font-size:0.83rem; color:var(--text-secondary);">
+                PDF 뷰어(크롬·엣지·알PDF)나 아래한글(HWP)에서 <code>Ctrl+A</code>(전체선택) → <code>Ctrl+C</code>(복사)한 텍스트를 아래에 붙여넣으면, <strong>자동으로 페이지를 나누고 목차(장·절·조·항·제목)를 추출</strong>하여 등록합니다.
+            </p>
+            <input type="text" id="pasteTitle" placeholder="매뉴얼 파일명 입력 (예: 03_범죄수사규칙_보완수사_지침.pdf)">
+            <textarea id="pasteBody" rows="12" placeholder="여기에 복사한 매뉴얼 전체 본문을 붙여넣으세요 (Ctrl+V)..."></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="app.closePasteModal()">취소</button>
+                <button type="button" class="btn btn-primary" onclick="app.savePasteDoc()">✅ 복붙 파싱 및 목차 추출 등록</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 2: 문서별 추출 보고서 (쪽수 검증 · 빈 쪽 · 표 · 실패 쪽)
+         ========================================================================== -->
+    <div id="reportModal" class="modal-backdrop">
+        <div class="modal-dialog" style="max-width: 820px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:1rem; font-weight:900;">📋 추출 보고서 (PDF 전체 쪽수 대비 추출 결과)</h3>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.closeReportModal()">✕</button>
+            </div>
+            <div id="reportBody" style="font-size:0.82rem; line-height:1.6; max-height:62vh; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- 추출 진행 모달 -->
+    <div id="parseModal" class="modal-backdrop">
+        <div class="modal-dialog" style="max-width: 560px;">
+            <h3 id="parseTitle" style="font-size:1rem; font-weight:900;">PDF 추출 중…</h3>
+            <div id="parseFile" style="font-size:0.84rem; font-weight:800; word-break:break-all;"></div>
+            <div class="progress-bar"><div id="parseBar" class="progress-fill"></div></div>
+            <div id="parseStat" style="font-size:0.8rem; color:var(--text-secondary); line-height:1.7;"></div>
+            <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+                <button type="button" class="btn btn-danger btn-sm" onclick="app.cancelParsing()">⛔ 중단 (지금까지 추출한 쪽은 저장)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL: QR 전송 (체크한 매뉴얼 → 전송용 JSON → 압축 → 자동 QR 재생)
+         ========================================================================== -->
+    <div id="qrModal" class="modal-backdrop">
+        <div class="modal-dialog qr-dialog">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="font-size:1rem; font-weight:900;">📡 QR로 전송 — 폰(또는 웹캠 PC)의 qr-receiver.html 로 비추세요</h3>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="QRSEND.close()">✕ 닫기</button>
+            </div>
+            <div class="qr-grid">
+                <div class="qr-side">
+                    <div id="qrSummary" class="qr-box">체크된 매뉴얼을 확인하는 중…</div>
+                    <div id="qrHint" class="qr-box" style="background:#eff6ff; border-color:#bfdbfe;"></div>
+                    <div id="qrEstimate" class="qr-box"></div>
+                    <label class="qr-opt"><input type="checkbox" id="qrViewer" onchange="QRSEND.onOptionChange('qrViewer')"> 검색기도 함께 보내기 <small>(최초 1회 · PDF 엔진 제외 검색 전용 HTML, 약 0.2MB)</small></label>
+                    <details class="qr-adv">
+                        <summary>고급 설정</summary>
+                        <div class="qr-adv-grid">
+                            <label>QR 크기
+                                <select id="qrPreset" onchange="QRSEND.onOptionChange('qrPreset')">
+                                    <option value="12">안정 (V12)</option><option value="18" selected>표준 (V18)</option><option value="24">고속 (V24)</option><option value="30">최고속 (V30)</option>
+                                </select></label>
+                            <label>초당 프레임 <input type="number" id="qrFps" min="1" max="30" value="10" onchange="QRSEND.onOptionChange('qrFps')"></label>
+                            <label>예상 손실률
+                                <select id="qrLoss" onchange="QRSEND.onOptionChange('qrLoss')">
+                                    <option value="0.05">5%</option><option value="0.1" selected>10%</option><option value="0.15">15%</option><option value="0.25">25%</option><option value="0.35">35%</option>
+                                </select></label>
+                            <label>재전송할 구간 <input type="text" id="qrPlaylist" placeholder="예: 3,5-7 (비우면 전체)" onchange="QRSEND.onOptionChange('qrPlaylist')"></label>
+                        </div>
+                        <div class="qr-note">※ QR 크기를 바꾸면 수신기에서 [수신 초기화] 후 처음부터 받아야 합니다.</div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="QRSEND.startCalib()" title="여러 속도 단계를 순서대로 재생합니다. 폰 수신기에 최적 설정이 표시됩니다 (약 50초)">📶 속도 보정 테스트</button>
+                        <div id="qrWarn" class="qr-note" style="color:#92400e;"></div>
+                    </details>
+                </div>
+                <div class="qr-main">
+                    <div id="qrStage" class="qr-stage">
+                        <canvas id="qrCanvas"></canvas>
+                        <div class="qr-stage-ph">전송 파일을 준비하면 자동으로 QR 재생이 시작됩니다.</div>
+                        <div id="qrStageInfo" class="qr-stage-info"></div>
+                    </div>
+                    <div class="progress-bar" style="margin:0.4rem 0;"><div id="qrBar" class="progress-fill"></div></div>
+                    <div id="qrStatus" style="font-size:0.82rem; min-height:1.3rem;"></div>
+                    <div style="display:flex; gap:0.4rem; flex-wrap:wrap;">
+                        <button type="button" id="qrPause" class="btn btn-secondary btn-sm" onclick="QRSEND.togglePause()" disabled>⏸ 일시정지</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="QRSEND.fullscreen()">⛶ 전체화면</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="QRSEND.restart()">↻ 다시 만들기</button>
+                    </div>
+                    <div style="font-size:0.74rem; color:var(--text-muted); margin-top:0.35rem;">재생 중에는 이 탭을 숨기지 마세요(숨기면 멈춥니다). 수신기에 "수신·검증 완료"가 뜰 때까지 계속 재생됩니다.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL 3: 삭제 전 재확인 알림 모달 (선택 삭제 / 개별 삭제 공통)
+         ========================================================================== -->
+    <div id="confirmDeleteModal" class="modal-backdrop">
+        <div class="modal-dialog" style="max-width: 480px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 id="confirmDeleteTitle" style="font-size:1rem; font-weight:900; color:var(--danger);">🗑️ 매뉴얼 삭제 확인</h3>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="app.closeConfirmDeleteModal()">✕</button>
+            </div>
+            <p id="confirmDeleteDesc" style="font-size:0.86rem; color:var(--text-main); font-weight:700;"></p>
+            <div id="confirmDeleteFileList" style="max-height:180px; overflow-y:auto; background:var(--bg-subtle); border:1.5px solid var(--border-color); border-radius:8px; padding:0.6rem 0.75rem; font-size:0.8rem; color:var(--text-secondary); display:flex; flex-direction:column; gap:0.25rem;"></div>
+            <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.2rem;">
+                <button type="button" class="btn btn-secondary" onclick="app.closeConfirmDeleteModal()">취소</button>
+                <button type="button" id="confirmDeleteExecuteBtn" class="btn btn-danger">🗑️ 확인 (삭제 실행)</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- 매뉴얼 색인 내장 슬롯 (저장 시 압축 'Z1:' 형식으로 채워짐 · 구형 Base64 JSON 도 읽음) -->
+    <script id="embedded-pdf-index-b64" type="text/plain"></script>
+    <!-- PDF.js 3.11.174 legacy (Apache-2.0) 내장 엔진: 빌드 시 압축·Base64 로 삽입 -->
+    <script id="pdfjs-main-z" type="text/plain">/*@@PDFJS_MAIN@@*/</script>
+    <script id="pdfjs-worker-z" type="text/plain">/*@@PDFJS_WORKER@@*/</script>
+    <script id="pdfjs-cmaps-z" type="text/plain">/*@@PDFJS_CMAPS@@*/</script>
+
+    <script>
+/*@@ZLIB@@*/
+    </script>
+    <script>
+/*@@QRENC@@*/
+    </script>
+    <script>
+/*@@LAYOUT@@*/
+    </script>
+    <script>
+/*@@ENGINE@@*/
+    </script>
+    <script>
+/*@@QRSEND@@*/
+    </script>
+    <script>
+/*@@APP@@*/
+    </script>
+</body>
+</html>

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JSON 뷰어 (오프라인)</title>
+<style>
+    :root {
+        --bg-body: #eef2f6; --bg-surface: #ffffff; --bg-subtle: #f8fafc;
+        --text-main: #0f172a; --text-secondary: #475569; --text-muted: #94a3b8;
+        --border-color: #cbd5e1; --border-light: #e2e8f0;
+        --primary: #2563eb; --primary-light: #eff6ff;
+        --success: #10b981; --success-bg: #d1fae5;
+        --warning: #d97706; --warning-bg: #fef3c7;
+        --danger: #dc2626; --danger-bg: #fee2e2;
+        --key-color: #7c3aed; --str-color: #047857; --num-color: #1d4ed8; --bool-color: #b45309; --null-color: #94a3b8;
+        --radius-sm: 8px; --radius-md: 12px;
+        --font-sans: 'Malgun Gothic', '맑은 고딕', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --font-mono: 'Consolas', 'Courier New', monospace;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100vh; overflow: hidden; background: var(--bg-body); color: var(--text-main); font-family: var(--font-sans); display: flex; flex-direction: column; }
+    header { height: 54px; flex-shrink: 0; display: flex; align-items: center; padding: 0 1.25rem; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: #fff; gap: 0.5rem; }
+    header h1 { font-size: 1rem; font-weight: 800; }
+    header span { font-size: 0.74rem; color: #93c5fd; }
+    main { flex: 1; min-height: 0; display: flex; gap: 1rem; padding: 1rem; }
+    .panel-left { width: 360px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.8rem; min-height: 0; overflow-y: auto; }
+    .panel-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.6rem; min-height: 0; }
+    .card { background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.9rem 1rem; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+    .card h2 { font-size: 0.86rem; color: var(--primary); margin-bottom: 0.5rem; }
+    .tabs { display: flex; gap: 0.35rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+    .tab-btn { padding: 0.35rem 0.75rem; font-size: 0.78rem; font-weight: 700; border: 1px solid var(--border-color); background: var(--bg-subtle); border-radius: 999px; cursor: pointer; color: var(--text-secondary); }
+    .tab-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .tab-panel.hidden { display: none; }
+    input[type=text], input[type=url], textarea {
+        width: 100%; padding: 0.5rem 0.65rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+        font-family: inherit; font-size: 0.84rem; background: var(--bg-subtle);
+    }
+    textarea { min-height: 110px; resize: vertical; font-family: var(--font-mono); font-size: 0.78rem; }
+    input[type=file] { font-size: 0.8rem; }
+    .row { display: flex; gap: 0.45rem; align-items: center; margin-top: 0.55rem; flex-wrap: wrap; }
+    .btn { padding: 0.45rem 0.8rem; font-size: 0.8rem; font-weight: 700; border: none; border-radius: var(--radius-sm); cursor: pointer; background: var(--primary); color: #fff; }
+    .btn.secondary { background: #e0e7ff; color: #3730a3; }
+    .btn.sm { padding: 0.3rem 0.55rem; font-size: 0.74rem; }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .hint { font-size: 0.73rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.5; }
+    .msg { font-size: 0.78rem; padding: 0.45rem 0.65rem; border-radius: var(--radius-sm); margin-top: 0.55rem; display: none; }
+    .msg.ok { display: block; background: var(--success-bg); color: #065f46; }
+    .msg.warn { display: block; background: var(--warning-bg); color: #92400e; }
+    .msg.bad { display: block; background: var(--danger-bg); color: #991b1b; }
+    .stat-line { font-size: 0.76rem; color: var(--text-secondary); }
+    .search-box { display: flex; gap: 0.4rem; }
+    .search-box input { flex: 1; }
+    #pathDisplay { font-family: var(--font-mono); font-size: 0.78rem; background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.5rem 0.6rem; word-break: break-all; min-height: 2.2em; }
+    #treeWrap { flex: 1; min-height: 0; overflow: auto; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 0.75rem 0.9rem; font-family: var(--font-mono); font-size: 0.82rem; }
+    .tree-node { margin: 0; }
+    .tree-row { display: flex; align-items: flex-start; gap: 0.3rem; padding: 1px 0; border-radius: 4px; }
+    .tree-row:hover { background: var(--bg-subtle); }
+    .tree-row.match-current { background: #fef08a; }
+    .toggle { width: 14px; flex-shrink: 0; cursor: pointer; color: var(--text-muted); user-select: none; text-align: center; }
+    .toggle.leaf { visibility: hidden; }
+    .node-key { color: var(--key-color); font-weight: 700; cursor: default; }
+    .node-type-summary { color: var(--text-muted); font-size: 0.76rem; cursor: pointer; }
+    .v-str { color: var(--str-color); }
+    .v-num { color: var(--num-color); }
+    .v-bool { color: var(--bool-color); }
+    .v-null { color: var(--null-color); font-style: italic; }
+    .node-children { margin-left: 1.1rem; border-left: 1px dashed var(--border-light); padding-left: 0.6rem; }
+    .copy-btn { font-size: 0.68rem; border: 1px solid var(--border-color); background: var(--bg-subtle); border-radius: 5px; padding: 0 0.3rem; cursor: pointer; color: var(--text-secondary); visibility: hidden; }
+    .tree-row:hover .copy-btn { visibility: visible; }
+</style>
+</head>
+<body>
+<header>
+    <h1>🔍 JSON 뷰어</h1>
+    <span>JSON을 트리로 펼쳐보고, 검색해서 원하는 값을 찾아 경로/값을 복사 · 외부 통신 없음(입력한 주소로만 접속)</span>
+</header>
+<main>
+    <div class="panel-left">
+        <div class="card">
+            <h2>1. 데이터 불러오기</h2>
+            <div class="tabs">
+                <button type="button" class="tab-btn active" id="tabBtnPaste" onclick="app.switchTab('paste')">📋 붙여넣기</button>
+                <button type="button" class="tab-btn" id="tabBtnFile" onclick="app.switchTab('file')">📁 파일</button>
+                <button type="button" class="tab-btn" id="tabBtnUrl" onclick="app.switchTab('url')">🌐 URL</button>
+            </div>
+
+            <div id="pastePanel" class="tab-panel">
+                <textarea id="pasteArea" placeholder="JSON 텍스트를 붙여넣으세요."></textarea>
+                <div class="row"><button type="button" class="btn" onclick="app.loadFromPaste()">불러오기</button></div>
+            </div>
+            <div id="filePanel" class="tab-panel hidden">
+                <input type="file" id="fileInput" accept=".json,application/json" onchange="app.loadFromFile(event)">
+                <p class="hint">로컬 .json 파일을 선택하면 바로 읽어서 표시합니다.</p>
+            </div>
+            <div id="urlPanel" class="tab-panel hidden">
+                <input type="url" id="sourceUrl" placeholder="https://내부시스템주소/.../data.json">
+                <div class="row"><button type="button" class="btn" onclick="app.fetchFromUrl()">가져오기</button></div>
+                <p class="hint">브라우저 교차출처 정책(CORS)에 막히면 대상 시스템에서 보이는 JSON을 복사해 [📋 붙여넣기]를 쓰세요.</p>
+            </div>
+            <div id="loadMsg" class="msg"></div>
+        </div>
+
+        <div class="card hidden" id="statsCard">
+            <h2>2. 요약</h2>
+            <div class="stat-line" id="statsLine"></div>
+            <div class="row">
+                <button type="button" class="btn secondary sm" onclick="app.expandAll()">모두 펼치기</button>
+                <button type="button" class="btn secondary sm" onclick="app.collapseAll()">모두 접기</button>
+            </div>
+        </div>
+
+        <div class="card hidden" id="searchCard">
+            <h2>3. 검색 (키/값 어디서나)</h2>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="찾을 텍스트" onkeydown="if(event.key==='Enter'){app.runSearch();}">
+                <button type="button" class="btn sm" onclick="app.runSearch()">검색</button>
+            </div>
+            <div class="row">
+                <button type="button" class="btn secondary sm" onclick="app.gotoMatch(-1)">◀ 이전</button>
+                <span id="matchCount" class="stat-line">-</span>
+                <button type="button" class="btn secondary sm" onclick="app.gotoMatch(1)">다음 ▶</button>
+            </div>
+        </div>
+
+        <div class="card hidden" id="selectedCard">
+            <h2>선택한 항목 경로</h2>
+            <div id="pathDisplay">왼쪽 트리에서 항목을 클릭하세요.</div>
+            <div class="row">
+                <button type="button" class="btn secondary sm" onclick="app.copyPath()">경로 복사</button>
+                <button type="button" class="btn secondary sm" onclick="app.copyValue()">값 복사</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel-right">
+        <div id="treeWrap"><p class="hint">왼쪽에서 JSON을 불러오면 여기에 트리로 표시됩니다.</p></div>
+    </div>
+</main>
+
+<script>
+var app = {
+    rootData: undefined,
+    expanded: {},          // pathKey(JSON.stringify(pathArray)) -> true
+    idCounter: 0,
+    pathKeyToId: {},        // pathKey -> dom id
+    idToPath: {},           // dom id -> {pathArray, value}
+    matches: [],            // pathKey 목록
+    matchIndex: -1,
+    selectedPathKey: null,
+
+    switchTab: function (tab) {
+        ['paste', 'file', 'url'].forEach(function (t) {
+            document.getElementById('tabBtn' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+            document.getElementById(t + 'Panel').classList.toggle('hidden', t !== tab);
+        });
+    },
+
+    showMsg: function (text, kind) {
+        var el = document.getElementById('loadMsg');
+        el.textContent = text;
+        el.className = 'msg ' + (kind || '');
+    },
+
+    loadFromPaste: function () {
+        var text = document.getElementById('pasteArea').value || '';
+        if (!text.trim()) { this.showMsg('JSON 내용을 붙여넣으세요.', 'warn'); return; }
+        this.handleRawText(text);
+    },
+
+    loadFromFile: function (event) {
+        var file = event.target.files && event.target.files[0];
+        if (!file) return;
+        var self = this;
+        var reader = new FileReader();
+        reader.onload = function (e) { self.handleRawText(String(e.target.result)); };
+        reader.onerror = function () { self.showMsg('파일을 읽지 못했습니다.', 'bad'); };
+        reader.readAsText(file, 'utf-8');
+    },
+
+    fetchFromUrl: function () {
+        var url = (document.getElementById('sourceUrl').value || '').trim();
+        if (!url) { this.showMsg('URL을 입력하세요.', 'warn'); return; }
+        this.showMsg('가져오는 중…', '');
+        var self = this;
+        fetch(url).then(function (res) {
+            if (!res.ok) throw new Error('서버 응답 오류 (' + res.status + ')');
+            return res.text();
+        }).then(function (text) {
+            self.handleRawText(text);
+        }).catch(function (err) {
+            self.showMsg('가져오기 실패: ' + (err && err.message ? err.message : err) + ' — 브라우저 교차출처 정책(CORS) 때문일 수 있습니다. [📋 붙여넣기]를 사용해 보세요.', 'bad');
+        });
+    },
+
+    handleRawText: function (text) {
+        var data;
+        try {
+            data = JSON.parse(text.replace(/^﻿/, ''));
+        } catch (e) {
+            this.showMsg('JSON 파싱 실패: ' + e.message, 'bad');
+            return;
+        }
+        this.rootData = data;
+        this.expanded = {};
+        this.expanded[JSON.stringify([])] = true; // 루트는 기본으로 펼침
+        if (data && typeof data === 'object') {
+            var self = this;
+            var topKeys = Array.isArray(data) ? data.map(function (_, i) { return i; }) : Object.keys(data);
+            topKeys.forEach(function (k) {
+                self.expanded[JSON.stringify([{ k: k, isIndex: Array.isArray(data) }])] = true; // 1단계도 기본으로 펼침
+            });
+        }
+        this.matches = [];
+        this.matchIndex = -1;
+        this.selectedPathKey = null;
+        document.getElementById('pathDisplay').textContent = '왼쪽 트리에서 항목을 클릭하세요.';
+        document.getElementById('matchCount').textContent = '-';
+
+        var nodeCount = this.countNodes(data);
+        var charCount = text.length;
+        document.getElementById('statsLine').textContent = '노드 ' + nodeCount.toLocaleString() + '개 · 텍스트 크기 ' + (charCount / 1024).toFixed(1) + ' KB' + (nodeCount > 5000 ? ' — 노드가 많아 [모두 펼치기]는 느릴 수 있습니다.' : '');
+        document.getElementById('statsCard').classList.remove('hidden');
+        document.getElementById('searchCard').classList.remove('hidden');
+        document.getElementById('selectedCard').classList.remove('hidden');
+        this.showMsg('불러오기 성공 (노드 ' + nodeCount.toLocaleString() + '개)', 'ok');
+        this.render();
+    },
+
+    countNodes: function (data) {
+        if (data === null || typeof data !== 'object') return 1;
+        var count = 1;
+        var self = this;
+        if (Array.isArray(data)) data.forEach(function (v) { count += self.countNodes(v); });
+        else Object.keys(data).forEach(function (k) { count += self.countNodes(data[k]); });
+        return count;
+    },
+
+    expandAll: function () {
+        if (this.countNodes(this.rootData) > 5000) {
+            if (!confirm('노드가 많아 모두 펼치면 느려질 수 있습니다. 계속할까요?')) return;
+        }
+        var self = this;
+        this.expanded = {};
+        (function walk(value, pathArray) {
+            self.expanded[JSON.stringify(pathArray)] = true;
+            if (value && typeof value === 'object') {
+                if (Array.isArray(value)) value.forEach(function (v, i) { walk(v, pathArray.concat([{ k: i, isIndex: true }])); });
+                else Object.keys(value).forEach(function (k) { walk(value[k], pathArray.concat([{ k: k, isIndex: false }])); });
+            }
+        })(this.rootData, []);
+        this.render();
+    },
+
+    collapseAll: function () {
+        this.expanded = {};
+        this.expanded[JSON.stringify([])] = true;
+        this.render();
+    },
+
+    toggleNode: function (domId) {
+        var info = this.idToPath[domId];
+        if (!info) return;
+        var pathKey = JSON.stringify(info.pathArray);
+        this.expanded[pathKey] = !this.expanded[pathKey];
+        this.render();
+    },
+
+    selectPath: function (domId) {
+        this.selectedPathKey = this.idToPath[domId] ? JSON.stringify(this.idToPath[domId].pathArray) : null;
+        var info = this.idToPath[domId];
+        if (!info) return;
+        document.getElementById('pathDisplay').textContent = this.displayPath(info.pathArray);
+    },
+
+    displayPath: function (pathArray) {
+        var out = 'root';
+        pathArray.forEach(function (seg) {
+            if (seg.isIndex) out += '[' + seg.k + ']';
+            else if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(String(seg.k))) out += '.' + seg.k;
+            else out += '["' + String(seg.k).replace(/"/g, '\\"') + '"]';
+        });
+        return out;
+    },
+
+    getValueAtPath: function (pathArray) {
+        var cur = this.rootData;
+        for (var i = 0; i < pathArray.length; i++) cur = cur[pathArray[i].k];
+        return cur;
+    },
+
+    copyPath: function () {
+        if (!this.selectedPathKey) { this.showMsg('먼저 트리에서 항목을 클릭하세요.', 'warn'); return; }
+        var pathArray = JSON.parse(this.selectedPathKey);
+        this.copyText(this.displayPath(pathArray));
+    },
+
+    copyValue: function () {
+        if (!this.selectedPathKey) { this.showMsg('먼저 트리에서 항목을 클릭하세요.', 'warn'); return; }
+        var pathArray = JSON.parse(this.selectedPathKey);
+        var v = this.getValueAtPath(pathArray);
+        var text = (v && typeof v === 'object') ? JSON.stringify(v, null, 2) : String(v);
+        this.copyText(text);
+    },
+
+    copyText: function (text) {
+        var self = this;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function () { self.showMsg('복사되었습니다.', 'ok'); }, function () { self.fallbackCopy(text); });
+        } else {
+            this.fallbackCopy(text);
+        }
+    },
+    fallbackCopy: function (text) {
+        var ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        try { document.execCommand('copy'); this.showMsg('복사되었습니다.', 'ok'); } catch (e) { this.showMsg('복사에 실패했습니다. 직접 선택해 복사하세요.', 'bad'); }
+        document.body.removeChild(ta);
+    },
+
+    runSearch: function () {
+        var q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+        if (!q) { this.showMsg('검색어를 입력하세요.', 'warn'); return; }
+        var found = [];
+        var self = this;
+        (function walk(value, pathArray) {
+            var keyLabel = pathArray.length ? String(pathArray[pathArray.length - 1].k) : '';
+            if (keyLabel.toLowerCase().indexOf(q) !== -1) found.push(JSON.stringify(pathArray));
+            if (value === null || typeof value !== 'object') {
+                var text = String(value).toLowerCase();
+                if (text.indexOf(q) !== -1 && found[found.length - 1] !== JSON.stringify(pathArray)) found.push(JSON.stringify(pathArray));
+            } else if (Array.isArray(value)) {
+                value.forEach(function (v, i) { walk(v, pathArray.concat([{ k: i, isIndex: true }])); });
+            } else {
+                Object.keys(value).forEach(function (k) { walk(value[k], pathArray.concat([{ k: k, isIndex: false }])); });
+            }
+        })(this.rootData, []);
+
+        this.matches = found;
+        this.matchIndex = found.length ? 0 : -1;
+        document.getElementById('matchCount').textContent = found.length ? (1) + ' / ' + found.length + '건' : '0건';
+        if (found.length) this.revealMatch(0);
+        else this.showMsg('일치하는 항목이 없습니다.', 'warn');
+    },
+
+    gotoMatch: function (dir) {
+        if (!this.matches.length) return;
+        this.matchIndex = (this.matchIndex + dir + this.matches.length) % this.matches.length;
+        document.getElementById('matchCount').textContent = (this.matchIndex + 1) + ' / ' + this.matches.length + '건';
+        this.revealMatch(this.matchIndex);
+    },
+
+    revealMatch: function (idx) {
+        var pathArray = JSON.parse(this.matches[idx]);
+        // 조상 경로를 모두 펼침
+        for (var i = 0; i <= pathArray.length; i++) {
+            this.expanded[JSON.stringify(pathArray.slice(0, i))] = true;
+        }
+        this.render();
+        var domId = this.pathKeyToId[this.matches[idx]];
+        var el = domId !== undefined ? document.getElementById(domId) : null;
+        if (el) {
+            el.scrollIntoView({ block: 'center' });
+            el.classList.add('match-current');
+            setTimeout(function () { el.classList.remove('match-current'); }, 1200);
+        }
+    },
+
+    render: function () {
+        this.idCounter = 0;
+        this.pathKeyToId = {};
+        this.idToPath = {};
+        var html = this.renderNode(this.rootData, [], null);
+        document.getElementById('treeWrap').innerHTML = html;
+    },
+
+    escapeHtml: function (s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    },
+
+    renderValueSpan: function (v) {
+        if (v === null) return '<span class="v-null">null</span>';
+        if (typeof v === 'string') return '<span class="v-str">"' + this.escapeHtml(v) + '"</span>';
+        if (typeof v === 'number') return '<span class="v-num">' + v + '</span>';
+        if (typeof v === 'boolean') return '<span class="v-bool">' + v + '</span>';
+        return '';
+    },
+
+    renderNode: function (value, pathArray, keyLabel) {
+        var pathKey = JSON.stringify(pathArray);
+        var domId = 'n' + (this.idCounter++);
+        this.pathKeyToId[pathKey] = domId;
+        this.idToPath[domId] = { pathArray: pathArray, value: value };
+
+        var keyHtml = keyLabel !== null ? '<span class="node-key">' + this.escapeHtml(keyLabel) + '</span>: ' : '';
+        var isContainer = value !== null && typeof value === 'object';
+
+        if (!isContainer) {
+            return '<div class="tree-node"><div class="tree-row" id="' + domId + '" onclick="app.selectPath(\'' + domId + '\')">' +
+                '<span class="toggle leaf">·</span>' + keyHtml + this.renderValueSpan(value) +
+                '<button type="button" class="copy-btn" onclick="event.stopPropagation(); app.selectPath(\'' + domId + '\'); app.copyValue();">복사</button>' +
+                '</div></div>';
+        }
+
+        var isArray = Array.isArray(value);
+        var keys = isArray ? value.map(function (_, i) { return i; }) : Object.keys(value);
+        var isExpanded = !!this.expanded[pathKey];
+        var summary = isArray ? ('[ ] 배열 · ' + keys.length + '개 항목') : ('{ } 객체 · ' + keys.length + '개 키');
+
+        var row = '<div class="tree-row" id="' + domId + '">' +
+            '<span class="toggle" onclick="app.toggleNode(\'' + domId + '\')">' + (isExpanded ? '▼' : '▶') + '</span>' +
+            '<span onclick="app.selectPath(\'' + domId + '\')">' + keyHtml + '</span>' +
+            '<span class="node-type-summary" onclick="app.toggleNode(\'' + domId + '\')">' + summary + '</span>' +
+            '<button type="button" class="copy-btn" onclick="event.stopPropagation(); app.selectPath(\'' + domId + '\'); app.copyValue();">복사</button>' +
+            '</div>';
+
+        var childrenHtml = '';
+        if (isExpanded) {
+            var self = this;
+            childrenHtml = '<div class="node-children">' + keys.map(function (k) {
+                return self.renderNode(value[k], pathArray.concat([{ k: k, isIndex: isArray }]), String(k));
+            }).join('') + '</div>';
+        }
+        return '<div class="tree-node">' + row + childrenHtml + '</div>';
+    }
+};
+</script>
+</body>
+</html>

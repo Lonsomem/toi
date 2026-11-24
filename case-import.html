@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사건목록 가져오기 (오프라인)</title>
+<style>
+    :root {
+        --bg-body: #eef2f6; --bg-surface: #ffffff; --bg-subtle: #f8fafc;
+        --text-main: #0f172a; --text-secondary: #475569; --text-muted: #94a3b8;
+        --border-color: #cbd5e1; --border-light: #e2e8f0;
+        --primary: #2563eb; --primary-light: #eff6ff; --primary-border: #bfdbfe;
+        --success: #10b981; --success-bg: #d1fae5;
+        --warning: #d97706; --warning-bg: #fef3c7;
+        --danger: #dc2626; --danger-bg: #fee2e2;
+        --radius-sm: 8px; --radius-md: 12px;
+        --font-sans: 'Malgun Gothic', '맑은 고딕', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { background: var(--bg-body); color: var(--text-main); font-family: var(--font-sans); line-height: 1.5; }
+    header { height: 54px; display: flex; align-items: center; padding: 0 1.25rem; background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: #fff; }
+    header h1 { font-size: 1rem; font-weight: 800; }
+    header span { font-size: 0.74rem; color: #93c5fd; margin-left: 0.6rem; }
+    main { max-width: 1100px; margin: 0 auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+    .card { background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 1rem 1.2rem; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
+    .card.hidden { display: none; }
+    .card h2 { font-size: 0.95rem; color: var(--primary); margin-bottom: 0.6rem; }
+    .tabs { display: flex; gap: 0.4rem; margin-bottom: 0.7rem; }
+    .tab-btn { padding: 0.4rem 0.9rem; font-size: 0.82rem; font-weight: 700; border: 1px solid var(--border-color); background: var(--bg-subtle); border-radius: 999px; cursor: pointer; color: var(--text-secondary); }
+    .tab-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    .tab-panel.hidden { display: none; }
+    input[type=text], input[type=url], textarea {
+        width: 100%; padding: 0.55rem 0.7rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm);
+        font-family: inherit; font-size: 0.86rem; background: var(--bg-subtle);
+    }
+    textarea { min-height: 140px; resize: vertical; font-family: 'Consolas', monospace; font-size: 0.8rem; }
+    .row { display: flex; gap: 0.5rem; align-items: center; margin-top: 0.6rem; flex-wrap: wrap; }
+    .btn { padding: 0.5rem 0.9rem; font-size: 0.84rem; font-weight: 700; border: none; border-radius: var(--radius-sm); cursor: pointer; background: var(--primary); color: #fff; }
+    .btn.secondary { background: #e0e7ff; color: #3730a3; }
+    .btn.sm { padding: 0.32rem 0.6rem; font-size: 0.76rem; }
+    .hint { font-size: 0.76rem; color: var(--text-muted); margin-top: 0.4rem; line-height: 1.55; }
+    .msg { font-size: 0.8rem; padding: 0.5rem 0.7rem; border-radius: var(--radius-sm); margin-top: 0.6rem; display: none; }
+    .msg.ok { display: block; background: var(--success-bg); color: #065f46; }
+    .msg.warn { display: block; background: var(--warning-bg); color: #92400e; }
+    .msg.bad { display: block; background: var(--danger-bg); color: #991b1b; }
+    .key-list { display: flex; flex-direction: column; gap: 0.3rem; max-height: 320px; overflow-y: auto; margin-top: 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.5rem; }
+    .key-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; padding: 0.25rem 0.3rem; border-radius: 6px; }
+    .key-row:hover { background: var(--bg-subtle); }
+    .key-row b { min-width: 160px; }
+    .key-row .sample { color: var(--text-muted); font-size: 0.76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    select { padding: 0.4rem 0.6rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-family: inherit; font-size: 0.82rem; background: var(--bg-subtle); }
+    table { border-collapse: collapse; width: 100%; font-size: 0.78rem; }
+    table th, table td { border: 1px solid var(--border-light); padding: 0.35rem 0.5rem; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+    table th { background: var(--bg-subtle); position: sticky; top: 0; }
+    .table-wrap { overflow: auto; max-height: 420px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); }
+</style>
+</head>
+<body>
+<header>
+    <h1>📥 사건목록 가져오기</h1>
+    <span>내부 시스템 JSON → 필요한 키만 선별 · 외부 통신 없음(입력한 주소로만 접속)</span>
+</header>
+<main>
+    <div class="card">
+        <h2>1. 데이터 가져오기</h2>
+
+        <label style="font-size:0.82rem; color: var(--text-secondary); display:block; margin-bottom:0.3rem;">데이터 경로 (선택 — 비워두면 자동 탐지)</label>
+        <input type="text" id="dataPathInput" placeholder="예: data.myCaseListVo">
+        <p class="hint" style="margin-top:0.3rem;">JSON 안에서 사건 배열이 들어있는 위치를 직접 지정합니다. 점(.)으로 단계를 구분합니다 (예: <code>data.myCaseListVo</code>는 <code>{"data":{"myCaseListVo":[...]}}</code> 구조를 가리킴). 비워두면 자동으로 배열을 찾습니다.</p>
+
+        <div class="tabs" style="margin-top:0.8rem;">
+            <button type="button" class="tab-btn active" id="tabBtnUrl" onclick="app.switchTab('url')">🌐 URL로 가져오기</button>
+            <button type="button" class="tab-btn" id="tabBtnPaste" onclick="app.switchTab('paste')">📋 직접 붙여넣기</button>
+            <button type="button" class="tab-btn" id="tabBtnFile" onclick="app.switchTab('file')">📁 파일</button>
+        </div>
+
+        <div id="urlPanel" class="tab-panel">
+            <input type="url" id="sourceUrl" placeholder="https://내부시스템주소/.../list.json">
+            <div class="row">
+                <button type="button" class="btn" onclick="app.fetchFromUrl()">가져오기</button>
+                <button type="button" class="btn secondary" onclick="app.openUrlInNewTab()">🔗 새 탭에서 열기</button>
+            </div>
+            <p class="hint">[가져오기]는 이 페이지가 그 주소로 직접 접속해 JSON을 가져옵니다. 다른 서버로는 통신하지 않습니다. 다만 브라우저의 교차출처 정책(CORS) 때문에 대상 시스템이 허용하지 않으면 실패할 수 있습니다 — 그런 경우 [🔗 새 탭에서 열기]로 직접 연 뒤, 그 탭에서 전체 선택(Ctrl+A) · 복사(Ctrl+C)하고 [📋 직접 붙여넣기] 탭의 [클립보드에서 붙여넣기]를 사용하거나, 개발자도구 콘솔에서 직접 .json 파일로 저장해 [📁 파일] 탭으로 불러오세요.</p>
+        </div>
+
+        <div id="pastePanel" class="tab-panel hidden">
+            <div class="row" style="margin-top:0;">
+                <button type="button" class="btn secondary" onclick="app.pasteFromClipboard()">📋 클립보드에서 붙여넣기</button>
+            </div>
+            <p class="hint">다른 탭에서 JSON 페이지를 전체 선택(Ctrl+A)·복사(Ctrl+C)한 다음 위 버튼을 누르면 자동으로 채워집니다. 처음 누르면 브라우저가 클립보드 읽기 권한을 물어볼 수 있습니다 — 허용해야 동작합니다. 안 되면 아래 칸에 직접 Ctrl+V로 붙여넣어도 됩니다.</p>
+            <textarea id="pasteArea" placeholder="여기에 JSON을 붙여넣으세요 (Ctrl+V), 또는 위 버튼 사용"></textarea>
+            <div class="row">
+                <button type="button" class="btn" onclick="app.loadFromPaste()">붙여넣은 내용으로 가져오기</button>
+            </div>
+        </div>
+
+        <div id="filePanel" class="tab-panel hidden">
+            <input type="file" id="fileInput" accept=".json,application/json" onchange="app.loadFromFile(event)">
+            <p class="hint">로컬 .json 파일을 선택하면 바로 읽어서 불러옵니다. (예: 개발자도구 콘솔에서 fetch 결과를 .json 파일로 저장해둔 것)</p>
+        </div>
+
+        <div id="fetchMsg" class="msg"></div>
+    </div>
+
+    <div class="card hidden" id="keySelectCard">
+        <h2>2. 가져올 키 선택</h2>
+        <p id="discoverySummary" class="hint"></p>
+        <div class="row">
+            <button type="button" class="btn secondary sm" onclick="app.selectAllKeys(true)">전체 선택</button>
+            <button type="button" class="btn secondary sm" onclick="app.selectAllKeys(false)">전체 해제</button>
+        </div>
+        <div id="keyListContainer" class="key-list"></div>
+        <div class="row">
+            <label style="font-size:0.82rem; color: var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
+                사건번호로 쓸 키 (나중에 사건관리노트와 매칭할 때 사용, 선택)
+                <select id="matchKeySelect"></select>
+            </label>
+        </div>
+        <div class="row">
+            <button type="button" class="btn" onclick="app.buildPreview()">미리보기 만들기</button>
+        </div>
+    </div>
+
+    <div class="card hidden" id="previewCard">
+        <h2 id="previewTitle">3. 미리보기</h2>
+        <div id="previewTableWrap" class="table-wrap"></div>
+        <div class="row">
+            <button type="button" class="btn" onclick="app.downloadResult()">💾 JSON으로 저장</button>
+        </div>
+        <p class="hint">사건 관리 노트와 사건번호로 매칭해 불러오는 기능은 다음 단계에서 추가될 예정입니다.</p>
+    </div>
+
+    <div class="card hidden" id="detailFetchCard">
+        <h2>4. 사건별 상세정보 가져오기 (선택)</h2>
+        <p class="hint">사건번호 등 "사건번호로 쓸 키"로 지정한 값을 URL에 넣어, 사건마다 상세 정보를 추가로 가져옵니다. URL 안에 <code>{값}</code> 이라고 쓰면 그 자리에 각 사건의 매칭 키 값이 들어갑니다. 사건 수만큼 순서대로 접속하므로 수가 많으면 시간이 걸릴 수 있고, 각 사건 접속도 동일한 교차출처 정책(CORS) 제약을 받습니다.</p>
+        <input type="text" id="detailUrlTemplate" placeholder="예: https://내부시스템주소/detail?caseNo={값}">
+        <div class="row">
+            <button type="button" class="btn" onclick="app.fetchAllDetails()">전체 사건 상세정보 가져오기</button>
+        </div>
+        <div id="detailProgress" class="hint"></div>
+        <div id="detailMsg" class="msg"></div>
+
+        <div id="detailKeySelectWrap" class="hidden">
+            <p class="hint" style="margin-top:0.7rem;">상세 응답에서 발견된 키 중 결과에 포함할 것을 선택하세요. (이미 있는 키 이름과 겹치면 <code>상세_</code>를 붙여 구분합니다)</p>
+            <div class="row">
+                <button type="button" class="btn secondary sm" onclick="app.selectAllDetailKeys(true)">전체 선택</button>
+                <button type="button" class="btn secondary sm" onclick="app.selectAllDetailKeys(false)">전체 해제</button>
+            </div>
+            <div id="detailKeyListContainer" class="key-list"></div>
+            <div class="row">
+                <button type="button" class="btn" onclick="app.applyDetailKeys()">상세 정보 반영해서 미리보기 갱신</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card hidden" id="transformCard">
+        <h2>5. 값 형식 변환 (선택)</h2>
+        <p class="hint">특정 키의 값 형식을 일괄 정리합니다 (정규식으로 찾아서 바꿈). 상세정보까지 다 가져온 뒤, 저장하기 직전에 적용하는 것을 추천합니다 — 먼저 바꿔버리면 "4. 사건별 상세정보 가져오기"가 원래 형식을 기대하는 경우 매칭이 안 될 수 있습니다.</p>
+        <div class="row" style="margin-top:0;">
+            <label style="font-size:0.82rem; color: var(--text-secondary); display:flex; align-items:center; gap:0.5rem;">
+                적용할 키
+                <select id="transformKeySelect"></select>
+            </label>
+            <button type="button" class="btn secondary sm" onclick="app.applyCaseNoPreset()">사건번호 형식 정리 (2026-012345(10-03) → 2026-12345)</button>
+        </div>
+        <div class="row">
+            <input type="text" id="transformPattern" placeholder="찾을 정규식, 예: ^(\d{4})-0*(\d+)(?:\(.*\))?$">
+            <input type="text" id="transformReplace" placeholder="바꿀 형식 ($1, $2 사용 가능), 예: $1-$2">
+            <button type="button" class="btn" onclick="app.applyTransform()">적용</button>
+        </div>
+        <div id="transformMsg" class="msg"></div>
+    </div>
+</main>
+
+<script>
+var app = {
+    rows: [],
+    allKeys: [],
+    selectedKeys: new Set(),
+    matchKey: '',
+    previewRows: [],
+    detailResults: {},
+    detailKeys: [],
+    selectedDetailKeys: new Set(),
+
+    init: function () {
+        try {
+            var savedKeys = JSON.parse(localStorage.getItem('CASE_IMPORT_SELECTED_KEYS') || '[]');
+            this.selectedKeys = new Set(savedKeys);
+        } catch (e) { this.selectedKeys = new Set(); }
+        this.matchKey = localStorage.getItem('CASE_IMPORT_MATCH_KEY') || '';
+        var lastUrl = localStorage.getItem('CASE_IMPORT_LAST_URL');
+        if (lastUrl) document.getElementById('sourceUrl').value = lastUrl;
+        var lastPath = localStorage.getItem('CASE_IMPORT_DATA_PATH');
+        if (lastPath) document.getElementById('dataPathInput').value = lastPath;
+        var lastDetailTpl = localStorage.getItem('CASE_IMPORT_DETAIL_TEMPLATE');
+        if (lastDetailTpl) document.getElementById('detailUrlTemplate').value = lastDetailTpl;
+    },
+
+    switchTab: function (tab) {
+        document.getElementById('tabBtnUrl').classList.toggle('active', tab === 'url');
+        document.getElementById('tabBtnPaste').classList.toggle('active', tab === 'paste');
+        document.getElementById('tabBtnFile').classList.toggle('active', tab === 'file');
+        document.getElementById('urlPanel').classList.toggle('hidden', tab !== 'url');
+        document.getElementById('pastePanel').classList.toggle('hidden', tab !== 'paste');
+        document.getElementById('filePanel').classList.toggle('hidden', tab !== 'file');
+    },
+
+    showMsg: function (text, kind) {
+        var el = document.getElementById('fetchMsg');
+        el.textContent = text;
+        el.className = 'msg ' + (kind || '');
+    },
+
+    fetchFromUrl: function () {
+        var url = (document.getElementById('sourceUrl').value || '').trim();
+        if (!url) { this.showMsg('URL을 입력하세요.', 'warn'); return; }
+        localStorage.setItem('CASE_IMPORT_LAST_URL', url);
+        this.showMsg('가져오는 중…', '');
+        var self = this;
+        fetch(url).then(function (res) {
+            if (!res.ok) throw new Error('서버 응답 오류 (' + res.status + ')');
+            return res.text();
+        }).then(function (text) {
+            self.handleRawText(text);
+        }).catch(function (err) {
+            self.showMsg('가져오기 실패: ' + (err && err.message ? err.message : err) + ' — 브라우저 교차출처 정책(CORS) 때문일 수 있습니다. [📋 직접 붙여넣기] 탭을 사용해 보세요.', 'bad');
+        });
+    },
+
+    openUrlInNewTab: function () {
+        var url = (document.getElementById('sourceUrl').value || '').trim();
+        if (!url) { this.showMsg('URL을 입력하세요.', 'warn'); return; }
+        localStorage.setItem('CASE_IMPORT_LAST_URL', url);
+        window.open(url, '_blank', 'noopener');
+    },
+
+    pasteFromClipboard: function () {
+        var self = this;
+        if (!navigator.clipboard || !navigator.clipboard.readText) {
+            this.showMsg('이 브라우저에서는 클립보드 자동 읽기를 지원하지 않습니다. 직접 Ctrl+V로 붙여넣으세요.', 'warn');
+            return;
+        }
+        navigator.clipboard.readText().then(function (text) {
+            if (!text || !text.trim()) { self.showMsg('클립보드가 비어 있습니다. 먼저 JSON 페이지에서 전체 선택(Ctrl+A)·복사(Ctrl+C)하세요.', 'warn'); return; }
+            document.getElementById('pasteArea').value = text;
+            self.handleRawText(text);
+        }).catch(function (err) {
+            self.showMsg('클립보드를 읽지 못했습니다: ' + (err && err.message ? err.message : err) + ' — 브라우저가 권한을 거부했을 수 있습니다. 직접 Ctrl+V로 붙여넣으세요.', 'bad');
+        });
+    },
+
+    loadFromPaste: function () {
+        var text = document.getElementById('pasteArea').value || '';
+        if (!text.trim()) { this.showMsg('JSON 내용을 붙여넣으세요.', 'warn'); return; }
+        this.handleRawText(text);
+    },
+
+    loadFromFile: function (event) {
+        var file = event.target.files && event.target.files[0];
+        if (!file) return;
+        var self = this;
+        var reader = new FileReader();
+        reader.onload = function (e) { self.handleRawText(String(e.target.result)); };
+        reader.onerror = function () { self.showMsg('파일을 읽지 못했습니다.', 'bad'); };
+        reader.readAsText(file, 'utf-8');
+    },
+
+    handleRawText: function (text) {
+        var data;
+        try {
+            data = JSON.parse(text.replace(/^﻿/, ''));
+        } catch (e) {
+            this.showMsg('JSON 파싱 실패: ' + e.message, 'bad');
+            return;
+        }
+
+        var pathStr = (document.getElementById('dataPathInput').value || '').trim();
+        var found = null, pathFailMsg = '';
+        if (pathStr) {
+            localStorage.setItem('CASE_IMPORT_DATA_PATH', pathStr);
+            var atPath = this.getArrayAtPath(data, pathStr);
+            if (atPath) {
+                found = { rows: atPath, pathLabel: '지정한 경로 "' + pathStr + '"' };
+            } else {
+                pathFailMsg = '지정한 경로 "' + pathStr + '"에서 배열을 찾지 못했습니다 — 자동 탐지로 전환합니다. ';
+            }
+        }
+        if (!found) found = this.findCaseArray(data);
+        if (!found) {
+            this.showMsg(pathFailMsg + '사건 목록으로 보이는 배열을 찾지 못했습니다. 최상위가 배열이거나, 배열 형태의 속성이 있어야 합니다.', 'bad');
+            return;
+        }
+        this.rows = found.rows;
+        this.discoverKeys();
+        this.renderKeySelect();
+        document.getElementById('keySelectCard').classList.remove('hidden');
+        document.getElementById('previewCard').classList.add('hidden');
+        document.getElementById('detailFetchCard').classList.add('hidden');
+        this.showMsg(pathFailMsg + '가져오기 성공: ' + found.pathLabel + '에서 ' + this.rows.length + '건 발견', pathFailMsg ? 'warn' : 'ok');
+    },
+
+    // "data.myCaseListVo" 같은 점(.) 경로를 따라가 배열을 찾는다. "items[0].list" 처럼 배열 인덱스도 지원.
+    getArrayAtPath: function (data, pathStr) {
+        var segs = [];
+        pathStr.split('.').forEach(function (part) {
+            part = part.trim();
+            if (!part) return;
+            var m = part.match(/^([^\[]+)((?:\[\d+\])*)$/);
+            if (!m) { segs.push(part); return; }
+            if (m[1]) segs.push(m[1]);
+            (m[2].match(/\[(\d+)\]/g) || []).forEach(function (im) { segs.push(parseInt(im.slice(1, -1), 10)); });
+        });
+        var cur = data;
+        for (var i = 0; i < segs.length; i++) {
+            if (cur === null || typeof cur !== 'object') return null;
+            cur = cur[segs[i]];
+        }
+        if (Array.isArray(cur) && cur.length && cur[0] && typeof cur[0] === 'object') return cur;
+        return null;
+    },
+
+    // 최상위가 배열이면 그대로, 아니면 객체 트리를 재귀적으로 훑어 "객체로 이루어진 배열"을 전부 찾는다.
+    // 후보가 여럿이면 가장 긴 배열을 자동 선택하고, 메시지에 다른 후보 경로도 알려줘서 "데이터 경로" 칸에 직접 지정할 수 있게 한다.
+    findCaseArray: function (data) {
+        var candidates = [];
+        (function walk(node, pathSegs, depth) {
+            if (depth > 6) return;
+            if (Array.isArray(node)) {
+                if (node.length && node[0] && typeof node[0] === 'object') {
+                    candidates.push({ path: pathSegs.slice(), arr: node });
+                }
+                return;
+            }
+            if (node && typeof node === 'object') {
+                Object.keys(node).forEach(function (k) { walk(node[k], pathSegs.concat([k]), depth + 1); });
+            }
+        })(data, [], 0);
+
+        if (!candidates.length) return null;
+        candidates.sort(function (a, b) { return b.arr.length - a.arr.length; });
+        var top = candidates[0];
+        var label = top.path.length ? ('"' + top.path.join('.') + '"' + ' 경로') : '최상위 배열';
+        if (candidates.length > 1) {
+            var others = candidates.slice(0, 5).map(function (c) { return c.path.join('.') || '(최상위)'; }).join(', ');
+            label += ' (배열 후보 ' + candidates.length + '개 중 가장 긴 것 자동 선택 — 다른 걸 원하면 "데이터 경로" 칸에 직접 입력: ' + others + (candidates.length > 5 ? ' 등' : '') + ')';
+        }
+        return { rows: top.arr, pathLabel: label };
+    },
+
+    discoverKeys: function () {
+        var keySet = {};
+        var order = [];
+        this.rows.slice(0, 500).forEach(function (row) {
+            if (row && typeof row === 'object') {
+                Object.keys(row).forEach(function (k) {
+                    if (!keySet[k]) { keySet[k] = true; order.push(k); }
+                });
+            }
+        });
+        this.allKeys = order;
+        var existing = {};
+        this.allKeys.forEach(function (k) { existing[k] = true; });
+        var kept = [];
+        this.selectedKeys.forEach(function (k) { if (existing[k]) kept.push(k); });
+        this.selectedKeys = new Set(kept);
+    },
+
+    renderKeySelect: function () {
+        var box = document.getElementById('keyListContainer');
+        var self = this;
+        box.innerHTML = this.allKeys.map(function (k) {
+            var checked = self.selectedKeys.has(k) ? 'checked' : '';
+            var raw = (self.rows[0] && self.rows[0][k] !== undefined) ? self.rows[0][k] : '';
+            var sampleVal = (raw === null || raw === undefined) ? '' : (typeof raw === 'object' ? JSON.stringify(raw) : String(raw));
+            return '<label class="key-row"><input type="checkbox" value="' + self.escapeAttr(k) + '" ' + checked + ' onchange="app.toggleKey(this)"><b>' + self.escapeHtml(k) + '</b><span class="sample">' + self.escapeHtml(sampleVal.slice(0, 50)) + '</span></label>';
+        }).join('');
+        document.getElementById('discoverySummary').textContent = this.rows.length + '건, 키 ' + this.allKeys.length + '개 발견 (처음 500건 기준)';
+        this.renderMatchKeySelect();
+    },
+
+    toggleKey: function (el) {
+        if (el.checked) this.selectedKeys.add(el.value); else this.selectedKeys.delete(el.value);
+        localStorage.setItem('CASE_IMPORT_SELECTED_KEYS', JSON.stringify(Array.from(this.selectedKeys)));
+        this.renderMatchKeySelect();
+    },
+
+    selectAllKeys: function (on) {
+        var self = this;
+        this.allKeys.forEach(function (k) { if (on) self.selectedKeys.add(k); else self.selectedKeys.delete(k); });
+        localStorage.setItem('CASE_IMPORT_SELECTED_KEYS', JSON.stringify(Array.from(this.selectedKeys)));
+        this.renderKeySelect();
+    },
+
+    renderMatchKeySelect: function () {
+        var sel = document.getElementById('matchKeySelect');
+        var self = this;
+        var list = Array.from(this.selectedKeys);
+        sel.innerHTML = '<option value="">(선택 안 함)</option>' + list.map(function (k) {
+            return '<option value="' + self.escapeAttr(k) + '"' + (k === self.matchKey ? ' selected' : '') + '>' + self.escapeHtml(k) + '</option>';
+        }).join('');
+    },
+
+    buildPreview: function () {
+        this.matchKey = document.getElementById('matchKeySelect').value || '';
+        localStorage.setItem('CASE_IMPORT_MATCH_KEY', this.matchKey);
+        var keys = Array.from(this.selectedKeys);
+        if (!keys.length) { this.showMsg('가져올 키를 1개 이상 선택하세요.', 'warn'); return; }
+        this.previewRows = this.rows.map(function (row) {
+            var out = {};
+            keys.forEach(function (k) { out[k] = row[k]; });
+            return out;
+        });
+        this.renderPreviewTable(keys);
+        document.getElementById('previewCard').classList.remove('hidden');
+
+        this.detailResults = {};
+        this.detailKeys = [];
+        this.selectedDetailKeys = new Set();
+        document.getElementById('detailProgress').textContent = '';
+        document.getElementById('detailKeySelectWrap').classList.add('hidden');
+        if (this.matchKey) document.getElementById('detailFetchCard').classList.remove('hidden');
+        else document.getElementById('detailFetchCard').classList.add('hidden');
+
+        this.renderTransformKeySelect();
+        document.getElementById('transformCard').classList.remove('hidden');
+    },
+
+    renderTransformKeySelect: function () {
+        var sel = document.getElementById('transformKeySelect');
+        var cur = sel.value;
+        var cols = this.previewRows.length ? Object.keys(this.previewRows[0]) : [];
+        var self = this;
+        sel.innerHTML = cols.map(function (k) {
+            return '<option value="' + self.escapeAttr(k) + '"' + (k === cur ? ' selected' : '') + '>' + self.escapeHtml(k) + '</option>';
+        }).join('');
+    },
+
+    applyCaseNoPreset: function () {
+        if (this.matchKey) document.getElementById('transformKeySelect').value = this.matchKey;
+        document.getElementById('transformPattern').value = '^(\\d{4})-0*(\\d+)(?:\\(.*\\))?$';
+        document.getElementById('transformReplace').value = '$1-$2';
+    },
+
+    showTransformMsg: function (text, kind) {
+        var el = document.getElementById('transformMsg');
+        el.textContent = text;
+        el.className = 'msg ' + (kind || '');
+    },
+
+    applyTransform: function () {
+        var key = document.getElementById('transformKeySelect').value;
+        var patternStr = document.getElementById('transformPattern').value;
+        var replaceStr = document.getElementById('transformReplace').value;
+        if (!key) { this.showTransformMsg('적용할 키를 선택하세요.', 'warn'); return; }
+        if (!patternStr) { this.showTransformMsg('찾을 정규식을 입력하세요.', 'warn'); return; }
+        var re;
+        try {
+            re = new RegExp(patternStr);
+        } catch (e) {
+            this.showTransformMsg('정규식이 올바르지 않습니다: ' + e.message, 'bad');
+            return;
+        }
+        var changed = 0;
+        this.previewRows.forEach(function (row) {
+            if (row[key] === undefined || row[key] === null) return;
+            var before = String(row[key]);
+            var after = before.replace(re, replaceStr);
+            if (after !== before) changed++;
+            row[key] = after;
+        });
+        this.renderPreviewTable(this.previewRows.length ? Object.keys(this.previewRows[0]) : []);
+        this.showTransformMsg(changed + '건 변경됨 (전체 ' + this.previewRows.length + '건 중, 일치하지 않은 값은 그대로 유지)', 'ok');
+    },
+
+    renderPreviewTable: function (keys) {
+        var wrap = document.getElementById('previewTableWrap');
+        var self = this;
+        var head = '<tr>' + keys.map(function (k) { return '<th>' + self.escapeHtml(k) + '</th>'; }).join('') + '</tr>';
+        var body = this.previewRows.slice(0, 200).map(function (row) {
+            return '<tr>' + keys.map(function (k) {
+                var v = row[k];
+                var text = (v === null || v === undefined) ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+                return '<td title="' + self.escapeAttr(text) + '">' + self.escapeHtml(text.slice(0, 60)) + '</td>';
+            }).join('') + '</tr>';
+        }).join('');
+        wrap.innerHTML = '<table>' + head + body + '</table>';
+        document.getElementById('previewTitle').textContent = '3. 미리보기 (총 ' + this.previewRows.length + '건' + (this.previewRows.length > 200 ? ' · 상위 200건만 표시, 저장 시 전체 포함' : '') + ')';
+    },
+
+    downloadResult: function () {
+        var payload = {
+            version: 1,
+            kind: 'case-import-list',
+            exportedAt: this.getFormattedNow(),
+            sourceUrl: (document.getElementById('sourceUrl').value || '').trim(),
+            matchKey: this.matchKey,
+            keys: Array.from(this.selectedKeys),
+            cases: this.previewRows
+        };
+        var blob = new Blob(['﻿' + JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = '사건목록_가져오기_' + this.getCompactDate() + '.json';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 60000);
+    },
+
+    showDetailMsg: function (text, kind) {
+        var el = document.getElementById('detailMsg');
+        el.textContent = text;
+        el.className = 'msg ' + (kind || '');
+    },
+
+    // 매칭 키 값을 URL 템플릿의 {값} 자리에 넣어 사건마다 순서대로 상세정보를 가져온다
+    fetchAllDetails: async function () {
+        if (!this.matchKey) { this.showDetailMsg('먼저 2단계에서 "사건번호로 쓸 키"를 지정하고 미리보기를 만드세요.', 'warn'); return; }
+        var template = (document.getElementById('detailUrlTemplate').value || '').trim();
+        if (!template) { this.showDetailMsg('URL을 입력하세요.', 'warn'); return; }
+        if (template.indexOf('{값}') === -1) { this.showDetailMsg('URL 안에 {값} 자리표시자를 포함해 입력하세요. (예: .../detail?caseNo={값})', 'warn'); return; }
+        localStorage.setItem('CASE_IMPORT_DETAIL_TEMPLATE', template);
+
+        var self = this;
+        this.detailResults = {};
+        var rowsToFetch = this.rows.filter(function (r) {
+            return r[self.matchKey] !== undefined && r[self.matchKey] !== null && String(r[self.matchKey]).trim() !== '';
+        });
+        var total = rowsToFetch.length;
+        if (!total) { this.showDetailMsg('가져올 사건이 없습니다 (매칭 키 값이 비어있는 사건뿐입니다).', 'warn'); return; }
+
+        var done = 0, okCount = 0, failCount = 0;
+        document.getElementById('detailKeySelectWrap').classList.add('hidden');
+        document.getElementById('detailProgress').textContent = '처리 중... 0 / ' + total;
+
+        for (var i = 0; i < rowsToFetch.length; i++) {
+            var val = String(rowsToFetch[i][this.matchKey]);
+            var url = template.replace('{값}', encodeURIComponent(val));
+            try {
+                var res = await fetch(url);
+                if (!res.ok) throw new Error('서버 응답 오류 (' + res.status + ')');
+                var text = await res.text();
+                var json = JSON.parse(text);
+                this.detailResults[val] = { ok: true, data: json };
+                okCount++;
+            } catch (e) {
+                this.detailResults[val] = { ok: false, error: (e && e.message) ? e.message : String(e) };
+                failCount++;
+            }
+            done++;
+            document.getElementById('detailProgress').textContent = '처리 중... ' + done + ' / ' + total;
+        }
+
+        document.getElementById('detailProgress').textContent = '완료: 성공 ' + okCount + '건 · 실패 ' + failCount + '건';
+        if (failCount) this.showDetailMsg('실패 ' + failCount + '건은 교차출처 정책(CORS) 등으로 접속이 막혔을 수 있습니다. 성공한 사건만 상세 정보가 반영됩니다.', 'warn');
+        else this.showDetailMsg('모든 사건의 상세정보를 가져왔습니다.', 'ok');
+
+        this.discoverDetailKeys();
+        if (this.detailKeys.length) {
+            this.renderDetailKeySelect();
+            document.getElementById('detailKeySelectWrap').classList.remove('hidden');
+        }
+    },
+
+    discoverDetailKeys: function () {
+        var keySet = {}, order = [];
+        var self = this;
+        Object.keys(this.detailResults).forEach(function (val) {
+            var r = self.detailResults[val];
+            if (r.ok && r.data && typeof r.data === 'object' && !Array.isArray(r.data)) {
+                Object.keys(r.data).forEach(function (k) { if (!keySet[k]) { keySet[k] = true; order.push(k); } });
+            }
+        });
+        this.detailKeys = order;
+        this.selectedDetailKeys = new Set();
+    },
+
+    renderDetailKeySelect: function () {
+        var box = document.getElementById('detailKeyListContainer');
+        var self = this;
+        box.innerHTML = this.detailKeys.map(function (k) {
+            var checked = self.selectedDetailKeys.has(k) ? 'checked' : '';
+            return '<label class="key-row"><input type="checkbox" value="' + self.escapeAttr(k) + '" ' + checked + ' onchange="app.toggleDetailKey(this)"><b>' + self.escapeHtml(k) + '</b></label>';
+        }).join('');
+    },
+
+    toggleDetailKey: function (el) {
+        if (el.checked) this.selectedDetailKeys.add(el.value); else this.selectedDetailKeys.delete(el.value);
+    },
+
+    selectAllDetailKeys: function (on) {
+        var self = this;
+        this.detailKeys.forEach(function (k) { if (on) self.selectedDetailKeys.add(k); else self.selectedDetailKeys.delete(k); });
+        this.renderDetailKeySelect();
+    },
+
+    // 선택한 상세 키를 각 사건의 미리보기 행에 합쳐 넣는다 (매칭 키 값으로 detailResults 조회)
+    applyDetailKeys: function () {
+        var keys = Array.from(this.selectedDetailKeys);
+        if (!keys.length) { this.showDetailMsg('반영할 상세 키를 1개 이상 선택하세요.', 'warn'); return; }
+        var self = this;
+        var existingCols = this.previewRows.length ? Object.keys(this.previewRows[0]) : [];
+        var colNameFor = {};
+        keys.forEach(function (k) { colNameFor[k] = existingCols.indexOf(k) !== -1 ? ('상세_' + k) : k; });
+
+        this.previewRows.forEach(function (row) {
+            var val = String(row[self.matchKey]);
+            var detail = self.detailResults[val];
+            keys.forEach(function (k) {
+                row[colNameFor[k]] = (detail && detail.ok && detail.data) ? detail.data[k] : undefined;
+            });
+        });
+
+        var allCols = existingCols.concat(keys.map(function (k) { return colNameFor[k]; }));
+        this.renderPreviewTable(allCols);
+        this.renderTransformKeySelect();
+        this.showDetailMsg('상세 정보가 미리보기·저장 결과에 반영되었습니다.', 'ok');
+    },
+
+    escapeHtml: function (s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    },
+    escapeAttr: function (s) { return this.escapeHtml(s); },
+
+    getFormattedNow: function () {
+        var d = new Date(), pad = function (n) { return String(n).padStart(2, '0'); };
+        return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    },
+    getCompactDate: function () {
+        var d = new Date(), pad = function (n) { return String(n).padStart(2, '0'); };
+        return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '_' + pad(d.getHours()) + pad(d.getMinutes());
+    }
+};
+window.addEventListener('DOMContentLoaded', function () { app.init(); });
+</script>
+</body>
+</html>
