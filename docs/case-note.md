@@ -215,11 +215,10 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
     - [x] 3-1 로드·복구·저장 (2026-11-24): `loadDatabase` / `applyRecoveredData` 가 `DBCore.normalizeDB` 경유(`applyNormalizedDB` 로 반영). 앱이 모르는 최상위 키는 `app.dbExtra` 에 보관했다가 저장 시 되돌려 넣음. 저장은 전부 `app.encodeForSave()` → `DBCore.encodeVerified` 경유(`syncEmbeddedBase64Tag`·`buildCleanHtmlDocumentString`), 실패하면 내장 태그·임시저장·파일 **아무것도 안 쓰고** `reportSaveBlocked` 토스트(같은 문구 5초에 1회).
       - **손상된 내장 DB**(디코딩 실패 또는 `cases` 배열 없음) → `app.readOnly = true`: 빈 목록 + 빨간 `#dbErrorBanner`, 저장 전부 거부, 임시 백업이 있으면(“저장됨” 표시여도) 복구 배너. 이때 "현재 파일 유지"를 눌러도 백업 표시는 지우지 않음. 백업 복구 시 정규화 후 읽기 전용 해제·저장 재개.
       - 샘플 데이터는 내장 DB 가 **비어 있을 때만**. 백업 복구 시 D-day 도 복원(전에는 누락).
-    - [ ] 3-2 공유 JSON: `importPureJson`/`exportPureJson` → `applyShareJson`/`toShareJson`
+    - [x] 3-2 공유 JSON (2026-11-24): `exportPureJson` → `DBCore.toShareJson(app.currentDB(), …)`, `importPureJson` → `DBCore.applyShareJson`. 덮어쓰기는 파일에 있는 섹션만 교체(상태 설정·예문·관계인 필드·D-day 유지 — **유실 버그 해결**), 병합은 추가만. 덮어쓰기 확인창에 "(파일에 없는 설정은 유지)" 문구. 읽기 전용(손상 DB) 상태에서 가져오기에 성공하면 = 복원으로 보고 읽기 전용 해제.
     - [ ] 3-3 새 사건: `importExternalCases`/`createNewCase` → `makeCase`
   - [ ] 4단계: 남은 보정 삭제 — `ensureTemplateStatusOptions`, `ensureTemplatePersonRoleFields`, `ensureCasePeople`, `migrateCaseFlatVariables`, `ensureGlobalForms`/`ensureChargeFactExamples` 의 보정 부분, `normalizeImported*`, 렌더러 안 `if (!Array.isArray(...))` 보정.
-  - **3-2 전까지 덮어쓰기 JSON 가져오기 유실 버그는 아직 남아 있음.**
-- **앱 연결 테스트**: `PLAYWRIGHT_DIR=~/.cache/toi-test LANG=C.UTF-8 node tests/case-note/entry-points.test.js` — 내장 DB 를 바꾼 사본을 임시 폴더에 만들어 엶(L1 구버전 DB, L2 손상 DB·백업 복구, L3 빈 DB→샘플, S1 저장 검증 실패).
+- **앱 연결 테스트**: `PLAYWRIGHT_DIR=~/.cache/toi-test LANG=C.UTF-8 node tests/case-note/entry-points.test.js` — 내장 DB 를 바꾼 사본을 임시 폴더에 만들어 엶(L1 구버전 DB, L2 손상 DB·백업 복구, L3 빈 DB→샘플, S1 저장 검증 실패, J1~J4 실제 파일 입력·다운로드로 JSON 덮어쓰기/병합/왕복/읽기 전용 복원).
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.

@@ -123,6 +123,71 @@ const LEGACY = {
     await p.close();
   }
 
+  // ---- J: 공유 JSON(v1) 가져오기/내보내기 — 실제 파일 입력·다운로드 경로로
+  const importFile = async (p, name, obj, mode) => {
+    const f = path.join(TMP, name); fs.writeFileSync(f, '﻿' + JSON.stringify(obj), 'utf8');
+    await p.evaluate(m => { app.openBackupModal(); document.querySelector(`input[name="importMode"][value="${m}"]`).checked = true; }, mode);
+    await p.setInputFiles('input[type="file"][onchange*="importPureJson"]', f);
+    await p.waitForTimeout(150);
+    if (mode === 'replace') { await p.click('#confirmModalOkBtn'); await p.waitForTimeout(50); }
+  };
+  const exportFile = async (p, scope) => {
+    await p.evaluate(() => app.openBackupModal());
+    const [dl] = await Promise.all([p.waitForEvent('download'), p.evaluate(s => app.exportPureJson(s), scope)]);
+    return JSON.parse(fs.readFileSync(await dl.path(), 'utf8').replace(/^﻿/, ''));
+  };
+  {
+    // J1: 덮어쓰기 — 파일에 없는 섹션(상태 설정·예문·관계인 필드)은 현재 것 유지 (유실 버그 재현)
+    const p = await open(withEmbedded('j1.html', enc(LEGACY)), () => localStorage.clear());
+    await p.evaluate(() => {
+      app.template.statusOptions.push({ id: 'st_my', value: '내상태', label: '내상태' });
+      app.template.chargeFactExamples.push({ id: 'ex_my', charge: '사기', title: '내 예문', content: '피의자는 OO' });
+      app.onStateChanged();
+    });
+    await importFile(p, 'j1.json', { version: 1, template: { checklist: ['새 할일'] }, cases: [{ id: 'n1', title: '새 사건', status: '진행중' }] }, 'replace');
+    const r = await p.evaluate(() => ({
+      st: app.template.statusOptions.some(o => o.value === '내상태'), ex: app.template.chargeFactExamples.some(e => e.id === 'ex_my'),
+      chk: app.template.checklist.join('|'), n: app.cases.length, status: app.cases[0].status, people: Array.isArray(app.cases[0].people),
+      dday: app.ddayTrackers.length
+    }));
+    ok(r.st && r.ex, 'J1 덮어쓰기: 파일에 없는 상태 설정·예문 유지');
+    ok(r.chk === '새 할일' && r.n === 1 && r.people, 'J1 덮어쓰기: 파일에 있는 섹션·사건은 교체(정규화됨)');
+    ok(r.status === '수사중', `J1 구버전 상태 별칭 적용 (${r.status})`);
+    ok(r.dday === 1, 'J1 덮어쓰기: D-day 유지');
+
+    // J2: 병합 — 추가만, 요약 토스트
+    await importFile(p, 'j2.json', { version: 1, template: { statusOptions: [{ value: '내상태', label: '바뀐라벨' }, { value: '새상태' }] },
+      cases: [{ id: 'n1', title: '중복' }, { id: 'n2', title: '추가' }] }, 'merge');
+    const r2 = await p.evaluate(() => ({ n: app.cases.length, mine: app.template.statusOptions.find(o => o.value === '내상태').label,
+      added: app.template.statusOptions.some(o => o.value === '새상태') }));
+    const t2 = await lastToast(p);
+    ok(r2.n === 2 && r2.mine === '내상태' && r2.added, 'J2 병합: 같은 id 사건·같은 이름 상태는 건드리지 않고 새 것만 추가');
+    ok(/\+1건/.test(t2) && /중복 1건/.test(t2), 'J2 병합 요약 — "' + t2 + '"');
+
+    // J3: 내보내기 → 새 파일에 덮어쓰기 → 같은 사건·템플릿
+    const out = await exportFile(p, 'all');
+    ok(out.version === 1 && out.cases.length === 2 && out.template.chargeFactExamples.some(e => e.id === 'ex_my'), 'J3 내보내기 v1 형식(사건·예문 포함)');
+    const tpl = await exportFile(p, 'template');
+    ok(tpl.cases.length === 0 && tpl.template.statusOptions.length > 0, 'J3 템플릿만 내보내기');
+    const before = await p.evaluate(() => JSON.stringify({ t: app.template, c: app.cases }));
+    const q = await open(withEmbedded('j3.html', enc({ version: 4, cases: [] })), () => localStorage.clear());
+    await importFile(q, 'j3.json', out, 'replace');
+    const canon = v => JSON.stringify(v, (k, x) => x && typeof x === 'object' && !Array.isArray(x) ? Object.keys(x).sort().reduce((o, kk) => (o[kk] = x[kk], o), {}) : x);
+    const after = await q.evaluate(() => JSON.stringify({ t: app.template, c: app.cases }));
+    ok(canon(JSON.parse(before)) === canon(JSON.parse(after)), 'J3 내보내기→덮어쓰기 왕복 동일');
+    ok(p.errs.length === 0 && q.errs.length === 0, 'J JS 오류 없음 ' + p.errs.concat(q.errs).join(' | '));
+    await p.close(); await q.close();
+  }
+  {
+    // J4: 읽기 전용(손상 DB)에서 공유 JSON 덮어쓰기 = 복원 → 읽기 전용 해제, 저장 재개
+    const p = await open(withEmbedded('j4.html', '!!!손상!!!'), () => localStorage.clear());
+    await importFile(p, 'j4.json', { version: 1, template: {}, cases: [{ id: 'r1', title: '복원' }] }, 'replace');
+    const r = await p.evaluate(() => ({ ro: app.readOnly, n: app.cases.length, err: document.getElementById('dbErrorBanner').classList.contains('show'),
+      tag: document.getElementById('embedded-db-b64').textContent.length > 100 }));
+    ok(!r.ro && r.n === 1 && !r.err && r.tag, 'J4 읽기 전용 중 JSON 덮어쓰기 → 복원·저장 재개');
+    await p.close();
+  }
+
   await b.close();
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log(fails ? `\n${fails}건 실패` : '\n전부 통과');

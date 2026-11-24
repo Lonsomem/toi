@@ -6487,23 +6487,28 @@
             },
 
             /* 공유 JSON 형식: { version:1, exportedAt:'YYYY-MM-DD HH:mm', template:{checklist,forms,customFields}, cases:[...] } */
+            /** 현재 앱 상태를 DB 객체로(db-core 함수 입력용). 앱이 모르는 최상위 키(dbExtra) 포함 */
+            currentDB() {
+                return Object.assign({}, this.dbExtra || {}, {
+                    version: 4,
+                    template: this.template,
+                    cases: this.cases,
+                    ddayTrackers: this.ddayTrackers
+                });
+            },
+
             exportPureJson(scope) {
-                let cases = [];
+                let caseIds = null;
                 if (scope === 'all') {
-                    const selectedIds = Array.from(document.querySelectorAll('.exportCaseCheck:checked')).map(el => el.value);
-                    cases = this.cases.filter(c => selectedIds.includes(c.id));
-                    if (!cases.length) {
+                    caseIds = Array.from(document.querySelectorAll('.exportCaseCheck:checked')).map(el => el.value);
+                    if (!caseIds.length) {
                         this.showToast('내보낼 사건을 1건 이상 선택하세요.');
                         return;
                     }
                 }
-                const payload = {
-                    version: 1,
-                    exportedAt: this.getFormattedNow(),
-                    template: this.template,
-                    cases: cases
-                };
-                const blob = new Blob(['﻿' + JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+                // 공유 JSON v1 형식은 DBCore.toShareJson 이 결정 (ADR-0001)
+                const payload = DBCore.toShareJson(this.currentDB(), { scope: scope, caseIds: caseIds, exportedAt: this.getFormattedNow() });
+                const blob = new Blob(['\uFEFF' + JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -6609,87 +6614,47 @@
                 const mode = modeEl ? modeEl.value : 'merge';
                 const reader = new FileReader();
                 reader.onload = (e) => {
+                    let parsed;
                     try {
-                        const text = String(e.target.result).replace(/^﻿/, '');
-                        const parsed = JSON.parse(text);
-                        const hasCases = parsed && Array.isArray(parsed.cases);
-                        const hasTemplate = parsed && parsed.template && typeof parsed.template === 'object';
-                        if (!hasCases && !hasTemplate) {
-                            this.showToast('유효한 사건 관리 노트 JSON 파일이 아닙니다.');
-                            return;
-                        }
-                        const incomingTpl = hasTemplate ? this.normalizeImportedTemplate(parsed.template) : null;
-                        const incomingCases = hasCases ? parsed.cases.filter(c => c && typeof c === 'object').map((c, i) => this.normalizeImportedCase(c, i)) : [];
-
-                        const apply = () => {
-                            if (mode === 'replace') {
-                                if (hasCases) this.cases = incomingCases;
-                                if (incomingTpl) {
-                                    if (!incomingTpl.globalForms) incomingTpl.globalForms = (this.template && this.template.globalForms) || [];
-                                    this.template = incomingTpl;
-                                }
-                                this.showToast(`덮어쓰기 완료: 사건 ${this.cases.length}건`);
-                            } else {
-                                let addedCases = 0, skippedCases = 0, addedTpl = 0;
-                                if (incomingTpl) {
-                                    const t = this.template;
-                                    if (!Array.isArray(t.checklist)) t.checklist = [];
-                                    if (!Array.isArray(t.forms)) t.forms = [];
-                                    if (!Array.isArray(t.customFields)) t.customFields = [];
-                                    incomingTpl.checklist.forEach(x => { if (!t.checklist.includes(x)) { t.checklist.push(x); addedTpl++; } });
-                                    incomingTpl.forms.forEach(f => {
-                                        const dup = t.forms.some(o => o.id === f.id || (o.title === f.title && o.content === f.content));
-                                        if (!dup) {
-                                            if (t.forms.some(o => o.id === f.id)) f.id += '_' + Date.now();
-                                            t.forms.push(f); addedTpl++;
-                                        }
-                                    });
-                                    if (Array.isArray(incomingTpl.globalForms)) {
-                                        if (!Array.isArray(t.globalForms)) t.globalForms = [];
-                                        incomingTpl.globalForms.forEach(f => {
-                                            const dup = t.globalForms.some(o => o.id === f.id || (o.title === f.title && o.content === f.content));
-                                            if (!dup) {
-                                                if (t.globalForms.some(o => o.id === f.id)) f.id += '_' + Date.now();
-                                                t.globalForms.push(f); addedTpl++;
-                                            }
-                                        });
-                                    }
-                                    incomingTpl.customFields.forEach(f => {
-                                        if (!t.customFields.some(o => o.id === f.id)) { t.customFields.push(f); addedTpl++; }
-                                    });
-                                    if (incomingTpl.personRoleFields) {
-                                        this.ensureTemplatePersonRoleFields();
-                                        PERSON_ROLE_ORDER.forEach(role => {
-                                            const incomingFields = incomingTpl.personRoleFields[role] || [];
-                                            incomingFields.forEach(v => {
-                                                const dup = t.personRoleFields[role].some(o => o.id === v.id || o.name === v.name);
-                                                if (!dup) { t.personRoleFields[role].push(v); addedTpl++; }
-                                            });
-                                        });
-                                    }
-                                }
-                                const ids = new Set(this.cases.map(c => c.id));
-                                incomingCases.forEach(c => {
-                                    if (ids.has(c.id)) { skippedCases++; return; }
-                                    ids.add(c.id);
-                                    this.cases.push(c);
-                                    addedCases++;
-                                });
-                                this.showToast(`병합 완료: 사건 +${addedCases}건 (중복 ${skippedCases}건 제외), 템플릿 항목 +${addedTpl}개`);
-                            }
-                            this.onStateChanged();
-                            this.closeBackupModal();
-                            this.showListView();
-                        };
-
-                        if (mode === 'replace') {
-                            this.openConfirmModal('전체 덮어쓰기', `현재 데이터(사건 ${this.cases.length}건)가 파일 내용으로 교체됩니다. 계속할까요?`, () => { apply(); this.closeConfirmModal(); });
-                        } else {
-                            apply();
-                        }
+                        parsed = JSON.parse(String(e.target.result).replace(/^\uFEFF/, ''));
                     } catch (err) {
                         console.error(err);
                         this.showToast('JSON 파싱에 실패했습니다.');
+                        return;
+                    }
+                    // 병합·덮어쓰기 규칙은 DBCore.applyShareJson 이 결정 (ADR-0001):
+                    // 덮어쓰기 = 파일에 있는 섹션만 교체, 병합 = 추가만
+                    const apply = () => {
+                        let result;
+                        try {
+                            result = DBCore.applyShareJson(this.currentDB(), parsed, mode, { now: this.getFormattedNow() });
+                        } catch (err) {
+                            console.error(err);
+                            this.showToast((err && err.message) || 'JSON 가져오기에 실패했습니다.');
+                            return;
+                        }
+                        this.applyNormalizedDB(result.db);
+                        if (this.readOnly) {
+                            // 손상된 내장 DB 를 공유 JSON 으로 복원한 경우: 읽기 전용 해제
+                            this.readOnly = false;
+                            const errBanner = document.getElementById('dbErrorBanner');
+                            if (errBanner) errBanner.classList.remove('show');
+                        }
+                        const sm = result.summary;
+                        if (mode === 'replace') {
+                            this.showToast(`덮어쓰기 완료: 사건 ${sm.caseCount}건`);
+                        } else {
+                            this.showToast(`병합 완료: 사건 +${sm.addedCases}건 (중복 ${sm.skippedCases}건 제외), 템플릿 항목 +${sm.addedTpl}개`);
+                        }
+                        this.onStateChanged();
+                        this.closeBackupModal();
+                        this.showListView();
+                    };
+
+                    if (mode === 'replace') {
+                        this.openConfirmModal('전체 덮어쓰기', `현재 데이터(사건 ${this.cases.length}건)가 파일 내용으로 교체됩니다. (파일에 없는 설정은 유지) 계속할까요?`, () => { apply(); this.closeConfirmModal(); });
+                    } else {
+                        apply();
                     }
                 };
                 reader.readAsText(file, 'utf-8');
