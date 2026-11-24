@@ -2596,7 +2596,7 @@
     <!-- ==========================================================================
          APPLICATION JAVASCRIPT
          ========================================================================== -->
-    <script>
+    <script id="db-core">
         function encodeDB(obj) {
             return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
         }
@@ -2604,9 +2604,6 @@
         function decodeDB(b64) {
             return JSON.parse(decodeURIComponent(escape(atob(b64.trim()))));
         }
-
-        const STORAGE_KEY_B64 = 'CASE_NOTE_SINGLE_FILE_B64_V4';
-        const STORAGE_KEY_META = 'CASE_NOTE_SINGLE_FILE_META_V4';
 
         /* 사건관계인 역할 정의: case(사건공통, 1명 고정) / complainant(고소인·진정인·고발인) / accused(피고소인·피진정인) / witness(참고인) */
         const PERSON_ROLES = {
@@ -2620,16 +2617,6 @@
         function createPersonRecord(role, subLabel, slug) {
             return { id: 'person_' + Date.now() + '_' + Math.floor(Math.random() * 100000), role: role, subLabel: subLabel, slug: slug, label: '', fieldValues: {}, removedFieldIds: [], extraFields: [] };
         }
-
-        // 샘플 데이터 생성 전용: 역할 기본 필드를 "필드명"으로 찾아 값을 채워 넣는다
-        function makeSamplePerson(role, subLabel, slug, valuesByName) {
-            const roleFields = getDefaultMasterTemplate().personRoleFields[role] || [];
-            const fieldValues = {};
-            roleFields.forEach(f => { if (valuesByName[f.name] !== undefined) fieldValues[f.id] = valuesByName[f.name]; });
-            return Object.assign(createPersonRecord(role, subLabel, slug), { fieldValues: fieldValues });
-        }
-
-        function pad2(n) { return String(n).padStart(2, '0'); }
 
         function getDefaultStatusOptions() {
             return [
@@ -2728,6 +2715,268 @@
                 ]
             };
         }
+
+        /* ==========================================================================
+           db-core: 데이터 모양(정규화) 전담 모듈 — docs/adr/0001-db-core-정규화-단일-모듈.md
+           규칙: DOM·app·네트워크 접근 금지(순수 코드). 입력 객체는 변경하지 않고 새 객체를 돌려준다.
+           빠진 것만 채우고, 모르는 속성은 보존한다. 같은 입력을 두 번 정규화해도 결과가 같다(멱등).
+           테스트: node tests/case-note/db-core.test.js (이 <script> 블록 텍스트를 Node 에서 그대로 실행)
+           ========================================================================== */
+        var DBCore = (function () {
+            const isObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+            const arr = x => Array.isArray(x) ? x : [];
+            const str = x => typeof x === 'string' ? x : (x === undefined || x === null ? '' : String(x));
+            const clone = x => JSON.parse(JSON.stringify(x));
+            let seq = 0;
+            const uid = prefix => prefix + '_' + Date.now() + '_' + (seq++) + '_' + Math.floor(Math.random() * 1000);
+
+            function formatNow(d) {
+                d = d || new Date();
+                const p = n => String(n).padStart(2, '0');
+                return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+            }
+
+            function withId(o, prefix) {
+                const x = Object.assign({}, o);
+                if (!x.id) x.id = uid(prefix);
+                return x;
+            }
+
+            function normalizeStatusOptions(list) {
+                const src = arr(list).filter(isObj);
+                if (!src.length) return getDefaultStatusOptions();
+                return src.map(o => {
+                    const x = withId(o, 'st_custom');
+                    if (!x.badgeClass) x.badgeClass = 'status-ing';
+                    if (!x.group) x.group = 'active';
+                    if (!x.emoji) x.emoji = '⚪';
+                    if (typeof x.closedTab !== 'boolean') x.closedTab = (x.value === '종결');
+                    return x;
+                });
+            }
+
+            function normalizePersonRoleFields(t) {
+                const src = isObj(t.personRoleFields) ? t.personRoleFields : getDefaultMasterTemplate().personRoleFields;
+                const out = Object.assign({}, src);
+                PERSON_ROLE_ORDER.forEach(role => {
+                    out[role] = arr(src[role]).filter(isObj).map(f => withId(f, 'pf_' + role));
+                });
+                // 구버전(평면 변수 template.variables) → 사건공통 역할 필드로 흡수
+                arr(t.variables).filter(isObj).forEach(v => {
+                    if (!out.case.some(f => f.id === v.id || f.name === v.name)) out.case.push(withId(v, 'var'));
+                });
+                return out;
+            }
+
+            function normalizeTemplate(raw) {
+                const t = Object.assign({}, raw);
+                t.statusOptions = normalizeStatusOptions(t.statusOptions);
+                t.personRoleFields = normalizePersonRoleFields(t);
+                delete t.variables;
+                t.checklist = arr(t.checklist).map(x => typeof x === 'string' ? x : (isObj(x) ? str(x.text) : '')).filter(Boolean);
+                t.forms = arr(t.forms).filter(isObj).map(f => withId(f, 'form'));
+                t.customFields = arr(t.customFields).filter(isObj).map(f => withId(f, 'cf'));
+                t.globalForms = (Array.isArray(t.globalForms) ? t.globalForms : getDefaultMasterTemplate().globalForms)
+                    .filter(isObj).map(f => {
+                        const x = withId(f, 'gf');
+                        if (!Array.isArray(x.autoCharges)) x.autoCharges = [];
+                        return x;
+                    });
+                t.chargeFactExamples = arr(t.chargeFactExamples).filter(isObj).map(f => withId(f, 'cfx'));
+                return t;
+            }
+
+            function normalizePerson(p, i) {
+                const x = withId(p, 'person');
+                const roleInfo = PERSON_ROLES[x.role];
+                if (roleInfo && !x.subLabel) x.subLabel = roleInfo.subLabels[0];
+                if (roleInfo && !x.slug) x.slug = roleInfo.label + (i + 1);
+                if (typeof x.label !== 'string') x.label = '';
+                if (!isObj(x.fieldValues)) x.fieldValues = {};
+                if (!Array.isArray(x.removedFieldIds)) x.removedFieldIds = [];
+                x.extraFields = arr(x.extraFields).filter(isObj).map(f => withId(f, 'pfx'));
+                return x;
+            }
+
+            function normalizeCase(raw, template, now) {
+                const c = withId(raw, 'case');
+                ['caseNumber', 'title', 'overview', 'charge', 'crimeFact', 'reference', 'remarks'].forEach(k => {
+                    if (typeof c[k] !== 'string') c[k] = str(c[k]);
+                });
+                if (typeof c.status !== 'string') c.status = template.statusOptions[0].value;
+                if (typeof c.updatedAt !== 'string' || !c.updatedAt) c.updatedAt = now;
+                c.checklist = arr(c.checklist).filter(isObj).map(it => {
+                    const x = withId(it, 'chk');
+                    if (typeof x.text !== 'string') x.text = str(x.text);
+                    if (typeof x.done !== 'boolean') x.done = Boolean(x.done);
+                    return x;
+                });
+                c.forms = arr(c.forms).filter(isObj).map(f => withId(f, 'form'));
+                c.schedules = arr(c.schedules).filter(isObj).map(s => withId(s, 'sch'));
+                if (!isObj(c.customValues)) c.customValues = {};
+                if (!Array.isArray(c.autoLoadedFormIds)) c.autoLoadedFormIds = [];
+                c.people = arr(c.people).filter(isObj).map(normalizePerson);
+                if (!c.people.some(p => p.role === 'case')) c.people.unshift(createPersonRecord('case', '사건', '사건'));
+                // 구버전(평면 변수) → 사건공통 관계인으로 흡수
+                const casePerson = c.people.find(p => p.role === 'case');
+                if (isObj(c.variableValues)) Object.keys(c.variableValues).forEach(k => {
+                    if (casePerson.fieldValues[k] === undefined) casePerson.fieldValues[k] = c.variableValues[k];
+                });
+                arr(c.removedVariableIds).forEach(id => { if (!casePerson.removedFieldIds.includes(id)) casePerson.removedFieldIds.push(id); });
+                arr(c.extraVariables).filter(isObj).forEach(v => {
+                    if (!casePerson.extraFields.some(f => f.id === v.id)) casePerson.extraFields.push(withId(v, 'pfx'));
+                });
+                delete c.variableValues; delete c.removedVariableIds; delete c.extraVariables;
+                return c;
+            }
+
+            /** 어떤 원본(내장 DB·임시 백업 등)이든 → 정식 DB {version:4, savedAt, template, cases, ddayTrackers, ...모르는 속성} */
+            function normalizeDB(raw, opts) {
+                if (!isObj(raw)) throw new Error('사건 관리 노트 데이터 형식이 아닙니다.');
+                const now = (opts && opts.now) || formatNow();
+                const db = Object.assign({}, clone(raw));
+                db.version = 4;
+                db.savedAt = str(db.savedAt);
+                db.template = normalizeTemplate(isObj(db.template) ? db.template : getDefaultMasterTemplate());
+                db.cases = arr(db.cases).filter(isObj).map(c => normalizeCase(c, db.template, now));
+                db.ddayTrackers = arr(db.ddayTrackers).filter(isObj).map(d => withId(d, 'dday'));
+                return db;
+            }
+
+            /** 저장 전 검증 인코딩: 인코딩 결과를 다시 풀어 원본과 다르면 예외(파일을 쓰지 말 것) */
+            function encodeVerified(db) {
+                const b64 = encodeDB(db);
+                if (JSON.stringify(decodeDB(b64)) !== JSON.stringify(db)) {
+                    throw new Error('저장 데이터 검증 실패: 인코딩 결과가 원본과 다릅니다.');
+                }
+                return b64;
+            }
+
+            /** 새 사건: 템플릿의 체크리스트·서식을 복제한 정식 사건. opts.fields 로 값 지정(외부 목록 가져오기 등) */
+            function makeCase(template, opts) {
+                opts = opts || {};
+                const now = opts.now || formatNow();
+                const base = {
+                    id: uid('case'),
+                    caseNumber: now.slice(0, 4) + '-' + String(Math.floor(100000 + Math.random() * 900000)),
+                    status: template.statusOptions[0].value,
+                    title: '신규 배당 사건 (사건개요 및 피해 현황 요약 입력)',
+                    overview: '', charge: '', crimeFact: '', reference: '', remarks: '',
+                    createdAt: now.split(' ')[0],
+                    updatedAt: now,
+                    checklist: template.checklist.map(text => ({ id: uid('chk'), text: text, done: false, date: '' })),
+                    forms: clone(template.forms),
+                    schedules: [],
+                    customValues: {},
+                    people: []
+                };
+                return normalizeCase(Object.assign(base, clone(opts.fields || {})), template, now);
+            }
+
+            /* ---------------- 공유 JSON (version 1) — docs/case-note.md 3절, 형식 변경 금지 ---------------- */
+
+            /** 내보내기: scope 'template' = 템플릿만(cases:[]), 'all' = caseIds 로 고른 사건(없으면 전체) */
+            function toShareJson(db, opts) {
+                opts = opts || {};
+                let cases = [];
+                if (opts.scope !== 'template') {
+                    cases = Array.isArray(opts.caseIds) ? db.cases.filter(c => opts.caseIds.includes(c.id)) : db.cases;
+                }
+                return clone({ version: 1, exportedAt: opts.exportedAt || formatNow(), template: db.template, cases: cases });
+            }
+
+            const STATUS_ALIASES = { '진행중': '수사중', '이송': '이송판단', '불송치': '불송치(불입건)결정', '송치': '송치결정' };
+            function aliasStatus(c, template) {
+                const x = Object.assign({}, c);
+                const known = template.statusOptions.some(o => o.value === x.status);
+                if (!known && STATUS_ALIASES[x.status]) x.status = STATUS_ALIASES[x.status];
+                return x;
+            }
+
+            function addIfNew(target, items, isDup, onIdClash) {
+                let added = 0;
+                items.forEach(item => {
+                    if (target.some(o => isDup(o, item))) return;
+                    const x = Object.assign({}, item);
+                    if (onIdClash && target.some(o => o.id === x.id)) x.id = x.id + '_' + Date.now();
+                    target.push(x); added++;
+                });
+                return added;
+            }
+
+            /**
+             * 가져오기: 현재 DB + 공유 JSON → { db: 새 정식 DB, summary }. 현재 DB 는 변경하지 않음.
+             * replace: 파일에 "있는" 섹션만 교체(없는 섹션은 현재 것 유지). merge: 추가만, 기존 항목은 건드리지 않음.
+             */
+            function applyShareJson(db, parsed, mode, opts) {
+                const now = (opts && opts.now) || formatNow();
+                const hasCases = isObj(parsed) && Array.isArray(parsed.cases);
+                const rawT = isObj(parsed) && isObj(parsed.template) ? parsed.template : null;
+                if (!hasCases && !rawT) throw new Error('유효한 사건 관리 노트 JSON 파일이 아닙니다.');
+                const cur = clone(db);
+                const summary = { addedCases: 0, skippedCases: 0, addedTpl: 0 };
+                let template;
+
+                if (mode === 'replace') {
+                    template = Object.assign({}, cur.template);
+                    if (rawT) Object.keys(rawT).forEach(k => { template[k] = clone(rawT[k]); });
+                    template = normalizeTemplate(template);
+                } else {
+                    template = cur.template;
+                    if (rawT) {
+                        const inc = normalizeTemplate(Object.assign({ statusOptions: [], globalForms: [] }, clone(rawT)));
+                        const has = k => k in rawT;
+                        if (has('checklist')) inc.checklist.forEach(x => { if (!template.checklist.includes(x)) { template.checklist.push(x); summary.addedTpl++; } });
+                        const sameDoc = (o, f) => o.id === f.id || (o.title === f.title && o.content === f.content);
+                        if (has('forms')) summary.addedTpl += addIfNew(template.forms, inc.forms, sameDoc, true);
+                        if (has('globalForms')) summary.addedTpl += addIfNew(template.globalForms, inc.globalForms, sameDoc, true);
+                        if (has('customFields')) summary.addedTpl += addIfNew(template.customFields, inc.customFields, (o, f) => o.id === f.id);
+                        if (has('statusOptions')) summary.addedTpl += addIfNew(template.statusOptions, inc.statusOptions, (o, f) => o.value === f.value, true);
+                        if (has('chargeFactExamples')) summary.addedTpl += addIfNew(template.chargeFactExamples, inc.chargeFactExamples,
+                            (o, f) => o.id === f.id || (o.charge === f.charge && o.title === f.title && o.content === f.content), true);
+                        if (has('personRoleFields') || has('variables')) PERSON_ROLE_ORDER.forEach(role => {
+                            summary.addedTpl += addIfNew(template.personRoleFields[role], inc.personRoleFields[role], (o, f) => o.id === f.id || o.name === f.name);
+                        });
+                        Object.keys(rawT).forEach(k => { if (!(k in template) && k !== 'variables') template[k] = clone(rawT[k]); });
+                    }
+                }
+
+                const incoming = hasCases ? parsed.cases.filter(isObj).map(c => normalizeCase(aliasStatus(c, template), template, now)) : null;
+                let cases = cur.cases;
+                if (incoming && mode === 'replace') {
+                    cases = incoming;
+                } else if (incoming) {
+                    const ids = new Set(cases.map(c => c.id));
+                    incoming.forEach(c => {
+                        if (ids.has(c.id)) { summary.skippedCases++; return; }
+                        ids.add(c.id); cases.push(c); summary.addedCases++;
+                    });
+                }
+                const out = normalizeDB(Object.assign({}, cur, { template: template, cases: cases }), { now: now });
+                summary.caseCount = out.cases.length;
+                return { db: out, summary: summary };
+            }
+
+            return { normalizeDB, normalizeTemplate, normalizeCase, makeCase, encodeVerified, formatNow, toShareJson, applyShareJson };
+        })();
+    </script>
+
+    <script>
+
+        const STORAGE_KEY_B64 = 'CASE_NOTE_SINGLE_FILE_B64_V4';
+        const STORAGE_KEY_META = 'CASE_NOTE_SINGLE_FILE_META_V4';
+
+
+        // 샘플 데이터 생성 전용: 역할 기본 필드를 "필드명"으로 찾아 값을 채워 넣는다
+        function makeSamplePerson(role, subLabel, slug, valuesByName) {
+            const roleFields = getDefaultMasterTemplate().personRoleFields[role] || [];
+            const fieldValues = {};
+            roleFields.forEach(f => { if (valuesByName[f.name] !== undefined) fieldValues[f.id] = valuesByName[f.name]; });
+            return Object.assign(createPersonRecord(role, subLabel, slug), { fieldValues: fieldValues });
+        }
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
 
         function getInitialSampleCases() {
             return [

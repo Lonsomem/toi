@@ -198,10 +198,27 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
 
 테스트: `tests/case-note/missing-slots.test.js` (T1 개수·항목·숨김, T3 복사 경고, T5 저장본 비어 있음·한 화면 핏). 실행법은 파일 상단 주석. 칩 클릭 순환과 예문 삽입 후 표시는 일회성 스크립트로만 확인(저장소 미포함).
 
+## 14. db-core: 데이터 모양 전담 모듈 (2026-11-24, 진행 중) — ADR-0001
+결정·이유는 `docs/adr/0001-db-core-정규화-단일-모듈.md`. 아키텍처 리뷰에서 "데이터의 올바른 모양"이 7곳에 흩어져 실제 유실 버그를 낸 것이 확인되어, `case-note.html` 안 **`<script id="db-core">`** 한 곳으로 모으는 중.
+
+- **위치**: 메인 `<script>` 바로 앞. 순수 코드(DOM·`app`·네트워크 없음). 기존 전역 `encodeDB/decodeDB`, `PERSON_ROLES`, `PERSON_ROLE_ORDER`, `createPersonRecord`, `getDefaultStatusOptions`, `getDefaultMasterTemplate` 가 이 블록으로 **이동**(전역 이름은 그대로라 기존 코드 영향 없음).
+- **인터페이스** `DBCore.*`:
+  - `normalizeDB(raw, {now})` → 정식 DB(v4). 빠진 것만 채움, 모르는 속성 보존, 구버전 평면 변수 마이그레이션, 멱등. 입력 불변.
+  - `normalizeTemplate(t)`, `normalizeCase(c, template, now)` — 위의 부품.
+  - `makeCase(template, {now, fields})` — 새 사건(새 사건 버튼·외부 목록 가져오기 공용).
+  - `toShareJson(db, {scope, caseIds, exportedAt})` / `applyShareJson(db, parsed, 'replace'|'merge', {now})` → `{db, summary}`. 덮어쓰기는 **파일에 있는 섹션만** 교체, 병합은 **추가만**(상태는 같은 이름, 예문은 같은 id 또는 죄명+제목+본문이면 건너뜀). 구버전 상태 별칭은 설정에 없는 이름일 때만 적용.
+  - `encodeVerified(db)` — 인코딩 후 다시 풀어 비교, 다르면 예외(파일 쓰지 말 것).
+- **테스트**: `node tests/case-note/db-core.test.js` (Node 만 필요, 43개 검사 — 오프라인, 멱등, 속성 보존, 마이그레이션, 한글·이모지 왕복, 검증 실패 시 예외, 덮어쓰기 섹션 보존(유실 버그 재현), 내보내기→가져오기 왕복, 병합 규칙, makeCase).
+- **진행 상황**:
+  - [x] 1·2단계: db-core + 테스트 (2026-11-24)
+  - [ ] 3단계: 앱 진입점 5곳을 db-core 로 연결 — `loadDatabase`, `applyRecoveredData`, `importPureJson`/`exportPureJson`, `importExternalCases`, `createNewCase`. 손상된 내장 DB 는 읽기 전용 + 백업 복구 제안, 저장은 `encodeVerified` 경유.
+  - [ ] 4단계: 남은 보정 삭제 — `ensureTemplateStatusOptions`, `ensureTemplatePersonRoleFields`, `ensureCasePeople`, `migrateCaseFlatVariables`, `ensureGlobalForms`/`ensureChargeFactExamples` 의 보정 부분, `normalizeImported*`, 렌더러 안 `if (!Array.isArray(...))` 보정.
+  - **3단계 전까지 앱은 아직 기존 코드 경로를 씀 → 덮어쓰기 가져오기 유실·복구 마이그레이션 누락 버그는 아직 남아 있음.**
+
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
 2. 데이터 변경 끝에 `onStateChanged()`; 목록 갱신이 필요하면 `renderCaseList()`, 상세면 `renderCaseDetail()`/`renderDetailChecklist()`.
-3. 스키마 추가 → `loadDatabase()` 방어 + (공유 대상이면) `normalizeImportedCase/Template` + `docs`·이 문서 갱신.
+3. 스키마 추가 → **`db-core`(14절)의 `normalizeTemplate`/`normalizeCase` 한 곳** + `tests/case-note/db-core.test.js` + `docs`·이 문서 갱신. (3·4단계 완료 전까지는 기존 `loadDatabase()`/`normalizeImported*` 에도 같이 반영)
 4. 테스트: 저장소에 있는 것은 `tests/case-note/*.test.js`(실행법은 각 파일 상단; Playwright 위치는 `PLAYWRIGHT_DIR` 로 지정 가능). 그 외는 Playwright(headless Chromium)로 `file:///.../case-note.html` 열어 `app.*` 직접 호출. 저장본 생성은 `app.buildCleanHtmlDocumentString()`.
 5. 검증 시 기억: 샘플 데이터는 첫 로드 때 `getInitialSampleCases()` 로 생성. 저장소의 `case-note.html` 은 `#embedded-db-b64` 가 비어 있음(사용자가 쓰던 저장본은 데이터가 들어 있음).
 
