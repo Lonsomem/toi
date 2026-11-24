@@ -208,22 +208,22 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
   - `makeCase(template, {now, fields})` — 새 사건(새 사건 버튼·외부 목록 가져오기 공용).
   - `toShareJson(db, {scope, caseIds, exportedAt})` / `applyShareJson(db, parsed, 'replace'|'merge', {now})` → `{db, summary}`. 덮어쓰기는 **파일에 있는 섹션만** 교체, 병합은 **추가만**(상태는 같은 이름, 예문은 같은 id 또는 죄명+제목+본문이면 건너뜀). 구버전 상태 별칭은 설정에 없는 이름일 때만 적용.
   - `encodeVerified(db)` — 인코딩 후 다시 풀어 비교, 다르면 예외(파일 쓰지 말 것).
-- **테스트**: `node tests/case-note/db-core.test.js` (Node 만 필요, 43개 검사 — 오프라인, 멱등, 속성 보존, 마이그레이션, 한글·이모지 왕복, 검증 실패 시 예외, 덮어쓰기 섹션 보존(유실 버그 재현), 내보내기→가져오기 왕복, 병합 규칙, makeCase).
+- **테스트**: `node tests/case-note/db-core.test.js` (Node 만 필요, 45개 검사 — 오프라인, 멱등, 속성 보존, 마이그레이션, 한글·이모지 왕복, 검증 실패 시 예외, 덮어쓰기 섹션 보존(유실 버그 재현), 내보내기→가져오기 왕복, 병합 규칙, makeCase).
 - **진행 상황**:
   - [x] 1·2단계: db-core + 테스트 (2026-11-24)
-  - [ ] 3단계: 앱 진입점 5곳을 db-core 로 연결
+  - [x] 3단계: 앱 진입점 5곳을 db-core 로 연결 (2026-11-24 완료)
     - [x] 3-1 로드·복구·저장 (2026-11-24): `loadDatabase` / `applyRecoveredData` 가 `DBCore.normalizeDB` 경유(`applyNormalizedDB` 로 반영). 앱이 모르는 최상위 키는 `app.dbExtra` 에 보관했다가 저장 시 되돌려 넣음. 저장은 전부 `app.encodeForSave()` → `DBCore.encodeVerified` 경유(`syncEmbeddedBase64Tag`·`buildCleanHtmlDocumentString`), 실패하면 내장 태그·임시저장·파일 **아무것도 안 쓰고** `reportSaveBlocked` 토스트(같은 문구 5초에 1회).
       - **손상된 내장 DB**(디코딩 실패 또는 `cases` 배열 없음) → `app.readOnly = true`: 빈 목록 + 빨간 `#dbErrorBanner`, 저장 전부 거부, 임시 백업이 있으면(“저장됨” 표시여도) 복구 배너. 이때 "현재 파일 유지"를 눌러도 백업 표시는 지우지 않음. 백업 복구 시 정규화 후 읽기 전용 해제·저장 재개.
       - 샘플 데이터는 내장 DB 가 **비어 있을 때만**. 백업 복구 시 D-day 도 복원(전에는 누락).
     - [x] 3-2 공유 JSON (2026-11-24): `exportPureJson` → `DBCore.toShareJson(app.currentDB(), …)`, `importPureJson` → `DBCore.applyShareJson`. 덮어쓰기는 파일에 있는 섹션만 교체(상태 설정·예문·관계인 필드·D-day 유지 — **유실 버그 해결**), 병합은 추가만. 덮어쓰기 확인창에 "(파일에 없는 설정은 유지)" 문구. 읽기 전용(손상 DB) 상태에서 가져오기에 성공하면 = 복원으로 보고 읽기 전용 해제.
-    - [ ] 3-3 새 사건: `importExternalCases`/`createNewCase` → `makeCase`
+    - [x] 3-3 새 사건 (2026-11-24): `createNewCase` → `DBCore.makeCase(template)`, `importExternalCases` → 매핑 값을 `fields` 로 모아 `makeCase(template, {fields})`(제목 빈칸·서식 없음은 기존대로). 외부 값의 구버전 상태 이름(송치 등)은 `makeCase` 가 공유 JSON 과 같은 별칭 규칙으로 처리. 외부 목록 사건의 기본 상태는 고정 '수사중' → **상태 설정의 첫 번째 상태**(기본 설정이면 같음).
   - [ ] 4단계: 남은 보정 삭제 — `ensureTemplateStatusOptions`, `ensureTemplatePersonRoleFields`, `ensureCasePeople`, `migrateCaseFlatVariables`, `ensureGlobalForms`/`ensureChargeFactExamples` 의 보정 부분, `normalizeImported*`, 렌더러 안 `if (!Array.isArray(...))` 보정.
-- **앱 연결 테스트**: `PLAYWRIGHT_DIR=~/.cache/toi-test LANG=C.UTF-8 node tests/case-note/entry-points.test.js` — 내장 DB 를 바꾼 사본을 임시 폴더에 만들어 엶(L1 구버전 DB, L2 손상 DB·백업 복구, L3 빈 DB→샘플, S1 저장 검증 실패, J1~J4 실제 파일 입력·다운로드로 JSON 덮어쓰기/병합/왕복/읽기 전용 복원).
+- **앱 연결 테스트**: `PLAYWRIGHT_DIR=~/.cache/toi-test LANG=C.UTF-8 node tests/case-note/entry-points.test.js` — 내장 DB 를 바꾼 사본을 임시 폴더에 만들어 엶(L1 구버전 DB, L2 손상 DB·백업 복구, L3 빈 DB→샘플, S1 저장 검증 실패, J1~J4 실제 파일 입력·다운로드로 JSON 덮어쓰기/병합/왕복/읽기 전용 복원, N1·N2 새 사건·외부 목록 사건 모양).
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
 2. 데이터 변경 끝에 `onStateChanged()`; 목록 갱신이 필요하면 `renderCaseList()`, 상세면 `renderCaseDetail()`/`renderDetailChecklist()`.
-3. 스키마 추가 → **`db-core`(14절)의 `normalizeTemplate`/`normalizeCase` 한 곳** + `tests/case-note/db-core.test.js` + `docs`·이 문서 갱신. (3·4단계 완료 전까지는 기존 `loadDatabase()`/`normalizeImported*` 에도 같이 반영)
+3. 스키마 추가 → **`db-core`(14절)의 `normalizeTemplate`/`normalizeCase` 한 곳** + `tests/case-note/db-core.test.js` + `docs`·이 문서 갱신. (3단계 완료로 진입점은 전부 db-core 경유 — `loadDatabase()`·`normalizeImported*` 를 따로 고칠 필요 없음. `normalizeImported*`·`ensure*` 는 4단계에서 삭제 예정)
 4. 테스트: 저장소에 있는 것은 `tests/case-note/*.test.js`(실행법은 각 파일 상단; Playwright 위치는 `PLAYWRIGHT_DIR` 로 지정 가능). 그 외는 Playwright(headless Chromium)로 `file:///.../case-note.html` 열어 `app.*` 직접 호출. 저장본 생성은 `app.buildCleanHtmlDocumentString()`.
 5. 검증 시 기억: 샘플 데이터는 첫 로드 때 `getInitialSampleCases()` 로 생성. 저장소의 `case-note.html` 은 `#embedded-db-b64` 가 비어 있음(사용자가 쓰던 저장본은 데이터가 들어 있음).
 

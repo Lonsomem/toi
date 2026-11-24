@@ -188,6 +188,34 @@ const LEGACY = {
     await p.close();
   }
 
+  // ---- N: 새 사건(새 사건 버튼·외부 목록 가져오기) → DBCore.makeCase
+  {
+    const p = await open(withEmbedded('n1.html', enc(LEGACY)), () => localStorage.clear());
+    const r = await p.evaluate(() => {
+      app.template.statusOptions.unshift({ id: 'st_first', value: '내사중', label: '내사중' });
+      app.createNewCase();
+      const c = app.cases[0];
+      return { status: c.status, people: c.people.filter(x => x.role === 'case').length, chk: c.checklist.map(x => x.text).join('|'),
+        sched: Array.isArray(c.schedules), auto: Array.isArray(c.autoLoadedFormIds), open: app.currentCaseId === c.id };
+    });
+    ok(r.status === '내사중' && r.people === 1 && r.chk === '기록 검토' && r.sched && r.auto && r.open, 'N1 새 사건 = 정식 모양(첫 상태·사건 관계인·체크리스트)');
+    const r2 = await p.evaluate(() => {
+      app.externalImport = Object.assign(app.externalImport || {}, {
+        rows: [{ no: '2026-100', nm: '외부 사건', st: '송치', memo: '메모1' }, { no: '2026-000001', nm: '중복' }, { no: '', nm: '빈 번호' }],
+        mapping: { no: 'caseNumber', nm: 'title', st: 'status', memo: 'reference' }
+      });
+      const n0 = app.cases.length;
+      app.importExternalCases();
+      const c = app.cases.find(x => x.caseNumber === '2026-100');
+      return { added: app.cases.length - n0, title: c && c.title, status: c && c.status, ref: c && c.reference,
+        people: c && c.people.filter(x => x.role === 'case').length, forms: c && c.forms.length, sched: c && Array.isArray(c.schedules) };
+    });
+    ok(r2.added === 1 && r2.title === '외부 사건' && r2.ref === 'memo: 메모1', 'N2 외부 목록: 중복·빈 사건번호 건너뛰고 1건 추가, 매핑 값 반영');
+    ok(r2.status === '송치결정' && r2.people === 1 && r2.forms === 0 && r2.sched, `N2 외부 사건 = 정식 모양(별칭 상태 ${r2.status}, 서식 없음 유지)`);
+    ok(p.errs.length === 0, 'N JS 오류 없음 ' + p.errs.join(' | '));
+    await p.close();
+  }
+
   await b.close();
   fs.rmSync(TMP, { recursive: true, force: true });
   console.log(fails ? `\n${fails}건 실패` : '\n전부 통과');

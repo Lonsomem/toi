@@ -2885,7 +2885,8 @@
                     customValues: {},
                     people: []
                 };
-                return normalizeCase(Object.assign(base, clone(opts.fields || {})), template, now);
+                // 외부에서 온 값(fields.status)도 공유 JSON 과 같은 구버전 상태 별칭 규칙
+                return normalizeCase(aliasStatus(Object.assign(base, clone(opts.fields || {})), template), template, now);
             }
 
             /* ---------------- 공유 JSON (version 1) — docs/case-note.md 3절, 형식 변경 금지 ---------------- */
@@ -4625,35 +4626,8 @@
             },
 
             createNewCase() {
-                const now = new Date();
-                const year = now.getFullYear();
-                const randomNum = String(Math.floor(100000 + Math.random() * 900000));
-                const todayStr = this.getFormattedNow().split(' ')[0];
-
-                const newCase = {
-                    id: 'case_' + Date.now(),
-                    caseNumber: `${year}-${randomNum}`,
-                    status: this.getStatusOptions()[0].value,
-                    title: '신규 배당 사건 (사건개요 및 피해 현황 요약 입력)',
-                    overview: '',
-                    charge: '',
-                    crimeFact: '',
-                    reference: '',
-                    remarks: '',
-                    createdAt: todayStr,
-                    updatedAt: this.getFormattedNow(),
-                    checklist: (this.template.checklist || []).map((text, idx) => ({
-                        id: 'chk_' + Date.now() + '_' + idx,
-                        text: text,
-                        done: false,
-                        date: ''
-                    })),
-                    forms: JSON.parse(JSON.stringify(this.template.forms || [])),
-                    schedules: [],
-                    customValues: {},
-                    people: []
-                };
-                this.ensureCasePeople(newCase);
+                // 새 사건의 모양은 DBCore.makeCase 가 결정 (ADR-0001)
+                const newCase = DBCore.makeCase(this.template, { now: this.getFormattedNow() });
 
                 this.cases.unshift(newCase);
                 this.onStateChanged();
@@ -6424,21 +6398,9 @@
                 this.externalImport.rows.forEach((row, idx) => {
                     const caseNumber = String(row[matchKey] || '').trim();
                     if (!caseNumber || existingCaseNumbers.has(caseNumber)) { skipped++; return; }
-                    const stamp = Date.now() + '_' + idx;
-                    const newCase = {
-                        id: 'case_ext_' + stamp,
-                        caseNumber: caseNumber,
-                        status: '수사중',
-                        title: '', overview: '', charge: '', crimeFact: '', reference: '', remarks: '',
-                        createdAt: this.getFormattedNow().split(' ')[0],
-                        updatedAt: this.getFormattedNow(),
-                        checklist: (this.template.checklist || []).map((text, i) => ({
-                            id: 'chk_ext_' + stamp + '_' + i, text: text, done: false, date: ''
-                        })),
-                        forms: [],
-                        customValues: {},
-                        people: []
-                    };
+                    // 매핑된 값만 모은 뒤 DBCore.makeCase 로 정식 사건 생성 (ADR-0001).
+                    // 외부 목록 사건은 제목 빈칸·서식 없이 시작(기존 동작 유지), 상태 별칭은 makeCase 가 처리
+                    const fields = { caseNumber: caseNumber, title: '', forms: [] };
                     const freeTextFields = { overview: true, reference: true, remarks: true };
                     Object.keys(mapping).forEach((k) => {
                         const target = mapping[k];
@@ -6447,16 +6409,16 @@
                         const strVal = (val === undefined || val === null) ? '' : String(val);
                         if (!strVal) return;
                         if (target === 'status') {
-                            newCase.status = this.normalizeImportedStatus(strVal);
+                            fields.status = strVal;
                         } else if (freeTextFields[target]) {
                             // 여러 키를 같은 항목(참고사항 등)에 매핑하면 덮어쓰지 않고 줄바꿈으로 이어붙임
                             const line = k + ': ' + strVal;
-                            newCase[target] = newCase[target] ? (newCase[target] + '\n' + line) : line;
+                            fields[target] = fields[target] ? (fields[target] + '\n' + line) : line;
                         } else {
-                            newCase[target] = strVal;
+                            fields[target] = strVal;
                         }
                     });
-                    this.ensureCasePeople(newCase);
+                    const newCase = DBCore.makeCase(this.template, { now: this.getFormattedNow(), fields: fields });
                     this.cases.unshift(newCase);
                     existingCaseNumbers.add(caseNumber);
                     added++;

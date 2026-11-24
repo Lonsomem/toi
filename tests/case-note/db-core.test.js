@@ -135,6 +135,8 @@ ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|https?:\/\//.t
   ok(same(D.normalizeCase(clone(c), tpl, 'x'), c), 'S5 makeCase 결과는 이미 정규화됨');
   const e = D.makeCase(tpl, { now: NOW, fields: { caseNumber: '2026-777', title: '외부', charge: '사기' } });
   ok(e.caseNumber === '2026-777' && e.title === '외부' && e.charge === '사기' && e.status === '내사중', 'S5 지정 값 우선(외부 가져오기용)');
+  ok(D.makeCase(tpl, { now: NOW, fields: { status: '송치' } }).status === '송치결정', 'S5 외부 값의 구버전 상태 이름은 별칭 적용');
+  ok(D.makeCase(tpl, { now: NOW, fields: { status: '종결' } }).status === '종결', 'S5 설정에 있는 상태는 그대로');
 }
 
 finish();
