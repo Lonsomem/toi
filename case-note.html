@@ -1432,47 +1432,6 @@
             .bento-card {
                 min-height: 220px;
             }
-            /* --- 깃허브 프로필 레이아웃: 태블릿 이하는 사이드바를 위로 올려 세로 1단으로 --- */
-            .github-profile-layout {
-                flex-direction: column;
-                overflow: visible;
-                min-height: 0;
-            }
-            .profile-sidebar {
-                width: 100%;
-                overflow: visible;
-            }
-            .profile-sidebar .todo-scroll {
-                max-height: 260px;
-            }
-            .profile-main {
-                overflow: visible;
-                min-height: 0;
-            }
-            .repo-section {
-                min-height: 0;
-            }
-            .list-table-area {
-                min-height: 0;
-            }
-            #case-list-body.case-cards-grid {
-                max-height: none;
-                overflow: visible;
-            }
-        }
-
-        /* --- 모바일 폭: 사건 섹션 툴바를 세로로 쌓고, 가로 요소들을 폭에 맞춤 --- */
-        @media (max-width: 640px) {
-            .header-inner { gap: 0.4rem; }
-            .file-sync-pill { display: none; }
-            .repo-section-header { flex-direction: column; align-items: stretch; }
-            .repo-toolbar { flex-wrap: wrap; margin-left: 0; width: 100%; }
-            .repo-toolbar .table-search { width: 100%; max-width: none; }
-            .repo-toolbar .table-sort { flex: 1; width: auto; min-width: 120px; }
-            .table-new-btn { width: 100%; justify-content: center; margin-left: 0; }
-            .activity-graph-body { overflow-x: auto; }
-            .repo-desc { max-width: none; }
-            .profile-avatar { width: 56px; height: 56px; }
         }
 
         @media print {
@@ -1783,290 +1742,6 @@
         /* --- 모달: 살짝 더 또렷한 입체감 --- */
         .modal-dialog { box-shadow: var(--shadow-lg); }
         .modal-backdrop { background: rgba(28, 38, 58, 0.45); }
-
-        /* ======================================================================
-           깃허브 스타일 리디자인 — 차분하고 밀도 높은 대시보드 톤 (외부 리소스 없음)
-           이전 "겨울 시즌" 장식을 걷어내고 색상 토큰만 교체. 레이아웃 크기는 그대로.
-           ====================================================================== */
-        .winter-snowfall { display: none !important; }
-        html, body { background: var(--bg-body) !important; }
-        :root {
-            --radius-sm: 6px;
-            --radius-md: 6px;
-            --radius-lg: 8px;
-            --bg-body: #f6f8fa;
-            --bg-surface: #ffffff;
-            --primary: #1f883d;
-            --primary-light: #dafbe1;
-            --accent: #0969da;
-            --success: #1f883d;
-            --success-bg: #dafbe1;
-            --warning: #9a6700;
-            --warning-bg: #fff8c5;
-            --danger: #cf222e;
-            --danger-bg: #ffebe9;
-            --purple: #8250df;
-            --border-color: #d0d7de;
-            --text-main: #1f2328;
-            --text-secondary: #57606a;
-            --text-muted: #6e7781;
-            --shadow-sm: 0 1px 0 rgba(31,35,40,0.04);
-            --shadow-md: 0 3px 6px rgba(140,149,159,0.15);
-            --shadow-lg: 0 8px 24px rgba(140,149,159,0.2);
-        }
-        .app-header {
-            background: #24292f !important;
-            padding: 0 1rem !important;
-            min-height: 48px !important;
-            box-shadow: none !important;
-            border-bottom: 1px solid #1b1f23;
-            overflow: visible !important; /* ⋮ 메뉴 드롭다운이 헤더 높이에 잘리지 않도록 (헤더 버튼이 ⋮ 하나로 줄어 줄바꿈 걱정 없음) */
-        }
-        .app-header::before { display: none; }
-        .brand-text h1 { font-size: 0.92rem !important; }
-        .brand-text h1::after { content: ''; }
-        #capacityInfoText { color: #8b949e !important; }
-
-        /* --- 헤더 우측: 숨긴 기능을 모은 메뉴 --- */
-        .header-menu-wrap { position: relative; }
-        .header-menu-btn {
-            width: 32px; height: 32px; border-radius: 6px; border: 1px solid transparent;
-            background: transparent; color: #c9d1d9; display: flex; align-items: center; justify-content: center;
-            cursor: pointer;
-        }
-        .header-menu-btn:hover { background: rgba(255,255,255,0.08); }
-        .header-menu-dropdown {
-            display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
-            background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px;
-            box-shadow: var(--shadow-md); min-width: 240px; padding: 0.3rem; flex-direction: column;
-        }
-        .header-menu-dropdown.open { display: flex; }
-        .header-menu-dropdown button {
-            text-align: left; background: none; border: none; padding: 0.5rem 0.6rem; border-radius: 6px;
-            font-size: 0.78rem; color: var(--text-main); cursor: pointer; font-weight: 500;
-        }
-        .header-menu-dropdown button:hover { background: #f6f8fa; }
-        .btn { transition: background-color 0.12s ease, border-color 0.12s ease; }
-        .btn-primary {
-            background: var(--primary);
-            box-shadow: none;
-        }
-        .btn-primary:hover { background: #1a7f37; transform: none; box-shadow: none; }
-        .btn-secondary { background: #f6f8fa; border: 1px solid var(--border-color); color: var(--text-main); }
-        .btn-secondary:hover { background: #f3f4f6; }
-        .stat-widget, .case-graphic-card, .todo-panel, .modal-dialog, .activity-graph-card {
-            box-shadow: none !important;
-            border: 1px solid var(--border-color) !important;
-        }
-        ::-webkit-scrollbar-thumb { background: #d0d7de; }
-        ::-webkit-scrollbar-thumb:hover { background: #afb8c1; }
-        .modal-backdrop { background: rgba(27, 31, 36, 0.5); }
-
-        /* --- 기여 그래프(잔디) 카드 --- */
-        .activity-graph-card {
-            background: var(--bg-surface);
-            border-radius: 10px;
-            padding: 0.9rem 1.1rem;
-            margin-bottom: 0.9rem;
-        }
-        .activity-graph-head {
-            display: flex;
-            align-items: baseline;
-            gap: 0.6rem;
-            font-weight: 700;
-            font-size: 0.85rem;
-            color: var(--text-main);
-            margin-bottom: 0.55rem;
-        }
-        .activity-graph-sub { font-size: 0.72rem; font-weight: 500; color: var(--text-muted); }
-        .activity-graph-body { overflow-x: auto; }
-        .activity-graph-grid {
-            display: grid;
-            grid-template-rows: repeat(7, 11px);
-            grid-auto-flow: column;
-            gap: 3px;
-            width: max-content;
-        }
-        .activity-cell {
-            width: 11px; height: 11px; border-radius: 2px;
-            background: #ebedf0;
-        }
-        .activity-cell.level-future { background: transparent; }
-        .activity-cell.level-1 { background: #9be9a8; }
-        .activity-cell.level-2 { background: #40c463; }
-        .activity-cell.level-3 { background: #30a14e; }
-        .activity-cell.level-4 { background: #216e39; }
-
-        /* --- 사건 목록: 밀도 높은 테이블 --- */
-        #case-list-body.case-cards-grid { display: block; overflow: auto; }
-        .case-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 0.78rem; background: var(--bg-surface); }
-        .case-table thead th {
-            text-align: left; padding: 0.45rem 0.6rem; font-size: 0.68rem; font-weight: 700;
-            color: var(--text-muted); border-bottom: 1px solid var(--border-color); white-space: nowrap;
-        }
-        .case-table tbody tr.case-row {
-            cursor: pointer; border-bottom: 1px solid var(--border-color);
-        }
-        .case-table tbody tr.case-row:hover { background: #f6f8fa; }
-        .case-table td { padding: 0.5rem 0.6rem; vertical-align: middle; }
-        .case-table .col-casenum { font-family: monospace; color: var(--text-muted); white-space: nowrap; }
-        .case-table .col-title { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
-        .case-table .col-progress { display: flex; align-items: center; gap: 0.4rem; min-width: 110px; }
-        .row-progress-track { flex: 1; height: 6px; background: #ebedf0; border-radius: 999px; overflow: hidden; min-width: 60px; }
-        .row-progress-fill { height: 100%; background: var(--primary); }
-        .row-progress-pct { font-size: 0.68rem; color: var(--text-muted); font-weight: 700; }
-        .todo-count-chip { background: var(--warning-bg); color: var(--warning); font-size: 0.68rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; }
-        .todo-count-chip.done { background: var(--success-bg); color: var(--success); }
-        .case-table .col-actions { width: 50px; text-align: right; }
-
-        /* --- 좌측 필터 사이드바 (검색·상태·정렬·표시 열) --- */
-        .list-content-row { flex: 1; min-height: 0; display: flex; gap: 0.9rem; }
-        .filter-sidebar {
-            width: 190px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0.9rem;
-            background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 10px;
-            padding: 0.85rem 0.8rem; align-self: flex-start;
-        }
-        .sidebar-new-btn { width: 100%; justify-content: center; font-size: 0.78rem; padding: 0.5rem 0; }
-        .sidebar-search {
-            display: flex; align-items: center; gap: 0.4rem; border: 1px solid var(--border-color);
-            border-radius: 6px; padding: 0.4rem 0.55rem; background: var(--bg-body);
-        }
-        .sidebar-search svg { width: 14px; height: 14px; color: var(--text-muted); flex-shrink: 0; }
-        .sidebar-search input {
-            border: none; background: transparent; outline: none; font-size: 0.76rem; width: 100%; color: var(--text-main);
-        }
-        .sidebar-section { display: flex; flex-direction: column; gap: 0.4rem; }
-        .sidebar-section-title {
-            font-size: 0.66rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em;
-        }
-        .status-pill-list { display: flex; flex-direction: column; gap: 0.15rem; }
-        .status-pill {
-            display: flex; align-items: center; justify-content: space-between; gap: 0.4rem;
-            border: none; background: transparent; border-radius: 6px; padding: 0.35rem 0.5rem;
-            font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; text-align: left;
-        }
-        .status-pill:hover { background: var(--bg-body); }
-        .status-pill.active { background: var(--primary-light); color: var(--primary); }
-        .status-pill-count {
-            font-size: 0.66rem; font-weight: 700; color: var(--text-muted); background: var(--bg-body);
-            border-radius: 999px; padding: 0.05rem 0.4rem; min-width: 1.3em; text-align: center;
-        }
-        .status-pill.active .status-pill-count { background: rgba(31,136,61,0.16); color: var(--primary); }
-        .sidebar-select {
-            width: 100%; font-size: 0.74rem; padding: 0.4rem 0.5rem; border: 1px solid var(--border-color);
-            border-radius: 6px; background: var(--bg-surface); color: var(--text-main);
-        }
-        .sidebar-link-btn {
-            display: flex; align-items: center; gap: 0.4rem; width: 100%; border: 1px solid var(--border-color);
-            background: var(--bg-surface); border-radius: 6px; padding: 0.4rem 0.55rem; font-size: 0.74rem;
-            font-weight: 600; color: var(--text-main); cursor: pointer;
-        }
-        .sidebar-link-btn:hover { background: var(--bg-body); }
-        .sidebar-dropdown { position: absolute; left: 0; right: 0; top: calc(100% + 4px); }
-        .list-table-area { flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
-
-        /* --- 기능 기반 3단 대시보드 레이아웃 (좌: 현황/필터, 중앙: 목록, 우: 개인 작업) --- */
-        .dash-grid { flex: 1; min-height: 0; display: flex; gap: 0.9rem; align-items: stretch; }
-        .rail { display: flex; flex-direction: column; gap: 0.75rem; flex-shrink: 0; min-height: 0; }
-        .rail-left { width: 200px; }
-        .rail-right { width: 300px; }
-        .rail-card {
-            background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 10px;
-            padding: 0.8rem 0.85rem; flex-shrink: 0;
-        }
-        .rail-card-title {
-            font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
-            letter-spacing: 0.04em; margin-bottom: 0.6rem;
-        }
-        .stat-compact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; }
-        .stat-compact { display: flex; flex-direction: column; gap: 0.1rem; }
-        .stat-compact-value { font-size: 1.15rem; font-weight: 800; color: var(--text-main); }
-        .stat-compact-label { font-size: 0.65rem; color: var(--text-muted); font-weight: 600; }
-
-        .dash-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.7rem; min-height: 0; }
-        .table-toolbar { display: flex; align-items: center; gap: 0.5rem; }
-        .table-search { flex: 1; max-width: 360px; }
-        .table-sort { width: 170px; flex-shrink: 0; }
-        .table-toolbar .column-menu-wrap { flex-shrink: 0; }
-        .table-toolbar .sidebar-link-btn { width: auto; white-space: nowrap; }
-        .table-column-dropdown { left: auto; right: 0; }
-        .table-new-btn { margin-left: auto; flex-shrink: 0; white-space: nowrap; }
-
-        .rail-flex-card { flex: 1; min-height: 0; width: 100% !important; }
-        .rail-right .activity-graph-card { flex-shrink: 0; margin-bottom: 0; }
-        .rail-right .activity-graph-grid { grid-template-rows: repeat(7, 10px); gap: 2px; }
-        .rail-right .activity-cell { width: 10px; height: 10px; }
-
-        @media (max-width: 1400px) { .rail-right { width: 260px; } }
-
-        /* --- 깃허브 프로필 페이지 레이아웃 (아바타+현황 사이드바 / 기여그래프+리포지토리 목록 메인) --- */
-        .github-profile-layout { flex: 1; min-height: 0; display: flex; gap: 2rem; }
-        .profile-sidebar {
-            width: 260px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0;
-            overflow-y: auto; min-height: 0;
-        }
-        .profile-avatar {
-            width: 80px; height: 80px; border-radius: 50%; background: #24292f; color: #fff;
-            display: flex; align-items: center; justify-content: center; margin-bottom: 0.9rem;
-        }
-        .profile-name { font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
-        .profile-sub { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.9rem; }
-        .profile-sub #statTotalCases { color: var(--text-main); font-weight: 700; }
-        .profile-section {
-            border-top: 1px solid var(--border-color); padding-top: 0.85rem; margin-top: 0.85rem;
-        }
-        .profile-section-title {
-            font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;
-            letter-spacing: 0.04em; margin-bottom: 0.5rem;
-        }
-        .profile-stat-row {
-            display: flex; justify-content: space-between; align-items: baseline;
-            font-size: 0.78rem; color: var(--text-secondary); padding: 0.28rem 0;
-        }
-        .profile-stat-row strong { color: var(--text-main); font-size: 0.92rem; }
-        .profile-sidebar .todo-panel {
-            border: none !important; box-shadow: none !important; background: transparent !important;
-            border-radius: 0; width: 100% !important; flex-shrink: 0;
-        }
-        .profile-sidebar .todo-panel-head { padding: 0; }
-        .profile-sidebar .todo-scroll { max-height: 280px; }
-
-        .profile-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1.4rem; overflow-y: auto; min-height: 0; }
-        .main-section-title { font-size: 1rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.6rem; }
-        .repo-section { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-        .repo-section-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.3rem; }
-        .repo-toolbar { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
-        .repo-toolbar .table-search { width: 220px; flex: none; }
-        .repo-toolbar .table-sort { width: 150px; }
-
-        .repo-list { border-top: 1px solid var(--border-color); }
-        .repo-row { position: relative; padding: 0.9rem 0.2rem; border-bottom: 1px solid var(--border-color); cursor: pointer; }
-        .repo-row:hover { background: #f6f8fa; }
-        .repo-row-main { display: flex; align-items: center; gap: 0.6rem; }
-        .repo-name { color: var(--accent); font-weight: 700; font-size: 0.95rem; }
-        .repo-row:hover .repo-name { text-decoration: underline; }
-        .repo-row .status-badge { font-size: 0.64rem; padding: 0.05rem 0.5rem; }
-        .repo-desc { color: var(--text-secondary); font-size: 0.8rem; margin: 0.3rem 0 0.5rem; max-width: 640px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .repo-meta-row { display: flex; flex-wrap: wrap; gap: 0.9rem; font-size: 0.72rem; color: var(--text-muted); }
-        .repo-meta-item { display: flex; align-items: center; }
-        .repo-meta-chip { background: var(--bg-body); padding: 0.1rem 0.5rem; border-radius: 999px; font-weight: 600; }
-        .repo-progress-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 0.3rem; }
-        .repo-row-delete {
-            position: absolute; top: 0.9rem; right: 0.2rem; font-size: 0.7rem; color: var(--danger);
-            background: none; border: none; cursor: pointer; opacity: 0; transition: opacity 0.12s;
-        }
-        .repo-row:hover .repo-row-delete { opacity: 1; }
-
-        /* --- 표시 열 선택 드롭다운 --- */
-        .column-menu-wrap { position: relative; }
-        .column-menu-dropdown {
-            display: none; position: absolute; top: calc(100% + 4px); right: 0; z-index: 20;
-            background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 8px;
-            box-shadow: var(--shadow-md); padding: 0.4rem; min-width: 140px;
-        }
-        .column-menu-dropdown.open { display: block; }
-        .column-menu-item { display: flex; align-items: center; gap: 0.4rem; font-size: 0.76rem; padding: 0.3rem 0.4rem; border-radius: 5px; cursor: pointer; }
-        .column-menu-item:hover { background: #f6f8fa; }
     </style>
 </head>
 <body>
@@ -2111,25 +1786,36 @@
                     <span id="fileSyncText">미연결 (브라우저 임시저장 중)</span>
                 </div>
 
-                <div class="header-menu-wrap">
-                    <button type="button" class="header-menu-btn" onclick="app.toggleHeaderMenu()" title="메뉴">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                            <circle cx="12" cy="5" r="1.8"></circle>
-                            <circle cx="12" cy="12" r="1.8"></circle>
-                            <circle cx="12" cy="19" r="1.8"></circle>
-                        </svg>
-                    </button>
-                    <div id="headerMenuDropdown" class="header-menu-dropdown">
-                        <button type="button" onclick="app.connectSelfHtmlFile(); app.closeHeaderMenu();" title="실행 중인 .html 파일을 연결하면 수정 시 자동 덮어쓰기됩니다.">
-                            <span id="connectFileBtnLabel">현재 HTML 파일 직접 연결 (자동 덮어쓰기 ON)</span>
-                        </button>
-                        <button type="button" onclick="app.downloadEmbeddedHtmlFile(); app.closeHeaderMenu();">단일 HTML 다운로드</button>
-                        <button type="button" onclick="app.openGlobalFormsModal(); app.closeHeaderMenu();" title="한글(HWP) 등에서 복사한 공통 서식을 저장해두고 언제든 꺼내 씁니다.">공통 서식 보관함 (한글 복붙)</button>
-                        <button type="button" onclick="app.openTemplateModal(); app.closeHeaderMenu();">템플릿 설정</button>
-                        <button type="button" onclick="app.openBackupModal(); app.closeHeaderMenu();">JSON 백업</button>
-                        <button type="button" onclick="app.openExternalImportModal(); app.closeHeaderMenu();" title="내부 시스템 사건목록 JSON을 가져와 선택한 항목만 새 사건으로 추가">외부 목록 가져오기</button>
-                    </div>
-                </div>
+                <button type="button" class="btn btn-header" style="background: rgba(37, 99, 235, 0.45); border-color: #60a5fa;" onclick="app.connectSelfHtmlFile()" title="실행 중인 .html 파일을 연결하면 수정 시 자동 덮어쓰기됩니다.">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                    </svg>
+                    <span id="connectFileBtnLabel">현재 HTML 파일 직접 연결 (자동 덮어쓰기 ON)</span>
+                </button>
+
+                <button type="button" class="btn btn-header" style="background: rgba(16, 185, 129, 0.35); border-color: #34d399;" onclick="app.downloadEmbeddedHtmlFile()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    단일 HTML 다운로드
+                </button>
+
+                <button type="button" class="btn btn-header" style="background: rgba(139, 92, 246, 0.45); border-color: #c4b5fd;" onclick="app.openGlobalFormsModal()" title="한글(HWP) 등에서 복사한 공통 서식을 저장해두고 언제든 꺼내 씁니다.">
+                    📚 공통 서식 보관함 (한글 복붙)
+                </button>
+                <button type="button" class="btn btn-header" onclick="app.openTemplateModal()">
+                    ⚙️ 템플릿 설정
+                </button>
+
+                <button type="button" class="btn btn-header" onclick="app.openBackupModal()">
+                    📦 JSON 백업
+                </button>
+                <button type="button" class="btn btn-header" onclick="app.openExternalImportModal()" title="내부 시스템 사건목록 JSON을 가져와 선택한 항목만 새 사건으로 추가">
+                    📥 외부 목록 가져오기
+                </button>
             </div>
         </div>
     </header>
@@ -2155,106 +1841,111 @@
              VIEW 1: 그래픽 사건 목록 대시보드 (CASE LIST VIEW)
              ====================================================================== -->
         <section id="listView" class="view-section active">
-            <div class="github-profile-layout">
-                <!-- 좌측: 깃허브 프로필 사이드바 느낌 (아이덴티티 + 현황 + 할 일 + 상태 필터) -->
-                <aside class="profile-sidebar">
-                    <div class="profile-avatar">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="34" height="34">
-                            <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-                            <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-                            <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-                            <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+            <!-- 상단 그래픽 KPI 카드 4종 -->
+            <div class="stats-bar">
+                <div class="stat-widget">
+                    <div>
+                        <div class="stat-label">전체 관리 사건</div>
+                        <div class="stat-value" id="statTotalCases">0건</div>
+                    </div>
+                    <div class="stat-graphic-icon" style="background: var(--primary-light); color: var(--primary);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                         </svg>
                     </div>
-                    <div class="profile-name">사건 관리 노트</div>
-                    <div class="profile-sub">총 <span id="statTotalCases">0건</span> 관리 중</div>
-
-                    <div class="profile-section">
-                        <div class="profile-stat-row"><span>수사중 · 영장진행</span><strong id="statActiveCases">0건</strong></div>
-                        <div class="profile-stat-row"><span>송치완료 · 타관이송</span><strong id="statCompletedCases">0건</strong></div>
-                        <div class="profile-stat-row"><span>평균 진행률</span><strong id="statAvgProgress">0%</strong></div>
+                </div>
+                <div class="stat-widget stat-active">
+                    <div>
+                        <div class="stat-label">수사중 · 영장진행</div>
+                        <div class="stat-value" id="statActiveCases" style="color: var(--primary);">0건</div>
                     </div>
+                    <div class="stat-graphic-icon" style="background: #e0f2fe; color: #0284c7;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-widget stat-done">
+                    <div>
+                        <div class="stat-label">송치완료 · 타관이송</div>
+                        <div class="stat-value" id="statCompletedCases" style="color: var(--success);">0건</div>
+                    </div>
+                    <div class="stat-graphic-icon" style="background: var(--success-bg); color: var(--success);">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                    </div>
+                </div>
+                <div class="stat-widget stat-avg">
+                    <div>
+                        <div class="stat-label">전체 평균 진행률</div>
+                        <div class="stat-value" id="statAvgProgress" style="color: #d97706;">0%</div>
+                    </div>
+                    <div class="stat-graphic-icon" style="background: var(--warning-bg); color: #d97706;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="22" height="22">
+                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                        </svg>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="profile-section todo-panel">
-                        <div class="todo-panel-head">
-                            <div class="todo-panel-title">
-                                <span>🎯 오늘의 할 일</span>
-                                <span id="priorityTodoCount" class="priority-count-pill">0건</span>
-                            </div>
-                            <div id="todoPanelSub" class="todo-panel-sub"></div>
-                            <div class="todo-tabs">
-                                <button type="button" id="todoTabToday" class="todo-tab active" onclick="app.setTodoTab('today')">★ 오늘<b id="todoTabTodayCount">0</b></button>
-                                <button type="button" id="todoTabNext" class="todo-tab" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
-                                <button type="button" id="todoTabAll" class="todo-tab" onclick="app.setTodoTab('all')">전체 할 일<b id="todoTabAllCount">0</b></button>
-                                <label id="todoDoneToggle" class="todo-done-toggle" style="display:none;"><input type="checkbox" onchange="app.toggleTodoShowDone(this.checked)"> 완료 포함</label>
-                            </div>
+            <div class="list-split">
+                <!-- 좌측: 할 일 패널 (다음 할 일 / 전체 할 일) -->
+                <aside class="todo-panel">
+                    <div class="todo-panel-head">
+                        <div class="todo-panel-title">
+                            <span>🎯 오늘의 할 일</span>
+                            <span id="priorityTodoCount" class="priority-count-pill">0건</span>
                         </div>
-                        <div id="priorityTodoList" class="todo-scroll"></div>
+                        <div id="todoPanelSub" class="todo-panel-sub"></div>
+                        <div class="todo-tabs">
+                            <button type="button" id="todoTabToday" class="todo-tab active" onclick="app.setTodoTab('today')">★ 오늘<b id="todoTabTodayCount">0</b></button>
+                            <button type="button" id="todoTabNext" class="todo-tab" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
+                            <button type="button" id="todoTabAll" class="todo-tab" onclick="app.setTodoTab('all')">전체 할 일<b id="todoTabAllCount">0</b></button>
+                            <label id="todoDoneToggle" class="todo-done-toggle" style="display:none;"><input type="checkbox" onchange="app.toggleTodoShowDone(this.checked)"> 완료 포함</label>
+                        </div>
                     </div>
-
-                    <div class="profile-section">
-                        <div class="profile-section-title">상태</div>
-                        <div id="statusFilterPills" class="status-pill-list"></div>
-                    </div>
+                    <div id="priorityTodoList" class="todo-scroll"></div>
                 </aside>
 
-                <!-- 우측: 메인 컬럼 (기여 그래프 + 사건 목록, 깃허브 리포지토리 리스트 느낌) -->
-                <main class="profile-main">
-                    <div class="main-section">
-                        <div class="main-section-title">기여 현황</div>
-                        <div class="activity-graph-card">
-                            <div class="activity-graph-head">
-                                <span>📈 활동 기여</span>
-                                <span class="activity-graph-sub">최근 18주 · 완료한 할 일 + 새로 등록한 사건 기준</span>
-                            </div>
-                            <div id="activityGraphContainer" class="activity-graph-body"></div>
-                        </div>
+                <!-- 우측: 검색/필터 + 사건 카드 -->
+                <div class="list-main">
+            <!-- 검색 · 필터 · 신규 사건 등록 툴바 -->
+            <div class="list-toolbar">
+                <div class="search-filter-group">
+                    <div class="search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="search" id="searchInput" placeholder="사건번호, 제목, 피해현황, 계좌번호, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
                     </div>
+                    <select id="statusFilter" style="width: 135px;" onchange="app.currentPage=1; app.renderCaseList()"></select>
+                    <select id="sortFilter" style="width: 170px;" onchange="app.currentPage=1; app.renderCaseList()">
+                        <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
+                        <option value="UPDATED_DESC">최근 수정일순</option>
+                        <option value="CASENUM_DESC">사건번호순</option>
+                        <option value="PROGRESS_ASC">진행률 낮은순</option>
+                        <option value="PROGRESS_DESC">진행률 높은순</option>
+                    </select>
+                </div>
 
-                    <div class="main-section repo-section">
-                        <div class="repo-section-header">
-                            <div class="main-section-title">사건</div>
-                            <div class="repo-toolbar">
-                                <div class="sidebar-search table-search">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <circle cx="11" cy="11" r="8"></circle>
-                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                                    </svg>
-                                    <input type="search" id="searchInput" placeholder="사건번호, 제목, 피의자 검색..." oninput="app.currentPage=1; app.renderCaseList()">
-                                </div>
-                                <select id="sortFilter" class="sidebar-select table-sort" onchange="app.currentPage=1; app.saveDashboardSortPref()">
-                                    <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
-                                    <option value="UPDATED_DESC">최근 수정일순</option>
-                                    <option value="CASENUM_DESC">사건번호순</option>
-                                    <option value="PROGRESS_ASC">진행률 낮은순</option>
-                                    <option value="PROGRESS_DESC">진행률 높은순</option>
-                                </select>
-                                <div class="column-menu-wrap">
-                                    <button type="button" class="sidebar-link-btn" onclick="app.toggleColumnMenu()" title="표시할 항목 선택">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-                                            <circle cx="12" cy="12" r="3"></circle>
-                                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                                        </svg>
-                                        표시 항목
-                                    </button>
-                                    <div id="columnMenuDropdown" class="column-menu-dropdown table-column-dropdown"></div>
-                                </div>
-                                <button type="button" class="btn btn-primary table-new-btn" onclick="app.createNewCase()">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15">
-                                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                                    </svg>
-                                    새 사건
-                                </button>
-                            </div>
-                        </div>
+                <button type="button" class="btn btn-primary" onclick="app.createNewCase()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    + 새 사건 카드 생성
+                </button>
+            </div>
 
-                        <div class="list-table-area">
-                            <div id="case-list-body" class="case-cards-grid"></div>
-                            <div id="paginationBar" class="pagination-bar"></div>
-                        </div>
-                    </div>
-                </main>
+                    <div id="case-list-body" class="case-cards-grid"></div>
+                    <div id="paginationBar" class="pagination-bar"></div>
+                </div>
             </div>
         </section>
 
@@ -2598,7 +2289,7 @@
                 <div style="margin-bottom: 1.4rem;">
                     <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">0. 사건 상태 설정 (목록·상세화면 상태값 커스텀)</h3>
                     <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                        상태 이름·이모지·색상·분류(진행중/종결/기타)를 바꿀 수 있습니다. "분류"는 좌측 현황 통계(수사중·영장진행 / 송치완료·타관이송)와 오늘 할 일에서 종결 사건 제외 여부에 쓰입니다. 이미 쓰인 상태를 지우면 해당 사건들은 상세화면에서 "(설정에 없음)"으로 표시되어 데이터는 보존됩니다.
+                        상태 이름·이모지·색상·분류(진행중/종결/기타)를 바꿀 수 있습니다. "분류"는 상단 현황 통계(수사중·영장진행 / 송치완료·타관이송)와 오늘 할 일에서 종결 사건 제외 여부에 쓰입니다. 이미 쓰인 상태를 지우면 해당 사건들은 상세화면에서 "(설정에 없음)"으로 표시되어 데이터는 보존됩니다.
                     </p>
                     <div id="tplStatusOptionsList" style="display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 0.6rem;"></div>
                     <button type="button" class="btn btn-secondary btn-sm" onclick="app.addTemplateStatusOption()">+ 상태 추가</button>
@@ -2920,23 +2611,6 @@
             };
         }
 
-        function getDefaultDashboardPrefs() {
-            return {
-                tableSort: 'MANUAL_ORDER',
-                tableStatus: 'ALL',
-                visibleColumns: {
-                    caseNumber: true,
-                    title: true,
-                    charge: true,
-                    status: true,
-                    progress: true,
-                    todo: true,
-                    people: false,
-                    updatedAt: true
-                }
-            };
-        }
-
         function getInitialSampleCases() {
             return [
                 {
@@ -2984,7 +2658,7 @@
             autoSaveTimer: null,
             pendingRecoveredData: null,
             currentPage: 1,
-            itemsPerPage: 500,
+            itemsPerPage: 15,
             draggedCaseId: null,
             draggedPriorityCaseId: null,
             activeGlobalFormIndex: 0,
@@ -2993,10 +2667,6 @@
             todoCollapsed: {},
             selectedPersonId: null,
             activeRoleFieldsTab: 'case',
-            activityLog: {},
-            dashboardPrefs: null,
-            columnMenuOpen: false,
-            activeStatusFilter: 'ALL',
 
             init() {
                 this.loadDatabase();
@@ -3005,50 +2675,8 @@
                     const lv = document.getElementById('listView');
                     if (!document.hidden && lv && lv.classList.contains('active')) this.renderCaseList();
                 });
-                document.addEventListener('click', (e) => {
-                    if (!e.target.closest('.header-menu-wrap')) this.closeHeaderMenu();
-                    if (!e.target.closest('.column-menu-wrap')) {
-                        this.columnMenuOpen = false;
-                        const cm = document.getElementById('columnMenuDropdown');
-                        if (cm) cm.classList.remove('open');
-                    }
-                });
-                this.applyDashboardPrefsToToolbar();
                 this.renderCaseList();
                 this.updateCapacityIndicator();
-            },
-
-            /**
-             * 저장된 정렬/필터 설정값을 상단 툴바 셀렉트에 반영 (새로고침 시 유지)
-             */
-            applyDashboardPrefsToToolbar() {
-                if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
-                const sortEl = document.getElementById('sortFilter');
-                if (sortEl && this.dashboardPrefs.tableSort) sortEl.value = this.dashboardPrefs.tableSort;
-                this.activeStatusFilter = this.dashboardPrefs.tableStatus || 'ALL';
-            },
-
-            setStatusFilter(value) {
-                this.activeStatusFilter = value;
-                this.currentPage = 1;
-                if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
-                this.dashboardPrefs.tableStatus = value;
-                this.onStateChanged();
-                this.renderCaseList();
-            },
-
-            renderStatusFilterPills() {
-                const container = document.getElementById('statusFilterPills');
-                if (!container) return;
-                const statuses = ['ALL', ...this.getStatusOptions().map(o => o.value)];
-                const labels = { ALL: '전체' };
-                const active = this.activeStatusFilter || 'ALL';
-                container.innerHTML = statuses.map(st => {
-                    const count = st === 'ALL' ? this.cases.length : this.cases.filter(c => c.status === st).length;
-                    return `<button type="button" class="status-pill ${st === active ? 'active' : ''}" onclick="app.setStatusFilter('${st}')">
-                        <span>${labels[st] || st}</span><span class="status-pill-count">${count}</span>
-                    </button>`;
-                }).join('');
             },
 
             setupKeyboardShortcuts() {
@@ -3085,9 +2713,6 @@
                 if (loadedFromEmbedded && Array.isArray(loadedFromEmbedded.cases) && loadedFromEmbedded.template) {
                     this.cases = loadedFromEmbedded.cases;
                     this.template = loadedFromEmbedded.template;
-                    this.activityLog = (loadedFromEmbedded.activityLog && typeof loadedFromEmbedded.activityLog === 'object') ? loadedFromEmbedded.activityLog : {};
-                    this.dashboardPrefs = Object.assign(getDefaultDashboardPrefs(), loadedFromEmbedded.dashboardPrefs || {});
-                    if (!this.dashboardPrefs.visibleColumns) this.dashboardPrefs.visibleColumns = getDefaultDashboardPrefs().visibleColumns;
                     if (!Array.isArray(this.template.globalForms)) {
                         this.template.globalForms = getDefaultMasterTemplate().globalForms;
                     }
@@ -3106,8 +2731,6 @@
                 } else {
                     this.template = getDefaultMasterTemplate();
                     this.cases = getInitialSampleCases();
-                    this.activityLog = {};
-                    this.dashboardPrefs = getDefaultDashboardPrefs();
                     this.syncEmbeddedBase64Tag('');
                 }
 
@@ -3135,8 +2758,6 @@
                 if (!this.pendingRecoveredData) return;
                 this.cases = this.pendingRecoveredData.cases;
                 this.template = this.pendingRecoveredData.template || getDefaultMasterTemplate();
-                this.activityLog = this.pendingRecoveredData.activityLog || this.activityLog || {};
-                this.dashboardPrefs = this.pendingRecoveredData.dashboardPrefs || this.dashboardPrefs || getDefaultDashboardPrefs();
                 this.pendingRecoveredData = null;
                 document.getElementById('recoveryBanner').classList.remove('show');
                 this.onStateChanged();
@@ -3156,9 +2777,7 @@
                     version: 4,
                     savedAt: savedAtTimestamp || this.getFormattedNowWithSeconds(),
                     template: this.template,
-                    cases: this.cases,
-                    activityLog: this.activityLog,
-                    dashboardPrefs: this.dashboardPrefs
+                    cases: this.cases
                 };
                 const encoded = encodeDB(payload);
                 const el = document.getElementById('embedded-db-b64');
@@ -3190,33 +2809,6 @@
                     this.updateFileSyncBadge('unsaved');
                     this.updateDetailSaveBadge(`● 내장 반영 (${nowStamp.split(' ')[1]})`);
                 }
-            },
-
-            /**
-             * 기여 그래프(활동 로그)에 하루치 활동을 누적. kind: 'todo'(할 일 완료) | 'case'(사건 생성/수정, caseId당 하루 1회만 집계)
-             */
-            recordActivity(kind, caseId, label) {
-                if (!this.activityLog) this.activityLog = {};
-                const day = this.getFormattedNow().split(' ')[0];
-                if (!this.activityLog[day]) this.activityLog[day] = { todoCount: 0, caseIds: [], items: [] };
-                const log = this.activityLog[day];
-                if (kind === 'todo') {
-                    log.todoCount = (log.todoCount || 0) + 1;
-                    if (label) log.items.unshift(label);
-                } else if (kind === 'case') {
-                    if (!Array.isArray(log.caseIds)) log.caseIds = [];
-                    if (!log.caseIds.includes(caseId)) {
-                        log.caseIds.push(caseId);
-                        if (label) log.items.unshift(label);
-                    }
-                }
-                if (log.items.length > 30) log.items.length = 30;
-            },
-
-            getActivityCount(day) {
-                const log = this.activityLog ? this.activityLog[day] : null;
-                if (!log) return 0;
-                return (log.todoCount || 0) + ((log.caseIds && log.caseIds.length) || 0);
             },
 
             updateCapacityIndicator() {
@@ -3262,9 +2854,7 @@
                     version: 4,
                     savedAt: nowStamp,
                     template: this.template,
-                    cases: this.cases,
-                    activityLog: this.activityLog,
-                    dashboardPrefs: this.dashboardPrefs
+                    cases: this.cases
                 };
                 const encodedB64 = encodeDB(stateObj);
 
@@ -3297,11 +2887,12 @@
                     'peopleListContainer',
                     'personEditorContainer',
                     'eiKeyMapContainer',
-                    'activityGraphContainer',
-                    'columnMenuDropdown',
-                    'statusFilterPills',
                     'detailStatus',
-                    'tplStatusOptionsList'
+                    'tplStatusOptionsList',
+                    'statusFilter',
+                    'caseCalendarContainer',
+                    'dashboardCalendarContainer',
+                    'ddayWidgetContainer'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -3322,7 +2913,6 @@
                 if (detailView) detailView.classList.remove('active');
 
                 clone.querySelectorAll('.modal-backdrop.open').forEach(m => m.classList.remove('open'));
-                clone.querySelectorAll('.header-menu-dropdown.open, .column-menu-dropdown.open').forEach(m => m.classList.remove('open'));
                 const recBanner = clone.querySelector('#recoveryBanner');
                 if (recBanner) recBanner.classList.remove('show');
 
@@ -3478,6 +3068,108 @@
                 return opt ? opt.group : 'active';
             },
 
+            ensureTemplateStatusOptions() {
+                if (!Array.isArray(this.template.statusOptions) || !this.template.statusOptions.length) {
+                    this.template.statusOptions = getDefaultStatusOptions();
+                }
+                this.template.statusOptions.forEach((opt, i) => {
+                    if (!opt.id) opt.id = 'st_custom_' + Date.now() + '_' + i;
+                    if (!opt.badgeClass) opt.badgeClass = 'status-ing';
+                    if (!opt.group) opt.group = 'active';
+                    if (!opt.emoji) opt.emoji = '⚪';
+                });
+            },
+
+            getStatusOptions() {
+                if (!Array.isArray(this.template.statusOptions) || !this.template.statusOptions.length) {
+                    return getDefaultStatusOptions();
+                }
+                return this.template.statusOptions;
+            },
+
+            renderTemplateStatusOptions() {
+                this.ensureTemplateStatusOptions();
+                const list = document.getElementById('tplStatusOptionsList');
+                if (!list) return;
+                const colorOptions = [
+                    { v: 'status-ing', label: '🔵 파랑' },
+                    { v: 'status-warrant', label: '🟣 보라' },
+                    { v: 'status-done', label: '🟢 초록' },
+                    { v: 'status-transfer', label: '🩵 하늘' },
+                    { v: 'status-hold', label: '🟠 주황' }
+                ];
+                const groupOptions = [
+                    { v: 'active', label: '진행중 (현황에 "수사중·영장" 집계)' },
+                    { v: 'done', label: '종결 (현황에 "송치·이송" 집계, 할 일 패널 제외)' },
+                    { v: 'hold', label: '기타 (현황 집계 제외)' }
+                ];
+                list.innerHTML = this.template.statusOptions.map((opt) => `
+                    <div style="display: flex; gap: 0.4rem; align-items: center; background: var(--bg-subtle); padding: 0.4rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); flex-wrap: nowrap;">
+                        <input type="text" value="${this.escapeAttr(opt.emoji)}" style="width: 44px; flex: none; text-align: center;" title="이모지" oninput="app.updateTemplateStatusOption('${opt.id}', 'emoji', this.value)">
+                        <input type="text" value="${this.escapeAttr(opt.value)}" placeholder="상태 이름" style="width: 110px; flex: none; font-weight: 700;" oninput="app.updateTemplateStatusOption('${opt.id}', 'value', this.value)">
+                        <select onchange="app.updateTemplateStatusOption('${opt.id}', 'badgeClass', this.value)" style="width: 110px; flex: none;">
+                            ${colorOptions.map(c => `<option value="${c.v}" ${c.v === opt.badgeClass ? 'selected' : ''}>${c.label}</option>`).join('')}
+                        </select>
+                        <select onchange="app.updateTemplateStatusOption('${opt.id}', 'group', this.value)" style="width: auto; flex: 1; min-width: 0;">
+                            ${groupOptions.map(g => `<option value="${g.v}" ${g.v === opt.group ? 'selected' : ''}>${g.label}</option>`).join('')}
+                        </select>
+                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger); flex: none;" onclick="app.removeTemplateStatusOption('${opt.id}')" title="삭제 (이미 사용 중인 사건의 데이터는 보존됩니다)">삭제</button>
+                    </div>
+                `).join('');
+            },
+
+            addTemplateStatusOption() {
+                this.ensureTemplateStatusOptions();
+                this.template.statusOptions.push({
+                    id: 'st_custom_' + Date.now(),
+                    value: '새 상태',
+                    emoji: '⚪',
+                    badgeClass: 'status-ing',
+                    group: 'active'
+                });
+                this.onStateChanged();
+                this.renderTemplateStatusOptions();
+            },
+
+            updateTemplateStatusOption(id, field, value) {
+                const opt = (this.template.statusOptions || []).find(o => o.id === id);
+                if (!opt) return;
+                if (field === 'value') {
+                    const oldValue = opt.value;
+                    if (oldValue && oldValue !== value) {
+                        this.cases.forEach(c => { if (c.status === oldValue) c.status = value; });
+                    }
+                }
+                opt[field] = value;
+                this.onStateChanged();
+                if (field === 'badgeClass' || field === 'group') this.renderTemplateStatusOptions();
+                this.renderStatusFilterOptions();
+            },
+
+            removeTemplateStatusOption(id) {
+                if (!this.template.statusOptions || this.template.statusOptions.length <= 1) {
+                    this.showToast('최소 1개의 상태는 있어야 합니다.');
+                    return;
+                }
+                this.template.statusOptions = this.template.statusOptions.filter(o => o.id !== id);
+                this.onStateChanged();
+                this.renderTemplateStatusOptions();
+                this.renderStatusFilterOptions();
+            },
+
+            /**
+             * 목록 화면 상태 필터 셀렉트를 template.statusOptions 기준으로 다시 그림 (현재 선택값 유지)
+             */
+            renderStatusFilterOptions() {
+                const sel = document.getElementById('statusFilter');
+                if (!sel) return;
+                const current = sel.value || 'ALL';
+                const opts = this.getStatusOptions();
+                sel.innerHTML = '<option value="ALL">전체 상태</option>' +
+                    opts.map(o => `<option value="${this.escapeAttr(o.value)}">${this.escapeHtml(o.value)}</option>`).join('');
+                sel.value = opts.some(o => o.value === current) || current === 'ALL' ? current : 'ALL';
+            },
+
             /**
              * 상세화면 상태 셀렉트를 template.statusOptions 기준으로 다시 그림.
              * 현재 값이 목록에 없는(과거 설정에서 삭제/변경된) 상태면, 데이터 유실 없이 그대로 보이도록 임시 옵션을 추가.
@@ -3494,75 +3186,15 @@
                 sel.value = currentStatus || (opts[0] && opts[0].value) || '';
             },
 
-            /**
-             * 깃허브 "잔디" 스타일 기여 그래프: 최근 18주(126일)를 7×18 그리드로 표시
-             */
-            renderActivityGraph() {
-                const container = document.getElementById('activityGraphContainer');
-                if (!container) return;
-                if (!this.activityLog) this.activityLog = {};
-
-                const WEEKS = 18;
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                // 그리드의 맨 오른쪽 열이 이번 주가 되도록, 맨 왼쪽 열의 일요일로 시작점을 맞춘다
-                const totalDays = WEEKS * 7;
-                const start = new Date(today);
-                start.setDate(start.getDate() - (totalDays - 1) - today.getDay());
-
-                const fmt = (d) => {
-                    const yyyy = d.getFullYear();
-                    const mm = String(d.getMonth() + 1).padStart(2, '0');
-                    const dd = String(d.getDate()).padStart(2, '0');
-                    return `${yyyy}-${mm}-${dd}`;
-                };
-
-                let maxCount = 1;
-                const cells = [];
-                for (let i = 0; i < totalDays; i++) {
-                    const d = new Date(start);
-                    d.setDate(d.getDate() + i);
-                    const key = fmt(d);
-                    const count = this.getActivityCount(key);
-                    if (count > maxCount) maxCount = count;
-                    cells.push({ key, count, isFuture: d > today });
-                }
-
-                const levelOf = (count) => {
-                    if (count <= 0) return 0;
-                    const ratio = count / maxCount;
-                    if (ratio <= 0.25) return 1;
-                    if (ratio <= 0.5) return 2;
-                    if (ratio <= 0.75) return 3;
-                    return 4;
-                };
-
-                let html = '<div class="activity-graph-grid">';
-                for (let i = 0; i < totalDays; i++) {
-                    const c = cells[i];
-                    if (c.isFuture) {
-                        html += `<span class="activity-cell level-future"></span>`;
-                        continue;
-                    }
-                    const log = this.activityLog[c.key];
-                    let tip = `${c.key} · 활동 ${c.count}건`;
-                    if (log && log.items && log.items.length) {
-                        tip += '\n' + log.items.slice(0, 5).join('\n');
-                    }
-                    html += `<span class="activity-cell level-${levelOf(c.count)}" title="${this.escapeAttr(tip)}"></span>`;
-                }
-                html += '</div>';
-                container.innerHTML = html;
-            },
-
             renderCaseList() {
                 const container = document.getElementById('case-list-body');
                 if (!container) return;
 
+                this.renderStatusFilterOptions();
+
                 const query = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
-                const statusFilter = this.activeStatusFilter || 'ALL';
+                const statusFilter = document.getElementById('statusFilter')?.value || 'ALL';
                 const sortType = document.getElementById('sortFilter')?.value || 'MANUAL_ORDER';
-                this.renderStatusFilterPills();
 
                 const total = this.cases.length;
                 const activeCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'active').length;
@@ -3577,7 +3209,6 @@
                 document.getElementById('statAvgProgress').textContent = `${avgPct}%`;
 
                 this.renderPriorityTodoBoard();
-                this.renderActivityGraph();
 
                 const filtered = this.cases.filter(c => {
                     const matchStatus = statusFilter === 'ALL' || c.status === statusFilter;
@@ -3623,94 +3254,109 @@
                     return;
                 }
 
-                const cols = (this.dashboardPrefs && this.dashboardPrefs.visibleColumns) || getDefaultDashboardPrefs().visibleColumns;
+                const circumference = 94.2; // r=15
 
-                const rowsHtml = pageItems.map(c => {
+                container.innerHTML = pageItems.map(c => {
                     const prog = this.calculateProgress(c);
                     const badgeClass = this.getStatusBadgeClass(c.status);
-                    const pendingCount = (c.checklist || []).filter(it => !it.done).length;
-                    const peopleCount = Array.isArray(c.people) ? c.people.length : 0;
+                    const offset = circumference - (prog.percent / 100) * circumference;
+                    const strokeColor = prog.percent === 100 ? '#10b981' : '#2563eb';
+                    const chkList = c.checklist || [];
 
-                    const meta = [];
-                    if (cols.charge) meta.push(`<span class="repo-meta-chip">${c.charge ? '⚖ ' + this.escapeHtml(c.charge) : '죄명 미입력'}</span>`);
-                    if (cols.progress) meta.push(`<span class="repo-meta-item"><span class="repo-progress-dot" style="background:${prog.percent === 100 ? 'var(--success)' : 'var(--accent)'};"></span>진행 ${prog.percent}%</span>`);
-                    if (cols.todo) meta.push(`<span class="repo-meta-item">${pendingCount > 0 ? '할 일 ' + pendingCount + '건' : '할 일 완료'}</span>`);
-                    if (cols.people) meta.push(`<span class="repo-meta-item">관계인 ${peopleCount}명</span>`);
-                    if (cols.updatedAt) meta.push(`<span class="repo-meta-item">업데이트 ${this.escapeHtml((c.updatedAt || '-').split(' ')[0])}</span>`);
+                    const dotsHtml = chkList.slice(0, 8).map(item =>
+                        `<span class="mini-step-dot ${item.done ? (prog.percent === 100 ? 'complete' : 'done') : ''}" title="${this.escapeAttr(item.text)}"></span>`
+                    ).join('');
+
+                    // 미완료 할 일 추출 (첫 페이지에서 바로 확인 및 체크 가능)
+                    const pendingTasks = [];
+                    chkList.forEach((item, originalIdx) => {
+                        if (!item.done) pendingTasks.push({ item, originalIdx });
+                    });
+
+                    pendingTasks.sort((a, b) => (this.isTodayItem(b.item) ? 1 : 0) - (this.isTodayItem(a.item) ? 1 : 0));
+                    let todoItemsHtml = '';
+                    if (pendingTasks.length === 0) {
+                        todoItemsHtml = `
+                            <div style="font-size: 0.72rem; color: var(--success); font-weight: 800; padding: 0.2rem 0.15rem; display: flex; align-items: center; gap: 0.3rem;">
+                                <span>✅ 모든 할 일 완료!</span>
+                            </div>
+                        `;
+                    } else {
+                        todoItemsHtml = pendingTasks.slice(0, 2).map((pt, i) => `
+                            <div class="card-todo-item ${(i === 0 || this.isTodayItem(pt.item)) ? 'next-up' : ''}" onclick="event.stopPropagation();">
+                                <button type="button" class="inline-todo-check" onclick="event.stopPropagation(); app.toggleTaskFromListView('${c.id}', ${pt.originalIdx})" title="클릭하여 완료 처리">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="10" height="10">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </button>
+                                ${this.isTodayItem(pt.item) ? '<span class="next-badge-pill" style="background:#fef3c7;color:#b45309;">오늘</span>' : (i === 0 ? '<span class="next-badge-pill">우선</span>' : '')}
+                                <span class="card-todo-text" onclick="app.openCaseDetail('${c.id}')" title="${this.escapeAttr(pt.item.text)}">${this.escapeHtml(pt.item.text)}</span>
+                                <button type="button" class="star-btn sm ${this.isTodayItem(pt.item) ? 'on' : ''}" onclick="event.stopPropagation(); app.toggleTaskToday('${c.id}', ${pt.originalIdx})" title="오늘 할 일로 지정/해제">${this.isTodayItem(pt.item) ? '★' : '☆'}</button>
+                            </div>
+                        `).join('');
+                        if (pendingTasks.length > 2) {
+                            todoItemsHtml += `<div style="font-size: 0.66rem; color: var(--text-muted); text-align: right; font-weight: 700;">+ 외 ${pendingTasks.length - 2}건 더보기</div>`;
+                        }
+                    }
 
                     return `
-                        <div class="repo-row"
-                            draggable="true"
-                            data-case-id="${c.id}"
-                            ondragstart="app.onCaseDragStart(event, '${c.id}')"
-                            ondragover="app.onCaseDragOver(event)"
-                            ondragleave="app.onCaseDragLeave(event)"
-                            ondrop="app.onCaseDrop(event, '${c.id}')"
-                            ondragend="app.onCaseDragEnd(event)"
-                            onclick="app.openCaseDetail('${c.id}')">
-                            <button type="button" class="repo-row-delete" onclick="event.stopPropagation(); app.confirmDeleteCase('${c.id}')">삭제</button>
-                            <div class="repo-row-main">
-                                <span class="repo-name">${this.escapeHtml(c.caseNumber || '미지정')}</span>
+                        <div class="case-graphic-card ${badgeClass}-card"
+                             draggable="true"
+                             data-case-id="${c.id}"
+                             ondragstart="app.onCaseDragStart(event, '${c.id}')"
+                             ondragover="app.onCaseDragOver(event)"
+                             ondragleave="app.onCaseDragLeave(event)"
+                             ondrop="app.onCaseDrop(event, '${c.id}')"
+                             ondragend="app.onCaseDragEnd(event)"
+                             onclick="app.openCaseDetail('${c.id}')">
+                            <div class="card-top-row">
+                                <div style="display:flex; align-items:center; gap:0.25rem;">
+                                    <span class="drag-handle-icon" title="드래그하여 사건 순서 변경">⠿</span>
+                                    <span class="case-num-badge">${this.escapeHtml(c.caseNumber || '미지정')}</span>
+                                </div>
                                 <span class="status-badge ${badgeClass}">${this.escapeHtml(c.status || '수사중')}</span>
                             </div>
-                            <div class="repo-desc" title="${this.escapeAttr(c.title || '')}">${this.escapeHtml(c.title || '(제목 없는 사건)')}</div>
-                            <div class="repo-meta-row">${meta.join('')}</div>
+
+                            <div class="card-body-row">
+                                <!-- 미니 SVG 도넛 게이지 -->
+                                <div style="position: relative; width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+                                    <svg width="38" height="38" viewBox="0 0 38 38" style="transform: rotate(-90deg);">
+                                        <circle cx="19" cy="19" r="15" fill="none" stroke="#e2e8f0" stroke-width="4"></circle>
+                                        <circle cx="19" cy="19" r="15" fill="none" stroke="${strokeColor}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"></circle>
+                                    </svg>
+                                    <span style="position: absolute; font-size: 0.62rem; font-weight: 900; color: var(--text-main);">${prog.percent}%</span>
+                                </div>
+
+                                <div class="card-title-group">
+                                    <div class="card-title">${this.escapeHtml(c.title || '(제목 없는 사건)')}</div>
+                                    <div class="card-charge">${c.charge ? `<span class="charge-chip" title="${this.escapeAttr(c.charge)}">⚖ ${this.escapeHtml(c.charge)}</span>` : '<span class="charge-chip empty">죄명 미입력</span>'}</div>
+                                    <div class="card-overview" title="${this.escapeAttr(c.crimeFact || c.overview || '')}">${c.crimeFact ? `<span class="card-fact-label">범죄사실</span>${this.escapeHtml(c.crimeFact)}` : this.escapeHtml(c.overview || '범죄사실을 입력하세요.')}</div>
+                                    <div class="mini-step-dots">${dotsHtml}</div>
+                                </div>
+                            </div>
+
+                            <!-- 첫 화면 인라인 할 일(To-Do) 보드 -->
+                            <div class="card-todo-box" onclick="event.stopPropagation();">
+                                <div class="card-todo-header">
+                                    <span>📌 남은 할 일 (${pendingTasks.length}건)</span>
+                                    <span style="color: var(--primary); cursor: pointer;" onclick="app.openCaseDetail('${c.id}')">상세 →</span>
+                                </div>
+                                ${todoItemsHtml}
+                                <div class="card-quick-input-row">
+                                    <input type="text" id="quickTodoInput_${c.id}" placeholder="할 일 추가 Enter..." onkeydown="if(event.key==='Enter'){event.preventDefault(); app.addQuickTaskFromListView('${c.id}');}">
+                                    <button type="button" class="btn btn-primary btn-sm" style="padding: 0.18rem 0.42rem;" onclick="app.addQuickTaskFromListView('${c.id}')">+</button>
+                                </div>
+                            </div>
+
+                            <div class="card-footer-row">
+                                <span>진행 ${prog.done}/${prog.total} · ${this.escapeHtml((c.updatedAt || '-').split(' ')[0])}</span>
+                                <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger); padding: 0.05rem 0.35rem; font-size: 0.68rem;" onclick="event.stopPropagation(); app.confirmDeleteCase('${c.id}')">삭제</button>
+                            </div>
                         </div>
                     `;
                 }).join('');
 
-                container.innerHTML = `<div class="repo-list">${rowsHtml}</div>`;
-                this.renderColumnMenu();
-
                 this.renderPaginationBar(totalFiltered, totalPages);
-            },
-
-            /**
-             * 테이블 열 표시/숨김 설정 토글 + 저장
-             */
-            toggleHeaderMenu() {
-                const menu = document.getElementById('headerMenuDropdown');
-                if (menu) menu.classList.toggle('open');
-            },
-
-            closeHeaderMenu() {
-                const menu = document.getElementById('headerMenuDropdown');
-                if (menu) menu.classList.remove('open');
-            },
-
-            toggleColumnMenu() {
-                this.columnMenuOpen = !this.columnMenuOpen;
-                this.renderColumnMenu();
-                const menu = document.getElementById('columnMenuDropdown');
-                if (menu) menu.classList.toggle('open', this.columnMenuOpen);
-            },
-
-            renderColumnMenu() {
-                const menu = document.getElementById('columnMenuDropdown');
-                if (!menu) return;
-                const cols = (this.dashboardPrefs && this.dashboardPrefs.visibleColumns) || getDefaultDashboardPrefs().visibleColumns;
-                const labels = { charge: '죄명', progress: '진행률', todo: '할 일', people: '관계인', updatedAt: '수정일' };
-                menu.innerHTML = Object.keys(labels).map(key => `
-                    <label class="column-menu-item">
-                        <input type="checkbox" ${cols[key] ? 'checked' : ''} onchange="app.toggleColumnVisible('${key}', this.checked)">
-                        ${labels[key]}
-                    </label>
-                `).join('');
-            },
-
-            toggleColumnVisible(key, checked) {
-                if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
-                this.dashboardPrefs.visibleColumns[key] = checked;
-                this.onStateChanged();
-                this.renderCaseList();
-            },
-
-            saveDashboardSortPref() {
-                if (!this.dashboardPrefs) this.dashboardPrefs = getDefaultDashboardPrefs();
-                this.dashboardPrefs.tableSort = document.getElementById('sortFilter')?.value || 'MANUAL_ORDER';
-                this.onStateChanged();
-                this.currentPage = 1;
-                this.renderCaseList();
             },
 
             /**
@@ -4200,7 +3846,6 @@
                 task.done = !task.done;
                 task.date = task.done ? this.getShortMonthDay() : '';
                 targetCase.updatedAt = this.getFormattedNow();
-                if (task.done) this.recordActivity('todo', targetCase.id, `할 일 완료: [${targetCase.caseNumber}] ${task.text}`);
 
                 this.onStateChanged();
                 this.renderCaseList();
@@ -4265,7 +3910,6 @@
                 this.ensureCasePeople(newCase);
 
                 this.cases.unshift(newCase);
-                this.recordActivity('case', newCase.id, `사건 생성: [${newCase.caseNumber}]`);
                 this.onStateChanged();
                 this.openCaseDetail(newCase.id);
                 this.showToast('새 사건 대시보드가 생성되었습니다.');
@@ -4450,7 +4094,6 @@
                 item.done = !item.done;
                 item.date = item.done ? this.getShortMonthDay() : '';
                 current.updatedAt = this.getFormattedNow();
-                if (item.done) this.recordActivity('todo', current.id, `할 일 완료: [${current.caseNumber}] ${item.text}`);
                 this.onStateChanged();
                 this.renderDetailChecklist();
             },
@@ -4676,93 +4319,6 @@
                (template.personRoleFields) + 사람별 값 덮어쓰기(fieldValues) / 제외(removedFieldIds)
                / 그 사람만의 추가 필드(extraFields). 서식에서는 {{식별자(slug).필드명}} 으로 사용.
                ====================================================================== */
-            ensureTemplateStatusOptions() {
-                if (!Array.isArray(this.template.statusOptions) || !this.template.statusOptions.length) {
-                    this.template.statusOptions = getDefaultStatusOptions();
-                }
-                this.template.statusOptions.forEach((opt, i) => {
-                    if (!opt.id) opt.id = 'st_custom_' + Date.now() + '_' + i;
-                    if (!opt.badgeClass) opt.badgeClass = 'status-ing';
-                    if (!opt.group) opt.group = 'active';
-                    if (!opt.emoji) opt.emoji = '⚪';
-                });
-            },
-
-            getStatusOptions() {
-                if (!Array.isArray(this.template.statusOptions) || !this.template.statusOptions.length) {
-                    return getDefaultStatusOptions();
-                }
-                return this.template.statusOptions;
-            },
-
-            renderTemplateStatusOptions() {
-                this.ensureTemplateStatusOptions();
-                const list = document.getElementById('tplStatusOptionsList');
-                if (!list) return;
-                const colorOptions = [
-                    { v: 'status-ing', label: '🔵 파랑' },
-                    { v: 'status-warrant', label: '🟣 보라' },
-                    { v: 'status-done', label: '🟢 초록' },
-                    { v: 'status-transfer', label: '🩵 하늘' },
-                    { v: 'status-hold', label: '🟠 주황' }
-                ];
-                const groupOptions = [
-                    { v: 'active', label: '진행중 (현황에 "수사중·영장" 집계)' },
-                    { v: 'done', label: '종결 (현황에 "송치·이송" 집계, 할 일 패널 제외)' },
-                    { v: 'hold', label: '기타 (현황 집계 제외)' }
-                ];
-                list.innerHTML = this.template.statusOptions.map((opt, idx) => `
-                    <div style="display: flex; gap: 0.4rem; align-items: center; background: var(--bg-subtle); padding: 0.4rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); flex-wrap: nowrap;">
-                        <input type="text" value="${this.escapeAttr(opt.emoji)}" style="width: 44px; flex: none; text-align: center;" title="이모지" oninput="app.updateTemplateStatusOption('${opt.id}', 'emoji', this.value)">
-                        <input type="text" value="${this.escapeAttr(opt.value)}" placeholder="상태 이름" style="width: 110px; flex: none; font-weight: 700;" oninput="app.updateTemplateStatusOption('${opt.id}', 'value', this.value)">
-                        <select onchange="app.updateTemplateStatusOption('${opt.id}', 'badgeClass', this.value)" style="width: 110px; flex: none;">
-                            ${colorOptions.map(c => `<option value="${c.v}" ${c.v === opt.badgeClass ? 'selected' : ''}>${c.label}</option>`).join('')}
-                        </select>
-                        <select onchange="app.updateTemplateStatusOption('${opt.id}', 'group', this.value)" style="width: auto; flex: 1; min-width: 0;">
-                            ${groupOptions.map(g => `<option value="${g.v}" ${g.v === opt.group ? 'selected' : ''}>${g.label}</option>`).join('')}
-                        </select>
-                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger); flex: none;" onclick="app.removeTemplateStatusOption('${opt.id}')" title="삭제 (이미 사용 중인 사건의 데이터는 보존됩니다)">삭제</button>
-                    </div>
-                `).join('');
-            },
-
-            addTemplateStatusOption() {
-                this.ensureTemplateStatusOptions();
-                this.template.statusOptions.push({
-                    id: 'st_custom_' + Date.now(),
-                    value: '새 상태',
-                    emoji: '⚪',
-                    badgeClass: 'status-ing',
-                    group: 'active'
-                });
-                this.onStateChanged();
-                this.renderTemplateStatusOptions();
-            },
-
-            updateTemplateStatusOption(id, field, value) {
-                const opt = (this.template.statusOptions || []).find(o => o.id === id);
-                if (!opt) return;
-                if (field === 'value') {
-                    const oldValue = opt.value;
-                    if (oldValue && oldValue !== value) {
-                        this.cases.forEach(c => { if (c.status === oldValue) c.status = value; });
-                    }
-                }
-                opt[field] = value;
-                this.onStateChanged();
-                if (field === 'badgeClass' || field === 'group') this.renderTemplateStatusOptions();
-            },
-
-            removeTemplateStatusOption(id) {
-                if (!this.template.statusOptions || this.template.statusOptions.length <= 1) {
-                    this.showToast('최소 1개의 상태는 있어야 합니다.');
-                    return;
-                }
-                this.template.statusOptions = this.template.statusOptions.filter(o => o.id !== id);
-                this.onStateChanged();
-                this.renderTemplateStatusOptions();
-            },
-
             ensureTemplatePersonRoleFields() {
                 if (!this.template.personRoleFields || typeof this.template.personRoleFields !== 'object') {
                     this.template.personRoleFields = JSON.parse(JSON.stringify(getDefaultMasterTemplate().personRoleFields));
