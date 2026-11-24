@@ -3515,8 +3515,8 @@
 
                 const total = this.cases.length;
                 const activeCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'active').length;
-                const doneCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'done').length;
                 const closedTabCount = this.cases.filter(c => this.isCaseInClosedTab(c.status)).length;
+                const doneCount = closedTabCount; // 상단 "종결 사건" 통계는 종결 탭과 같은 기준(closedTab)을 써야 숫자가 안 어긋남
                 const openTabCount = total - closedTabCount;
                 let sumPct = 0;
                 this.cases.forEach(c => { sumPct += this.calculateProgress(c).percent; });

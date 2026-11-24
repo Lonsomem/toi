@@ -160,10 +160,11 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
 - **`statusOptions[].closedTab: boolean` 플래그 신설** — "진행중 통계/할 일 제외 집계"(`group`)와 "종결 탭 분류"(`closedTab`)를 완전히 분리된 두 축으로 재설계. 기본값은 `종결` 상태만 `closedTab:true`, 나머지(불송치/송치결정/이송판단/수사중지 포함)는 전부 `false` — 즉 **"송치결정"으로 바꿔도 더 이상 자동으로 종결 탭에 들어가지 않음**, 사용자가 명시적으로 "종결"로 바꾸거나 템플릿 설정에서 해당 상태의 "종결 탭" 체크박스를 켜야만 종결 탭으로 분류됨.
   - `ensureTemplateStatusOptions()`: 과거 저장본(10절 버전, `closedTab` 필드 없음)을 열어도 `opt.value==='종결'` 인 것만 `true`로 자동 보정 — 하위호환.
   - `isCaseInClosedTab(status)`: `statusOptions`에서 값으로 찾아 `closedTab` 반환, 설정에 없는(삭제/과거) 상태값은 안전하게 `false`(진행중 쪽에 남김).
-  - `renderCaseList()`의 `matchScope`, `renderCaseScopeTabs()`의 카운트(`openTabCount`/`closedTabCount`) 전부 `isCaseInClosedTab()` 기준으로 교체. 현황 통계(수사중·영장 / 종결 사건 건수)는 여전히 `group` 기준 그대로 유지(탭 분류와는 별개 개념).
+  - `renderCaseList()`의 `matchScope`, `renderCaseScopeTabs()`의 카운트(`openTabCount`/`closedTabCount`) 전부 `isCaseInClosedTab()` 기준으로 교체.
   - 템플릿 설정 "0. 사건 상태 설정"의 각 상태 행에 **"종결 탭" 체크박스** 추가(`updateTemplateStatusOption(id, 'closedTab', checked)`). "진행중/종결 집계/기타" 분류 선택지 설명 문구도 "탭 분류"와 혼동되지 않게 수정.
 - **오늘 할 일 + 당일 일정 통합 표시**: `renderPriorityTodoBoard()`의 "오늘" 탭 렌더링에 전체 사건의 `schedules` 중 `date === 오늘` 인 항목을 모아 파란색 박스(`.today-sched-box`, 기존 "지난 할 일" 주황 박스와 같은 구조 재사용)로 체크리스트 "오늘 할 일" 목록 **위에** 표시. 각 항목 클릭 시 해당 사건 상세로 이동. 체크리스트의 "오늘 할 일 지정" 개수 배지(`priorityTodoCount`)에는 포함하지 않음(둘은 별개 데이터 — 캘린더 일정은 체크 대상이 아니라 "오늘 있는 일" 안내용).
-- 검증: 상태를 "송치결정"으로 바꿔도 진행중 탭에 남고, "종결"로 바꿔야 종결 탭으로 이동하는 것 확인. 템플릿 설정에 상태 7개 전부 체크박스 노출 확인. 오늘 날짜로 일정 추가 후 "오늘" 탭에 파란 박스로 표시되고 클릭 시 사건 이동 확인. `closedTab` 값이 퀸 저장→재로드에도 보존됨을 확인. 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션/캘린더·D-day/서식 이관/한 화면 핏) 전부 재통과.
+- **(같은 날, 후속 수정) 상단 "종결 사건" 통계 숫자가 탭 숫자와 안 맞는 버그**: 처음엔 이 통계를 `group==='done'` 기준으로 뒀는데, "송치결정"처럼 `group:'done'`이지만 `closedTab:false`인 상태의 사건이 있으면 — 종결 탭엔 0건인데 상단 통계는 1건으로 보여 사용자가 혼란을 겪음("종결 사건이 하나도 없는데 왜 1건으로 뜨냐"). **`doneCount`(= `#statCompletedCases`에 표시)도 `closedTabCount`와 동일하게(`isCaseInClosedTab()` 기준) 맞춰, 상단 통계와 종결 탭 숫자가 항상 일치하도록 수정**. `activeCount`(수사중·영장진행)는 그대로 `group==='active'` 기준 유지(탭과 무관한 별개 통계라 혼동 소지가 없음).
+- 검증: 상태를 "송치결정"으로 바꿔도 진행중 탭에 남고, "종결"로 바꿔야 종결 탭으로 이동하는 것 확인. 템플릿 설정에 상태 7개 전부 체크박스 노출 확인. 오늘 날짜로 일정 추가 후 "오늘" 탭에 파란 박스로 표시되고 클릭 시 사건 이동 확인. "송치결정"/"종결" 전환 시 상단 "종결 사건" 숫자와 종결 탭 숫자가 항상 일치함을 확인. `closedTab` 값이 퀸 저장→재로드에도 보존됨을 확인. 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션/캘린더·D-day/서식 이관/한 화면 핏) 전부 재통과.
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
