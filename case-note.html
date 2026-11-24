@@ -419,6 +419,14 @@
             justify-content: center;
         }
 
+        .scope-tabs { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex-shrink: 0; }
+        .scope-tab {
+            border: 1px solid var(--border-light); background: var(--bg-surface); color: var(--text-secondary);
+            font-size: 0.8rem; font-weight: 700; padding: 0.4rem 0.9rem; border-radius: 999px; cursor: pointer;
+        }
+        .scope-tab b { margin-left: 0.3rem; font-weight: 900; }
+        .scope-tab.active { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+
         .list-toolbar {
             background: var(--bg-surface);
             border: 1px solid var(--border-light);
@@ -613,6 +621,8 @@
         .status-done { background: var(--success-bg); color: var(--success); }
         .status-transfer { background: #e0f2fe; color: #0369a1; }
         .status-hold { background: var(--warning-bg); color: #b45309; }
+        .status-reject { background: #fee2e2; color: #b91c1c; }
+        .status-susp { background: #e5e7eb; color: #4b5563; }
 
         .card-body-row {
             display: flex;
@@ -1911,7 +1921,7 @@
                 </div>
                 <div class="stat-widget stat-done">
                     <div>
-                        <div class="stat-label">송치완료 · 타관이송</div>
+                        <div class="stat-label">종결 사건</div>
                         <div class="stat-value" id="statCompletedCases" style="color: var(--success);">0건</div>
                     </div>
                     <div class="stat-graphic-icon" style="background: var(--success-bg); color: var(--success);">
@@ -1988,6 +1998,9 @@
 
                 <!-- 우측: 검색/필터 + 사건 카드 -->
                 <div class="list-main">
+            <!-- 진행중/종결 탭: 종결 사건은 기본적으로 목록에 안 보이고 이 탭에서만 확인 -->
+            <div id="caseScopeTabs" class="scope-tabs"></div>
+
             <!-- 검색 · 필터 · 신규 사건 등록 툴바 -->
             <div class="list-toolbar">
                 <div class="search-filter-group">
@@ -2177,7 +2190,7 @@
                 <!-- [3열] 서식 및 양식 퀵 런처 (아이콘 카드) + 마스터 템플릿 공통 항목 위젯 -->
                 <div class="bento-col">
                     <!-- 서식 및 양식 그래픽 퀵 런처 -->
-                    <div class="bento-card" style="flex: 1.05;">
+                    <div class="bento-card" style="flex: 1.5;">
                         <div class="widget-header">
                             <div class="widget-title">
                                 <div class="widget-icon-box" style="background: var(--purple-bg); color: var(--purple);">
@@ -2198,34 +2211,8 @@
                         <div id="boilerplateTabs" class="form-launcher-grid"></div>
                     </div>
 
-                    <!-- 공통 템플릿 추가 항목 (탭 전환형 컴팩트 위젯) -->
-                    <div class="bento-card" style="flex: 0.95;">
-                        <div class="widget-header">
-                            <div class="widget-title">
-                                <div class="widget-icon-box" style="background: #fce7f3; color: #db2777;">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
-                                        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                                        <polyline points="2 17 12 22 22 17"></polyline>
-                                        <polyline points="2 12 12 17 22 12"></polyline>
-                                    </svg>
-                                </div>
-                                공통 템플릿 항목
-                            </div>
-                            <div style="display:flex; gap:0.25rem;">
-                                <button type="button" class="btn btn-ghost btn-sm" onclick="app.copyActiveCustomField()">📋 복사</button>
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="app.openTemplateModal()">⚙️ 항목설정</button>
-                            </div>
-                        </div>
-
-                        <!-- 공통 항목 탭 칩 바 -->
-                        <div id="customFieldsTabBar" class="custom-tabs-bar"></div>
-
-                        <!-- 선택된 공통 항목 입력 영역 -->
-                        <div id="customFieldsContainer" style="flex: 1; display: flex; flex-direction: column; min-height: 0;"></div>
-                    </div>
-
                     <!-- 사건관계인 (고소인/피고소인/참고인별 치환 변수 {{식별자.필드명}}) -->
-                    <div class="bento-card" style="flex: 0.9;">
+                    <div class="bento-card" style="flex: 1.4;">
                         <div class="widget-header">
                             <div class="widget-title">
                                 <div class="widget-icon-box" style="background: #ffedd5; color: #ea580c;">
@@ -2357,20 +2344,9 @@
                     <button type="button" class="btn btn-secondary btn-sm" onclick="app.addTemplateStatusOption()">+ 상태 추가</button>
                 </div>
 
-                <!-- 1. 사건별 공통 현출 추가 항목 -->
+                <!-- 1. 신규 사건 기본 진행사항 체크리스트 -->
                 <div style="margin-bottom: 1.4rem;">
-                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">1. 사건별 공통 현출 추가 항목 (우측 하단 위젯에 탭으로 자동 현출)</h3>
-                    <div style="display: flex; gap: 0.45rem; margin-bottom: 0.6rem; flex-wrap: wrap;">
-                        <input type="text" id="tplNewFieldLabel" placeholder="새 공통 항목 이름 (예: 압수물 관리 내역)" style="flex: 1; min-width: 180px;">
-                        <input type="text" id="tplNewFieldPlaceholder" placeholder="입력 안내 문구 (선택)" style="flex: 1; min-width: 180px;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="app.addTemplateCustomField()">+ 항목 추가</button>
-                    </div>
-                    <div id="tplCustomFieldsList" style="display: flex; flex-direction: column; gap: 0.4rem;"></div>
-                </div>
-
-                <!-- 2. 신규 사건 기본 진행사항 체크리스트 -->
-                <div style="margin-bottom: 1.4rem;">
-                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">2. 기본 진행사항 체크리스트 (새 사건 생성 시 자동 부여)</h3>
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">1. 기본 진행사항 체크리스트 (새 사건 생성 시 자동 부여)</h3>
                     <div style="display: flex; gap: 0.45rem; margin-bottom: 0.6rem;">
                         <input type="text" id="tplNewChecklistText" placeholder="기본 체크리스트 항목 입력 후 Enter" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.addTemplateChecklist();}">
                         <button type="button" class="btn btn-primary btn-sm" onclick="app.addTemplateChecklist()">+ 항목 추가</button>
@@ -2378,9 +2354,9 @@
                     <div id="tplChecklistList" style="display: flex; flex-direction: column; gap: 0.4rem;"></div>
                 </div>
 
-                <!-- 3. 신규 사건 기본 서식 및 양식 -->
+                <!-- 2. 신규 사건 기본 서식 및 양식 -->
                 <div style="margin-bottom: 1.4rem;">
-                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">3. 기본 서식 및 양식 상용구</h3>
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">2. 기본 서식 및 양식 상용구</h3>
                     <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
                         여기 등록한 서식은 새 사건을 열었을 때 [서식 및 양식 퀵 런처]에 자동으로 나타납니다. 등록된 게 없으면 퀵 런처는 비어 있는 상태로 시작하고, 필요할 때 [+ 서식 추가] 또는 [📚 공통서식함]에서 가져오면 됩니다.
                     </p>
@@ -2388,9 +2364,9 @@
                     <button type="button" class="btn btn-secondary btn-sm" onclick="app.addTemplateFormItem()">+ 기본 서식 추가</button>
                 </div>
 
-                <!-- 4. 사건관계인 역할별 기본 필드 -->
+                <!-- 3. 사건관계인 역할별 기본 필드 -->
                 <div>
-                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">4. 사건관계인 역할별 기본 필드 (전역)</h3>
+                    <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">3. 사건관계인 역할별 기본 필드 (전역)</h3>
                     <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
                         역할마다 기본으로 준비해 둘 항목입니다. 실제 값은 각 사건의 [👥 사건관계인]에서 입력하고, 필요 없는 항목은 사건별로 빼거나 그 사건·사람만의 항목을 추가할 수 있습니다. 서식에서는 <code>{{고소인1.이름}}</code>, <code>{{사건.일시}}</code> 형태로 사용합니다.
                     </p>
@@ -2591,9 +2567,11 @@
             return [
                 { id: 'st_ing', value: '수사중', emoji: '🔵', badgeClass: 'status-ing', group: 'active' },
                 { id: 'st_warrant', value: '영장신청', emoji: '🟣', badgeClass: 'status-warrant', group: 'active' },
-                { id: 'st_done', value: '송치완료', emoji: '🟢', badgeClass: 'status-done', group: 'done' },
-                { id: 'st_transfer', value: '타관이송', emoji: '💠', badgeClass: 'status-transfer', group: 'done' },
-                { id: 'st_hold', value: '중지/각하', emoji: '🟠', badgeClass: 'status-hold', group: 'hold' }
+                { id: 'st_reject', value: '불송치(불입건)결정', emoji: '🔴', badgeClass: 'status-reject', group: 'done' },
+                { id: 'st_done', value: '송치결정', emoji: '🟢', badgeClass: 'status-done', group: 'done' },
+                { id: 'st_transfer', value: '이송판단', emoji: '🩵', badgeClass: 'status-transfer', group: 'done' },
+                { id: 'st_susp', value: '수사중지(관리미제)', emoji: '⚪', badgeClass: 'status-susp', group: 'hold' },
+                { id: 'st_closed', value: '종결', emoji: '🟠', badgeClass: 'status-hold', group: 'done' }
             ];
         }
 
@@ -2720,7 +2698,6 @@
             template: null,
             currentCaseId: null,
             activeFormIndex: 0,
-            activeCustomFieldIndex: 0,
             confirmCallback: null,
             fileHandle: null,
             autoSaveTimer: null,
@@ -2736,6 +2713,7 @@
             selectedPersonId: null,
             activeRoleFieldsTab: 'case',
             mainPanelTab: 'todo',
+            caseListScope: 'active',
             ddayTrackers: [],
             dashboardCalendarViewDate: new Date(),
             dashboardCalendarSelectedDate: null,
@@ -2946,10 +2924,7 @@
                     'paginationBar',
                     'detailChecklistContainer',
                     'boilerplateTabs',
-                    'customFieldsTabBar',
-                    'customFieldsContainer',
                     'heroPipelineStepper',
-                    'tplCustomFieldsList',
                     'tplChecklistList',
                     'tplFormsList',
                     'toastContainer',
@@ -2971,7 +2946,8 @@
                     'statusFilter',
                     'caseCalendarContainer',
                     'dashboardCalendarContainer',
-                    'ddayWidgetContainer'
+                    'ddayWidgetContainer',
+                    'caseScopeTabs'
                 ];
                 dynamicContainerIds.forEach(id => {
                     const node = clone.querySelector('#' + id);
@@ -3119,7 +3095,6 @@
 
                 this.currentCaseId = caseId;
                 this.activeFormIndex = 0;
-                this.activeCustomFieldIndex = 0;
 
                 document.getElementById('listView').classList.remove('active');
                 document.getElementById('detailView').classList.add('active');
@@ -3398,12 +3373,14 @@
                     { v: 'status-warrant', label: '🟣 보라' },
                     { v: 'status-done', label: '🟢 초록' },
                     { v: 'status-transfer', label: '🩵 하늘' },
-                    { v: 'status-hold', label: '🟠 주황' }
+                    { v: 'status-hold', label: '🟠 주황' },
+                    { v: 'status-reject', label: '🔴 빨강' },
+                    { v: 'status-susp', label: '⚪ 회색' }
                 ];
                 const groupOptions = [
-                    { v: 'active', label: '진행중 (현황에 "수사중·영장" 집계)' },
-                    { v: 'done', label: '종결 (현황에 "송치·이송" 집계, 할 일 패널 제외)' },
-                    { v: 'hold', label: '기타 (현황 집계 제외)' }
+                    { v: 'active', label: '진행중 (현황에 "수사중·영장" 집계, 목록 기본 노출)' },
+                    { v: 'done', label: '종결 (종결 탭으로 분류, 할 일 패널·기본 목록 제외)' },
+                    { v: 'hold', label: '기타 (현황 집계 제외, 목록 기본 노출 — 예: 수사중지)' }
                 ];
                 list.innerHTML = this.template.statusOptions.map((opt) => `
                     <div style="display: flex; gap: 0.4rem; align-items: center; background: var(--bg-subtle); padding: 0.4rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); flex-wrap: nowrap;">
@@ -3488,6 +3465,24 @@
                 sel.value = currentStatus || (opts[0] && opts[0].value) || '';
             },
 
+            setCaseListScope(scope) {
+                this.caseListScope = scope;
+                this.currentPage = 1;
+                const statusEl = document.getElementById('statusFilter');
+                if (statusEl) statusEl.value = 'ALL';
+                this.renderCaseList();
+            },
+
+            renderCaseScopeTabs(openCount, doneCount) {
+                const bar = document.getElementById('caseScopeTabs');
+                if (!bar) return;
+                const scope = this.caseListScope || 'active';
+                bar.innerHTML = `
+                    <button type="button" class="scope-tab ${scope === 'active' ? 'active' : ''}" onclick="app.setCaseListScope('active')">진행중 사건 <b>${openCount}</b></button>
+                    <button type="button" class="scope-tab ${scope === 'closed' ? 'active' : ''}" onclick="app.setCaseListScope('closed')">종결된 사건 <b>${doneCount}</b></button>
+                `;
+            },
+
             renderCaseList() {
                 const container = document.getElementById('case-list-body');
                 if (!container) return;
@@ -3501,6 +3496,7 @@
                 const total = this.cases.length;
                 const activeCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'active').length;
                 const doneCount = this.cases.filter(c => this.getStatusGroup(c.status) === 'done').length;
+                const openCount = this.cases.filter(c => this.getStatusGroup(c.status) !== 'done').length;
                 let sumPct = 0;
                 this.cases.forEach(c => { sumPct += this.calculateProgress(c).percent; });
                 const avgPct = total > 0 ? Math.round(sumPct / total) : 0;
@@ -3511,8 +3507,11 @@
                 document.getElementById('statAvgProgress').textContent = `${avgPct}%`;
 
                 this.renderPriorityTodoBoard();
+                this.renderCaseScopeTabs(openCount, doneCount);
 
+                const scope = this.caseListScope || 'active';
                 const filtered = this.cases.filter(c => {
+                    const matchScope = scope === 'active' ? this.getStatusGroup(c.status) !== 'done' : this.getStatusGroup(c.status) === 'done';
                     const matchStatus = statusFilter === 'ALL' || c.status === statusFilter;
                     const customStr = c.customValues ? Object.values(c.customValues).join(' ').toLowerCase() : '';
                     const matchQuery = !query ||
@@ -3525,7 +3524,7 @@
                         (c.remarks && c.remarks.toLowerCase().includes(query)) ||
                         (c.checklist && c.checklist.some(chk => chk.text && chk.text.toLowerCase().includes(query))) ||
                         customStr.includes(query);
-                    return matchStatus && matchQuery;
+                    return matchScope && matchStatus && matchQuery;
                 });
 
                 if (sortType !== 'MANUAL_ORDER') {
@@ -4265,7 +4264,6 @@
                 this.renderDetailChecklist();
                 this.autoLoadChargeForms();
                 this.renderDetailForms();
-                this.renderDetailCustomFields();
                 this.renderPeopleSummary();
             },
 
@@ -4325,13 +4323,51 @@
                 const current = this.getCurrentCase();
                 if (!current) return;
 
+                const oldStatus = current.status;
                 current[field] = value;
                 current.updatedAt = this.getFormattedNow();
                 document.getElementById('detailUpdatedAt').textContent = current.updatedAt;
                 if (field === 'status') {
                     this.renderHeroGraphicMetrics();
+                    const oldGroup = this.getStatusGroup(oldStatus);
+                    const newGroup = this.getStatusGroup(value);
+                    if (oldGroup !== 'done' && newGroup === 'done') {
+                        this.offerMoveFormsToGlobal(current);
+                    }
                 }
                 this.onStateChanged();
+            },
+
+            /**
+             * 사건이 종결 상태로 바뀌었을 때, 사건에 등록된 서식을 공통 서식 보관함으로 옮길지 물어봄.
+             * 옮기지 않아도 서식은 사건에 그대로 남아있고(데이터 유실 없음), 종결 탭에서 사건을 열면 계속 볼 수 있음.
+             */
+            offerMoveFormsToGlobal(caseObj) {
+                const forms = caseObj.forms || [];
+                if (!forms.length) return;
+                this.openConfirmModal(
+                    '서식을 공통 보관함으로 이동',
+                    `[${caseObj.caseNumber}] 사건이 종결 처리됩니다. 이 사건에 등록된 서식 ${forms.length}건을 📚 공통 서식 보관함으로 복사해 두시겠습니까? (복사해도 이 사건의 서식은 그대로 남습니다. 나중에 [⋮ 템플릿 설정] 근처 공통서식함에서 확인 가능)`,
+                    () => {
+                        if (!Array.isArray(this.template.globalForms)) this.template.globalForms = [];
+                        let added = 0;
+                        forms.forEach(f => {
+                            const dup = this.template.globalForms.some(g => g.title === f.title && g.content === f.content);
+                            if (!dup) {
+                                this.template.globalForms.push({
+                                    id: 'gf_' + Date.now() + '_' + added,
+                                    category: caseObj.charge || '기타',
+                                    title: f.title,
+                                    content: f.content,
+                                    autoCharges: []
+                                });
+                                added++;
+                            }
+                        });
+                        this.onStateChanged();
+                        this.showToast(added > 0 ? `서식 ${added}건이 공통 서식 보관함으로 복사되었습니다.` : '이미 동일한 서식이 공통 서식 보관함에 있습니다.');
+                    }
+                );
             },
 
             /* --- 2열: 그래픽 체크리스트 타일 보드 --- */
@@ -5210,65 +5246,6 @@
                 }
             },
 
-            /* --- 3열 하단: 마스터 템플릿 공통 항목 탭 전환 위젯 --- */
-            renderDetailCustomFields() {
-                const current = this.getCurrentCase();
-                if (!current) return;
-                if (!current.customValues) current.customValues = {};
-
-                const tabBar = document.getElementById('customFieldsTabBar');
-                const container = document.getElementById('customFieldsContainer');
-                const fields = this.template.customFields || [];
-
-                if (fields.length === 0) {
-                    tabBar.innerHTML = '';
-                    container.innerHTML = `<div style="color: var(--text-muted); font-size: 0.78rem; padding: 0.5rem;">등록된 공통 항목이 없습니다. [⚙️ 항목설정]에서 추가하세요.</div>`;
-                    return;
-                }
-
-                if (this.activeCustomFieldIndex >= fields.length) {
-                    this.activeCustomFieldIndex = 0;
-                }
-
-                tabBar.innerHTML = fields.map((f, idx) => `
-                    <button type="button" class="custom-tab-chip ${idx === this.activeCustomFieldIndex ? 'active' : ''}" onclick="app.selectCustomFieldTab(${idx})">
-                        ${this.escapeHtml(f.label)}
-                    </button>
-                `).join('');
-
-                const activeField = fields[this.activeCustomFieldIndex];
-                const val = current.customValues[activeField.id] || '';
-
-                container.innerHTML = `
-                    <textarea class="widget-textarea" placeholder="${this.escapeAttr(activeField.placeholder || '내용을 입력하세요.')}" oninput="app.updateCustomFieldValue('${activeField.id}', this.value)">${this.escapeHtml(val)}</textarea>
-                `;
-            },
-
-            selectCustomFieldTab(idx) {
-                this.activeCustomFieldIndex = idx;
-                this.renderDetailCustomFields();
-            },
-
-            updateCustomFieldValue(fieldId, val) {
-                const current = this.getCurrentCase();
-                if (!current) return;
-                if (!current.customValues) current.customValues = {};
-
-                current.customValues[fieldId] = val;
-                current.updatedAt = this.getFormattedNow();
-                document.getElementById('detailUpdatedAt').textContent = current.updatedAt;
-                this.onStateChanged();
-            },
-
-            copyActiveCustomField() {
-                const current = this.getCurrentCase();
-                const fields = this.template.customFields || [];
-                const activeField = fields[this.activeCustomFieldIndex];
-                if (!current || !activeField) return;
-                const val = (current.customValues && current.customValues[activeField.id]) || '';
-                this.copyToClipboard(val, `[${activeField.label}] 내용이 복사되었습니다.`);
-            },
-
             copyFieldText(fieldKey, label) {
                 const current = this.getCurrentCase();
                 if (!current) return;
@@ -5329,16 +5306,6 @@
             renderTemplateModalContent() {
                 this.renderTemplateStatusOptions();
 
-                const cfList = document.getElementById('tplCustomFieldsList');
-                const customFields = this.template.customFields || [];
-                cfList.innerHTML = customFields.map((f, idx) => `
-                    <div style="display: flex; gap: 0.45rem; align-items: center; background: var(--bg-subtle); padding: 0.4rem 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm);">
-                        <input type="text" value="${this.escapeAttr(f.label)}" placeholder="항목 이름" style="max-width: 200px; font-weight: 700;" oninput="app.updateTemplateCustomField(${idx}, 'label', this.value)">
-                        <input type="text" value="${this.escapeAttr(f.placeholder || '')}" placeholder="안내 문구" style="flex: 1;" oninput="app.updateTemplateCustomField(${idx}, 'placeholder', this.value)">
-                        <button type="button" class="btn btn-ghost btn-sm" style="color: var(--danger);" onclick="app.removeTemplateCustomField(${idx})">삭제</button>
-                    </div>
-                `).join('');
-
                 const chkList = document.getElementById('tplChecklistList');
                 const checklist = this.template.checklist || [];
                 chkList.innerHTML = checklist.map((text, idx) => `
@@ -5389,40 +5356,6 @@
             selectRoleFieldsTab(role) {
                 this.activeRoleFieldsTab = role;
                 this.renderTemplateRoleFields();
-            },
-
-            addTemplateCustomField() {
-                const labelEl = document.getElementById('tplNewFieldLabel');
-                const phEl = document.getElementById('tplNewFieldPlaceholder');
-                const label = (labelEl.value || '').trim();
-                if (!label) {
-                    this.showToast('항목 이름을 입력하세요.');
-                    return;
-                }
-                if (!this.template.customFields) this.template.customFields = [];
-                this.template.customFields.push({
-                    id: 'cf_' + Date.now(),
-                    label: label,
-                    placeholder: (phEl.value || '').trim()
-                });
-                labelEl.value = '';
-                phEl.value = '';
-                this.onStateChanged();
-                this.renderTemplateModalContent();
-                this.showToast('공통 항목이 추가되었습니다.');
-            },
-
-            updateTemplateCustomField(idx, key, val) {
-                if (!this.template.customFields || !this.template.customFields[idx]) return;
-                this.template.customFields[idx][key] = val;
-                this.onStateChanged();
-            },
-
-            removeTemplateCustomField(idx) {
-                if (!this.template.customFields || !this.template.customFields[idx]) return;
-                this.template.customFields.splice(idx, 1);
-                this.onStateChanged();
-                this.renderTemplateModalContent();
             },
 
             addTemplateRoleField() {
@@ -5848,7 +5781,7 @@
             },
 
             normalizeImportedStatus(st) {
-                const alias = { '진행중': '수사중', '종결/이송': '타관이송', '종결': '송치완료', '이송': '타관이송' };
+                const alias = { '진행중': '수사중', '이송': '이송판단', '불송치': '불송치(불입건)결정', '송치': '송치결정' };
                 return alias[st] || st || '수사중';
             },
 
