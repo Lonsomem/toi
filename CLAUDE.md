@@ -40,3 +40,17 @@
 - 사용자 의도: 내부망에서 변환 완료 후 전송, 외부에서 자유 활용(파인튜닝·사실관계 비정형 추출). 학습용 쌍(입력-정답)은 매뉴얼만으로는 부족 → few-shot/RAG 먼저. 개인정보 마스킹은 선택 기능으로 논의만(이름·주소는 규칙으로 불완전).
 - **방향 전환 검토 중(2026-11-17)**: QR 전송 대신 내부망 PC에 경량 LLM(Qwen2.5-7B-Instruct, RAM 16GB·VRAM 없음 가정) + RAG 직접 구축하는 안을 검토 중. 상세는 `docs/local-llm.md`. 아직 코드 없음, 실측 테스트 전.
 - **(2026-11-19, 최종) 외부 사건목록 가져오기는 `case-note.html`에 통합 완료**: `#externalImportModal` (📥 외부 목록 가져오기 버튼). 콘솔 스크립트 복사(대상 페이지에서 직접 fetch+저장, CORS 없음) → `.json` 파일 불러오기(데이터 경로 지정 또는 재귀 자동탐지) → 키별로 사건번호/제목/죄명/상태/사건개요/참고사항/비고 중 매핑 선택 → 사건번호 중복 없는 것만 새 사건으로 추가. `case-import.html`에 있던 URL 직접 fetch·CORS 우회·사건별 상세조회·정규식 값 변환은 이 통합 버전엔 없음(사용자가 명시적으로 간소화를 요청). 사용자의 실제 내부 시스템 JSON 스키마로는 검증된 적 없음.
+
+## Agent skills
+
+### Issue tracker
+
+이슈는 GitHub `Lonsomem/toi` 저장소의 Issues 에서 관리한다 (`gh` CLI 사용). 자세한 내용은 `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+기본 라벨 그대로 사용: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. 자세한 내용은 `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+single-context: 저장소 루트에 `GLOSSARY.md` 하나와 `docs/adr/` 하나. 자세한 내용은 `docs/agents/domain.md`.
