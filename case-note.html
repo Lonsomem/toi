@@ -1139,6 +1139,35 @@
             font-size: 0.8rem;
             line-height: 1.45;
         }
+        .missing-bar {
+            flex-shrink: 0;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.25rem;
+            margin-top: 0.3rem;
+            padding: 0.25rem 0.45rem;
+            border-radius: var(--radius-sm);
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            color: #9a3412;
+            font-size: 0.72rem;
+            font-weight: 700;
+            max-height: 3.2rem;
+            overflow-y: auto;
+        }
+        .missing-bar:empty { display: none; } /* 비어 있으면 숨김 — 저장본에 인라인 display 가 남지 않게 */
+        .missing-bar .missing-chip {
+            border: 1px solid #fdba74;
+            background: #ffffff;
+            color: #9a3412;
+            border-radius: 999px;
+            padding: 0 0.45rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .missing-bar .missing-chip:hover { background: #ffedd5; }
         .widget-textarea:focus {
             background: var(--bg-surface);
         }
@@ -2125,7 +2154,8 @@
                                 <button type="button" class="btn btn-ghost btn-sm" onclick="app.copyFieldText('crimeFact', '범죄사실')">📋 복사</button>
                             </div>
                         </div>
-                        <textarea id="detailCrimeFact" class="widget-textarea" placeholder="범죄사실(죄명에 해당하는 구성요건 사실)을 기록하세요." oninput="app.updateCurrentCaseField('crimeFact', this.value)"></textarea>
+                        <textarea id="detailCrimeFact" class="widget-textarea" placeholder="범죄사실(죄명에 해당하는 구성요건 사실)을 기록하세요." oninput="app.updateCurrentCaseField('crimeFact', this.value); app.renderCrimeFactMissingBar();"></textarea>
+                        <div id="crimeFactMissingBar" class="missing-bar" title="항목을 누르면 범죄사실란에서 해당 위치를 차례로 선택합니다."></div>
                     </div>
 
                     <!-- 참고사항 카드 -->
@@ -2969,6 +2999,7 @@
                 const clone = document.documentElement.cloneNode(true);
                 const dynamicContainerIds = [
                     'case-list-body',
+                    'crimeFactMissingBar',
                     'paginationBar',
                     'detailChecklistContainer',
                     'boilerplateTabs',
@@ -4339,6 +4370,7 @@
                 document.getElementById('detailTitle').value = current.title || '';
                 document.getElementById('detailCharge').value = current.charge || '';
                 document.getElementById('detailCrimeFact').value = current.crimeFact || '';
+                this.renderCrimeFactMissingBar();
                 document.getElementById('detailReference').value = current.reference || '';
                 document.getElementById('detailUpdatedAt').textContent = current.updatedAt || '';
                 if (!Array.isArray(current.schedules)) current.schedules = [];
@@ -5573,10 +5605,58 @@
                 }
             },
 
+            /* ======================================================================
+               범죄사실란 미입력 표시줄 (docs/case-note.md 13절)
+               미입력 표시 = 남은 {{...}} 변수 / 영문자에 붙지 않은 O 2개 이상(OO, OOO) / ○ 2개 이상.
+               데이터에 저장하지 않고 화면에서만 계산한다(스키마·공유 JSON 변화 없음).
+               ====================================================================== */
+            findMissingSlots(text) {
+                const re = /\{\{[^{}]*\}\}|(?<![A-Za-z])(?:O{2,}|○{2,})(?![A-Za-z])/g;
+                const counts = new Map();
+                const positions = [];
+                let m;
+                while ((m = re.exec(text || '')) !== null) {
+                    positions.push({ token: m[0], start: m.index });
+                    counts.set(m[0], (counts.get(m[0]) || 0) + 1);
+                }
+                return { total: positions.length, positions: positions, groups: Array.from(counts, ([token, count]) => ({ token: token, count: count })) };
+            },
+
+            renderCrimeFactMissingBar() {
+                const bar = document.getElementById('crimeFactMissingBar');
+                const ta = document.getElementById('detailCrimeFact');
+                if (!bar || !ta) return;
+                const found = this.findMissingSlots(ta.value);
+                if (!found.total) {
+                    bar.innerHTML = '';
+                    return;
+                }
+                const chips = found.groups.map(g =>
+                    `<button type="button" class="missing-chip" data-token="${this.escapeAttr(g.token)}" onclick="app.selectNextMissingSlot(this.dataset.token)">${this.escapeHtml(g.token)}${g.count > 1 ? ' ×' + g.count : ''}</button>`
+                ).join('');
+                bar.innerHTML = `<span>⚠ 미입력 ${found.total}곳:</span>${chips}`;
+            },
+
+            // 표시줄 항목 클릭: 현재 커서 뒤의 다음 위치를 선택(끝이면 처음으로)
+            selectNextMissingSlot(token) {
+                const ta = document.getElementById('detailCrimeFact');
+                if (!ta || !token) return;
+                const hits = this.findMissingSlots(ta.value).positions.filter(x => x.token === token);
+                if (!hits.length) return;
+                const next = hits.find(x => x.start >= ta.selectionEnd) || hits[0];
+                ta.focus();
+                ta.setSelectionRange(next.start, next.start + token.length);
+            },
+
             copyFieldText(fieldKey, label) {
                 const current = this.getCurrentCase();
                 if (!current) return;
-                this.copyToClipboard(current[fieldKey] || '', `[${label}] 내용이 복사되었습니다.`);
+                const text = current[fieldKey] || '';
+                // 범죄사실은 미입력 표시가 남아 있으면 복사는 하되 경고(13절)
+                const missing = fieldKey === 'crimeFact' ? this.findMissingSlots(text).total : 0;
+                this.copyToClipboard(text, missing
+                    ? `⚠ [${label}] 복사됨 — 미입력 ${missing}곳 포함. 붙여넣기 전 확인하세요.`
+                    : `[${label}] 내용이 복사되었습니다.`);
             },
 
             copyFullCaseSummary() {

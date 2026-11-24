@@ -179,11 +179,30 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
 - `dynamicContainerIds`에 `chargeFactListContainer`/`chargeFactEditorContainer` 추가.
 - 검증: 모달 CRUD, 0/1/다건 매칭 분기 전부 Playwright로 확인(삽입 후 `crimeFact` 내용, 확인 모달 문구, 검색창 자동 채움 포함), 퀸 저장→재로드로 `chargeFactExamples`와 삽입된 `crimeFact` 보존 확인. 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션/캘린더·D-day/종결 탭/한 화면 핏) 전부 재통과.
 
+## 13. 범죄사실란 미입력 표시줄 (2026-11-24)
+배경: CLAUDE.md 의 미구현 항목 "죄명 → 예문 자동 현출 + 슬롯 기반 초안"을 사용자와 재논의(grill 세션)한 결과, **슬롯 치환과 `OO` 대체는 이미 구현돼 있었음** — 예문 삽입(`insertChargeFactToCase`) 시 `resolveVariables()` 가 `{{식별자.필드명}}`(사건관계인 값)을 채우고, 값이 비면 `OO`, 없는 식별자/필드는 `{{...}}` 그대로 둔다. 실제로 남은 문제는 "삽입 후 어디가 비었는지 안 보인다"는 것 하나였고, 이번에 그것만 구현함.
+
+- **표시줄 `#crimeFactMissingBar`**(범죄사실 textarea 바로 아래): `⚠ 미입력 N곳:` + 항목 칩(같은 표시는 `OO ×2` 처럼 묶음). 입력할 때마다 실시간 갱신, 0곳이면 CSS `.missing-bar:empty` 로 숨김(인라인 display 를 쓰지 않아 저장본에 흔적이 안 남음). `dynamicContainerIds` 에 추가됨.
+- **미입력으로 세는 것**(`app.findMissingSlots(text)` → `{total, positions, groups}`): 남은 `{{...}}` / **영문자에 붙지 않은** `O` 2개 이상(`OO`, `OOO`; `GOOGLE`·`ZOOM` 같은 단어 속은 제외) / `○` 2개 이상(`○○`, `○○○`).
+- **칩 클릭**(`app.selectNextMissingSlot(token)`): 현재 커서 뒤 다음 위치를 textarea 에서 선택 → 바로 덮어쓰기. 끝이면 처음으로 순환. 위치는 정규식 결과 기준이라 `OO` 칩이 `OOO`/`GOOGLE` 안을 잡지 않음.
+- **[📋 복사]**(`copyFieldText`): 범죄사실에 미입력이 남아 있으면 복사는 그대로 하되 토스트를 `⚠ [범죄사실] 복사됨 — 미입력 N곳 포함. 붙여넣기 전 확인하세요.` 로 바꿈. 다른 필드는 기존 그대로.
+- **데이터 변화 없음**: 화면 계산만. 스키마·내장 DB(v4)·공유 JSON(v1)·`loadDatabase()` 전부 그대로.
+- **적용 범위**: 범죄사실란만(사건별 서식·참고사항은 미적용 — 써 보고 필요하면 확장).
+
+이번 논의에서 확정된 결정(다른 환경에서 이어서 작업할 때 기준):
+- 사건개요 자유 텍스트에서 정규식으로 날짜/금액/계좌를 프리필하는 안은 **폐기**. 사건개요 입력 UI 가 9절에서 제거됐고, 슬롯 값은 이미 구조화된 사건관계인 필드에서 오는 쪽이 정확함.
+- **피해자 ≠ 고소인**. 고소인 역할(complainant)은 고소인/진정인/고발인을 포함하며, 고발인은 보통 피해자가 아니고 피해자가 고소하지 않은 사건도 있음. 지금은 예문에서 `{{고소인1.이름}}` 등을 그대로 쓰고, 사건관계인에 '피해자' 역할을 추가할지는 미정.
+- 예문 삽입은 계속 **이어붙이기**(덮어쓰기/선택 모달 없음 — 데이터 유실 0 우선).
+- 시각적 인라인 강조(textarea 뒤 미러 레이어)는 안 함. 필요해지면 그때 추가.
+- '초안' 표기, 죄명 유사 매칭(`사기` ↔ `사기(보이스피싱)`)은 하지 않기로 함.
+
+테스트: `tests/case-note/missing-slots.test.js` (T1 개수·항목·숨김, T3 복사 경고, T5 저장본 비어 있음·한 화면 핏). 실행법은 파일 상단 주석. 칩 클릭 순환과 예문 삽입 후 표시는 일회성 스크립트로만 확인(저장소 미포함).
+
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
 2. 데이터 변경 끝에 `onStateChanged()`; 목록 갱신이 필요하면 `renderCaseList()`, 상세면 `renderCaseDetail()`/`renderDetailChecklist()`.
 3. 스키마 추가 → `loadDatabase()` 방어 + (공유 대상이면) `normalizeImportedCase/Template` + `docs`·이 문서 갱신.
-4. 테스트: Playwright(headless Chromium)로 `file:///.../case-note.html` 열어 `app.*` 직접 호출. 저장본 생성은 `app.buildCleanHtmlDocumentString()`.
+4. 테스트: 저장소에 있는 것은 `tests/case-note/*.test.js`(실행법은 각 파일 상단; Playwright 위치는 `PLAYWRIGHT_DIR` 로 지정 가능). 그 외는 Playwright(headless Chromium)로 `file:///.../case-note.html` 열어 `app.*` 직접 호출. 저장본 생성은 `app.buildCleanHtmlDocumentString()`.
 5. 검증 시 기억: 샘플 데이터는 첫 로드 때 `getInitialSampleCases()` 로 생성. 저장소의 `case-note.html` 은 `#embedded-db-b64` 가 비어 있음(사용자가 쓰던 저장본은 데이터가 들어 있음).
 
 ## 7. 이력(요약)
