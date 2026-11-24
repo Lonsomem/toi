@@ -5,11 +5,10 @@
 
 ## 1. 아키텍처 (훼손 금지)
 - 외부 의존 0: CSS/HTML/Vanilla JS/SVG 아이콘 전부 한 파일.
-- **내장 DB**: 하단 `<script id="embedded-db-b64" type="text/plain">` 안에 `encodeDB({version:4, savedAt, template, cases, activityLog, dashboardPrefs})` 결과(UTF-8 안전 Base64: `btoa(unescape(encodeURIComponent(JSON)))`). `decodeDB` 는 역변환.
+- **내장 DB**: 하단 `<script id="embedded-db-b64" type="text/plain">` 안에 `encodeDB({version:4, savedAt, template, cases, ddayTrackers})` 결과(UTF-8 안전 Base64: `btoa(unescape(encodeURIComponent(JSON)))`). `decodeDB` 는 역변환. (`activityLog`/`dashboardPrefs` 는 2026-11-24 디자인 롤백으로 제거됨 — 9절 참고)
 - **자기 덮어쓰기**: File System Access API. `connectSelfHtmlFile()` → 핸들 저장, `writeSelfHtmlToFileHandle()` 가 `buildCleanHtmlDocumentString()` 결과를 디스크에 기록. `onStateChanged()` 에서 0.5초 디바운스 + Ctrl+S(`saveOrConnectHtmlFile`).
 - **buildCleanHtmlDocumentString()**: DOM 을 `cloneNode(true)` → `dynamicContainerIds` 컨테이너 innerHTML 비움 + 입력값 초기화 + `#priorityTodoList` 비움 → `#embedded-db-b64` 만 갱신. (동적으로 그리는 영역을 새로 만들면 id 를 이 배열에 꼭 추가 — 안 하면 렌더된 HTML 이 파일에 박혀 오염.)
-  현재 목록: `case-list-body, paginationBar, detailChecklistContainer, boilerplateTabs, customFieldsTabBar, customFieldsContainer, heroPipelineStepper, tplCustomFieldsList, tplChecklistList, tplFormsList, toastContainer, globalFormsListContainer, priorityTodoCount, todoTabNextCount, todoTabTodayCount, todoPanelSub, todoTabAllCount, exportCaseListContainer, tplRoleFieldsTabBar, tplRoleFieldsList, peopleSummaryContainer, peopleListContainer, personEditorContainer, eiKeyMapContainer, activityGraphContainer, columnMenuDropdown`
-  (열고 닫는 `.open` 클래스만 쓰는 `headerMenuDropdown`/`columnMenuDropdown` 은 내용이 정적이라 목록 대상이 아니고, `buildCleanHtmlDocumentString()` 에서 `.open` 클래스만 별도로 제거한다.)
+  현재 목록: `case-list-body, paginationBar, detailChecklistContainer, boilerplateTabs, customFieldsTabBar, customFieldsContainer, heroPipelineStepper, tplCustomFieldsList, tplChecklistList, tplFormsList, toastContainer, globalFormsListContainer, priorityTodoCount, todoTabNextCount, todoTabTodayCount, todoPanelSub, todoTabAllCount, exportCaseListContainer, tplRoleFieldsTabBar, tplRoleFieldsList, peopleSummaryContainer, peopleListContainer, personEditorContainer, eiKeyMapContainer, detailStatus, tplStatusOptionsList, statusFilter, caseCalendarContainer, dashboardCalendarContainer, ddayWidgetContainer`
 - **브라우저 임시 백업**: `localStorage` 키 `CASE_NOTE_SINGLE_FILE_B64_V4`(데이터) / `CASE_NOTE_SINGLE_FILE_META_V4`(`{savedAt, unsaved}`). 파일 미연결 상태에서 변경 시 저장되고, 내장본보다 새로우면 `#recoveryBanner` 로 복구 제안(`applyRecoveredData`/`dismissRecoveryBanner`).
 - **onStateChanged()** 가 한 번에: Base64 태그 갱신 + localStorage 백업 + 용량 표시 + 파일 자동 덮어쓰기 예약. 데이터를 바꾸면 항상 마지막에 호출.
 - **loadDatabase()**: 내장 DB 디코딩 → 하위호환 방어 코드(없으면 기본값). 새 속성 추가 시 여기에 `if (!x) x = 기본값` 추가. 현재 보정 항목: `template.globalForms`, `case.charge`, `case.crimeFact`(문자열), `case.checklist[].id`(없으면 생성).
@@ -18,6 +17,7 @@
 ## 2. 데이터 스키마
 ```
 template = {
+  statusOptions: [{id,value,emoji,badgeClass,group}], // 사건 상태 설정(9절), group: active|done|hold
   checklist: [string],                       // 신규 사건 기본 체크리스트
   forms: [{id,title,content}],               // 신규 사건 기본 개별 서식
   customFields: [{id,label,placeholder}],    // 모든 사건 공통 입력 항목
@@ -26,7 +26,8 @@ template = {
 case = {
   id, caseNumber, status, title,
   charge, crimeFact,                         // 죄명 / 범죄사실
-  overview, reference, remarks,              // 사건개요·피해현황 / 참고사항 / 비고
+  overview, reference, remarks,              // 사건개요(UI 제거됨, 데이터만 보존) / 참고사항 / 비고(UI 제거됨, 데이터만 보존)
+  schedules: [{id,date,title,memo}],         // 사건 일정(캘린더, 9절). date='YYYY-MM-DD'
   createdAt, updatedAt,                      // 'YYYY-MM-DD' / 'YYYY-MM-DD HH:mm'
   checklist: [{id,text,done,date,            // date='MM/DD' 완료일 자동 기록
                todayDate,todayOrder}],       // 오늘 할 일 지정(선택): 'YYYY-MM-DD', 정렬순서
@@ -34,8 +35,10 @@ case = {
   customValues: { [customField.id]: string },
   priorityOrder?: number                     // 전광판(다음 할 일) 드래그 순서
 }
+ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화면 D-day 위젯(9절)
 ```
-- status 값: `수사중`, `영장신청`, `송치완료`, `타관이송`, `중지/각하`. `송치완료`/`타관이송`은 "종결"로 취급(할 일 패널·통계에서 제외).
+- status 값은 기본 5개(수사중/영장신청/송치완료/타관이송/중지각하)지만 템플릿 설정 "0. 사건 상태 설정"에서 자유롭게 추가·이름변경·삭제 가능(9절). "종결" 취급 여부는 문자열이 아니라 `statusOptions[].group === 'done'` 으로 판정(`app.getStatusGroup(status)`).
+- **`overview`/`remarks` 는 2026-11-24 부로 상세화면 입력 UI 가 제거됨**(캘린더로 대체). 필드 자체는 하위호환을 위해 스키마·`resolveVariables`·외부 가져오기 매핑에 그대로 남아있고, 이미 값이 들어있던 사건은 데이터가 안 사라지지만 더 이상 화면에서 보이거나 편집되지 않는다(데이터는 보존하되 노출만 안 하는 쪽을 택함 — 필요하면 JSON 백업/내보내기로 확인 가능).
 - 서식 변수(`resolveVariables`): `{{사건번호}} {{제목}} {{죄명}} {{범죄사실}} {{사건개요}} {{참고사항}} {{비고}}`. 새 변수는 이 함수와 안내 문구(모달 2곳)에 함께 추가.
 - 파일 상단 `getDefaultMasterTemplate()`, `getInitialSampleCases()` 가 최초 데이터.
 
@@ -128,6 +131,18 @@ case = {
 - `createNewCase()` 의 기본 상태값을 하드코딩 `'수사중'` 대신 `this.getStatusOptions()[0].value` 로 변경(사용자가 목록 맨 앞을 바꾸면 새 사건도 그 값으로 시작).
 - `dynamicContainerIds` 에 `detailStatus`(이제 옵션을 JS 로 그리는 select), `tplStatusOptionsList` 추가.
 - 검증: 템플릿 모달에서 추가/이름변경(cascade 확인)/색상·분류 변경/최소 1개 제한/상세화면 셀렉트 반영/상태 pill 반영/현황 통계 반영까지 Playwright로 확인, 퀸 저장→재로드 라운드트립으로 `statusOptions` 보존 확인, 기존 회귀 테스트 전부 재통과.
+
+## 9. 디자인 롤백 + 캘린더/D-day/상태설정 (2026-11-24)
+사용자 요청: "최근 UI 전면 개편을 되돌리고(데이터 연속성 유지), 사건개요/비고 칸을 없애고 캘린더로 바꾸고, 메인에도 통합 캘린더 + D-day 재미 기능 추가, 기본 정렬은 사건번호순으로."
+
+- **디자인 롤백**: `git show 34acbe7:case-note.html`(깃허브 스타일 대시보드/프로필 레이아웃 개편 **이전**, "겨울 시즌 리디자인" 버전)로 파일을 통째로 되돌림. 그 위에, 레이아웃과 무관하게 독립적인 "사건 상태 설정" 기능(원래 338cdf2 커밋)만 다시 이식 — 단 상태 필터 UI 는 pill 목록이 아니라 원래의 `<select id="statusFilter">` 드롭다운을 유지하고, 옵션만 `template.statusOptions` 기준으로 동적 렌더링(`renderStatusFilterOptions()`)하도록 바꿈. 활동 기여 그래프·좌측 프로필 사이드바·표시열 설정·⋮ 메뉴 통합 등 레이아웃 개편 전용 기능은 전부 제거됨(되돌아감).
+- **사건개요/비고 UI 제거**: `#detailOverview`/`#detailRemarks` textarea 와 그 bento-card 2개를 상세화면에서 삭제. 데이터 필드 자체는 스키마에 유지(위 2절 참고). "↪ 사건개요에 삽입"(공통서식함에서 삽입) 버튼도 같이 제거(대상 필드가 더 이상 안 보이므로).
+- **사건별 일정(캘린더)**: 삭제한 두 카드 자리에 월간 미니 캘린더 카드(`#caseCalendarContainer`) 추가. `case.schedules`. 날짜 클릭(`selectCaseCalendarDay`) → 그 날짜로 일정 추가 입력창 활성화(`addCaseSchedule`) → 카드 하단에 날짜순 목록(삭제 가능). 일정 있는 날짜는 빨간 점(`.mini-cal-dot`)으로 표시.
+- **메인 화면 통합 캘린더**: 좌측 "오늘의 할 일" 패널을 **탭 구조**(`.panel-tabs`: 🎯 할 일 / 📅 캘린더)로 바꿔, 같은 공간 안에서 전환(폭·높이를 바꾸지 않아 기존 "한 화면 핏"에 영향 없음). 캘린더 탭은 전체 사건의 `schedules` 를 모아(`renderDashboardCalendar`) 월간 그리드 + "다가오는 일정"(또는 날짜 선택 시 그 날 일정) 목록을 보여주고, 항목 클릭 시 해당 사건 상세로 이동(`openCaseDetail`).
+- **D-day 위젯**: 캘린더 탭 하단에 제목+날짜 직접 입력하는 기준일 카운터 목록(`ddayTrackers`, 최상위 DB 필드). `D-N`/`D+N`/`D-DAY` 자동 계산, 개수 제한 없음, 삭제 가능.
+- **기본 정렬 변경**: `<select id="sortFilter">` 의 기본 `selected` 옵션을 `MANUAL_ORDER` → `CASENUM_DESC` 로 변경(정렬 로직 자체는 기존 그대로, 디폴트 선택지만 교체).
+- **공유 데이터 생성/수신(QR) 반영**: 새 필드(`schedules`, `ddayTrackers`, `statusOptions`)는 전부 `loadDatabase()`/`createNewCase()`/`getInitialSampleCases()`에 기본값 가드가 있어 구버전 파일을 열어도 깨지지 않음.
+- 검증: Playwright로 디자인 롤백 후 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션) 전부 재통과 + 신규(기본 정렬값, overview/remarks UI 제거 확인, 사건별 일정 추가/삭제, 메인 캘린더 렌더+이벤트점, D-day 추가/라벨, 퀸 저장→재로드로 schedules·ddayTrackers 보존) 전부 통과. 기존 "한 화면 핏" 테스트(700~900px 높이, 목록/상세 양쪽) 회귀 없음.
 
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.

@@ -1512,6 +1512,49 @@
             font-size: 0.95rem; font-weight: 900; color: #3730a3;
         }
         .todo-panel-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.15rem; }
+
+        /* --- 상단 좌측 패널 탭(할 일 / 캘린더) --- */
+        .panel-tabs { display: flex; gap: 0.3rem; padding: 0.5rem 0.6rem 0; }
+        .panel-tab {
+            flex: 1; border: none; background: var(--bg-subtle); color: var(--text-secondary);
+            font-size: 0.78rem; font-weight: 800; padding: 0.4rem 0.3rem; border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        .panel-tab.active { background: #4f46e5; color: #fff; }
+        .cal-nav { display: flex; align-items: center; gap: 0.3rem; margin-top: 0.3rem; }
+
+        /* --- 월간 캘린더 그리드(사건 상세 · 메인 대시보드 공용) --- */
+        .mini-cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.66rem; font-weight: 800; color: var(--text-muted); margin-bottom: 0.2rem; }
+        .mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+        .mini-cal-day {
+            position: relative; aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 0.72rem; border-radius: 6px; cursor: pointer; color: var(--text-main);
+        }
+        .mini-cal-day:hover { background: var(--bg-subtle); }
+        .mini-cal-day.other-month { color: var(--border-color); cursor: default; }
+        .mini-cal-day.other-month:hover { background: none; }
+        .mini-cal-day.today { border: 1.5px solid var(--primary); font-weight: 800; }
+        .mini-cal-day.selected { background: var(--primary); color: #fff; }
+        .mini-cal-day .mini-cal-dot {
+            position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+            width: 4px; height: 4px; border-radius: 50%; background: var(--danger);
+        }
+        .mini-cal-day.selected .mini-cal-dot { background: #fff; }
+        .cal-event-list { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.4rem; }
+        .cal-event-row {
+            display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem;
+            background: var(--bg-subtle); padding: 0.3rem 0.5rem; border-radius: var(--radius-sm);
+        }
+        .cal-event-row .cal-event-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; font-weight: 700; }
+        .cal-event-row .cal-event-case { font-size: 0.64rem; color: var(--primary); font-weight: 800; cursor: pointer; flex-shrink: 0; }
+        .cal-event-row .cal-event-del { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 0.68rem; flex-shrink: 0; }
+        .dday-row {
+            display: flex; align-items: center; gap: 0.4rem; font-size: 0.74rem;
+            background: var(--bg-subtle); padding: 0.35rem 0.55rem; border-radius: var(--radius-sm);
+        }
+        .dday-row .dday-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
+        .dday-row .dday-count { font-weight: 900; color: var(--primary); flex-shrink: 0; }
+        .dday-row .dday-del { color: var(--danger); background: none; border: none; cursor: pointer; flex-shrink: 0; }
         .priority-count-pill { background: #fb7185 !important; color: #fff !important; }
         .todo-tabs { display: flex; gap: 0.35rem; margin-top: 0.55rem; align-items: center; }
         .todo-tab {
@@ -1896,20 +1939,51 @@
             <div class="list-split">
                 <!-- 좌측: 할 일 패널 (다음 할 일 / 전체 할 일) -->
                 <aside class="todo-panel">
-                    <div class="todo-panel-head">
-                        <div class="todo-panel-title">
-                            <span>🎯 오늘의 할 일</span>
-                            <span id="priorityTodoCount" class="priority-count-pill">0건</span>
-                        </div>
-                        <div id="todoPanelSub" class="todo-panel-sub"></div>
-                        <div class="todo-tabs">
-                            <button type="button" id="todoTabToday" class="todo-tab active" onclick="app.setTodoTab('today')">★ 오늘<b id="todoTabTodayCount">0</b></button>
-                            <button type="button" id="todoTabNext" class="todo-tab" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
-                            <button type="button" id="todoTabAll" class="todo-tab" onclick="app.setTodoTab('all')">전체 할 일<b id="todoTabAllCount">0</b></button>
-                            <label id="todoDoneToggle" class="todo-done-toggle" style="display:none;"><input type="checkbox" onchange="app.toggleTodoShowDone(this.checked)"> 완료 포함</label>
-                        </div>
+                    <div class="panel-tabs">
+                        <button type="button" id="mainPanelTabTodo" class="panel-tab active" onclick="app.setMainPanelTab('todo')">🎯 할 일</button>
+                        <button type="button" id="mainPanelTabCalendar" class="panel-tab" onclick="app.setMainPanelTab('calendar')">📅 캘린더</button>
                     </div>
-                    <div id="priorityTodoList" class="todo-scroll"></div>
+
+                    <div id="todoPanelTabBody">
+                        <div class="todo-panel-head">
+                            <div class="todo-panel-title">
+                                <span>🎯 오늘의 할 일</span>
+                                <span id="priorityTodoCount" class="priority-count-pill">0건</span>
+                            </div>
+                            <div id="todoPanelSub" class="todo-panel-sub"></div>
+                            <div class="todo-tabs">
+                                <button type="button" id="todoTabToday" class="todo-tab active" onclick="app.setTodoTab('today')">★ 오늘<b id="todoTabTodayCount">0</b></button>
+                                <button type="button" id="todoTabNext" class="todo-tab" onclick="app.setTodoTab('next')">다음 할 일<b id="todoTabNextCount">0</b></button>
+                                <button type="button" id="todoTabAll" class="todo-tab" onclick="app.setTodoTab('all')">전체 할 일<b id="todoTabAllCount">0</b></button>
+                                <label id="todoDoneToggle" class="todo-done-toggle" style="display:none;"><input type="checkbox" onchange="app.toggleTodoShowDone(this.checked)"> 완료 포함</label>
+                            </div>
+                        </div>
+                        <div id="priorityTodoList" class="todo-scroll"></div>
+                    </div>
+
+                    <div id="calendarPanelTabBody" style="display:none; flex:1; min-height:0; flex-direction:column; overflow-y:auto;">
+                        <div class="todo-panel-head">
+                            <div class="todo-panel-title">
+                                <span>📅 전체 사건 일정</span>
+                            </div>
+                            <div class="cal-nav">
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="app.shiftDashboardCalendarMonth(-1)">◀</button>
+                                <span id="dashCalMonthLabel" style="font-weight:800; font-size:0.82rem;"></span>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="app.shiftDashboardCalendarMonth(1)">▶</button>
+                            </div>
+                        </div>
+                        <div id="dashboardCalendarContainer" style="padding:0.5rem 0.7rem;"></div>
+
+                        <div class="todo-panel-head" style="border-top:1px solid var(--border-light); margin-top:0.3rem;">
+                            <div class="todo-panel-title"><span>⏱ D-day</span></div>
+                        </div>
+                        <div style="display:flex; gap:0.3rem; padding:0.4rem 0.7rem;">
+                            <input type="text" id="ddayNewTitle" placeholder="제목" style="flex:1; min-width:0;">
+                            <input type="date" id="ddayNewDate" style="width:132px;">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="app.addDdayTracker()">+</button>
+                        </div>
+                        <div id="ddayWidgetContainer" style="padding:0 0.7rem 0.6rem; display:flex; flex-direction:column; gap:0.35rem;"></div>
+                    </div>
                 </aside>
 
                 <!-- 우측: 검색/필터 + 사건 카드 -->
@@ -1928,7 +2002,7 @@
                     <select id="sortFilter" style="width: 170px;" onchange="app.currentPage=1; app.renderCaseList()">
                         <option value="MANUAL_ORDER">✋ 사용자 드래그 순서</option>
                         <option value="UPDATED_DESC">최근 수정일순</option>
-                        <option value="CASENUM_DESC">사건번호순</option>
+                        <option value="CASENUM_DESC" selected>사건번호순</option>
                         <option value="PROGRESS_ASC">진행률 낮은순</option>
                         <option value="PROGRESS_DESC">진행률 높은순</option>
                     </select>
@@ -2031,23 +2105,6 @@
                         <textarea id="detailCrimeFact" class="widget-textarea" placeholder="범죄사실(죄명에 해당하는 구성요건 사실)을 기록하세요." oninput="app.updateCurrentCaseField('crimeFact', this.value)"></textarea>
                     </div>
 
-                    <!-- 사건개요 및 피해 현황 카드 -->
-                    <div class="bento-card" style="flex: 1;">
-                        <div class="widget-header">
-                            <div class="widget-title">
-                                <div class="widget-icon-box" style="background: var(--primary-light); color: var(--primary);">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
-                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                        <polyline points="14 2 14 8 20 8"></polyline>
-                                    </svg>
-                                </div>
-                                사건개요 및 피해 현황
-                            </div>
-                            <button type="button" class="btn btn-ghost btn-sm" onclick="app.copyFieldText('overview', '사건개요')">📋 복사</button>
-                        </div>
-                        <textarea id="detailOverview" class="widget-textarea" placeholder="접수 경위, 범행 일시·장소, 기망 수법, 피해자별 피해 금액 등을 기록하세요." oninput="app.updateCurrentCaseField('overview', this.value)"></textarea>
-                    </div>
-
                     <!-- 참고사항 카드 -->
                     <div class="bento-card" style="flex: 1;">
                         <div class="widget-header">
@@ -2066,21 +2123,27 @@
                         <textarea id="detailReference" class="widget-textarea" placeholder="고소인/피의자 연락처, 범행 이용 계좌번호, 출석 일정, 증거 목록 등" oninput="app.updateCurrentCaseField('reference', this.value)"></textarea>
                     </div>
 
-                    <!-- 비고 카드 -->
-                    <div class="bento-card" style="flex: 0.8;">
+                    <!-- 사건 일정(캘린더) 카드 -->
+                    <div class="bento-card" style="flex: 1.8;">
                         <div class="widget-header">
                             <div class="widget-title">
                                 <div class="widget-icon-box" style="background: var(--warning-bg); color: #d97706;">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="14" height="14">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                        <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
                                     </svg>
                                 </div>
-                                비고 (수사기한 · 공소시효 · 인계메모)
+                                사건 일정
                             </div>
-                            <button type="button" class="btn btn-ghost btn-sm" onclick="app.copyFieldText('remarks', '비고')">📋 복사</button>
+                            <div class="cal-nav">
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="app.shiftCaseCalendarMonth(-1)">◀</button>
+                                <span id="caseCalMonthLabel" style="font-weight:800; font-size:0.78rem;"></span>
+                                <button type="button" class="btn btn-ghost btn-sm" onclick="app.shiftCaseCalendarMonth(1)">▶</button>
+                            </div>
                         </div>
-                        <textarea id="detailRemarks" class="widget-textarea" placeholder="수사 기한, 병합 여부, 특이사항 메모" oninput="app.updateCurrentCaseField('remarks', this.value)"></textarea>
+                        <div id="caseCalendarContainer" style="flex:1; min-height:0; overflow-y:auto; padding: 0.3rem 0.2rem;"></div>
                     </div>
                 </div>
 
@@ -2261,7 +2324,6 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap; padding-top: 0.25rem;">
                         <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
                             <button type="button" class="btn btn-secondary btn-sm" onclick="app.insertGlobalFormToCaseField('crimeFact')" title="현재 열려있는 사건의 범죄사실란 끝에 이어붙이기">↪ 범죄사실에 삽입</button>
-                            <button type="button" class="btn btn-secondary btn-sm" onclick="app.insertGlobalFormToCaseField('overview')" title="현재 열려있는 사건의 사건개요란 끝에 이어붙이기">↪ 사건개요에 삽입</button>
                             <button type="button" class="btn btn-secondary btn-sm" onclick="app.insertGlobalFormToCaseField('reference')" title="현재 열려있는 사건의 참고사항란 끝에 이어붙이기">↪ 참고사항에 삽입</button>
                             <button type="button" class="btn btn-secondary btn-sm" onclick="app.cloneGlobalFormToCurrentCase()" title="현재 열려있는 사건의 개별 서식 카드로 추가">➕ 현재 사건 서식함에 복제</button>
                         </div>
@@ -2523,6 +2585,8 @@
             return Object.assign(createPersonRecord(role, subLabel, slug), { fieldValues: fieldValues });
         }
 
+        function pad2(n) { return String(n).padStart(2, '0'); }
+
         function getDefaultStatusOptions() {
             return [
                 { id: 'st_ing', value: '수사중', emoji: '🔵', badgeClass: 'status-ing', group: 'active' },
@@ -2636,6 +2700,10 @@
                         cf_suspect_info: '성명 불상 (토스뱅크 1000-0000-1234 명의자 회신 대기중)',
                         cf_warrant_log: '• 2026. 10. 28. 계좌영장 신청 (영장번호 2026-1102)\n• 2026. 10. 29. 토스뱅크 팩스 집행 완료'
                     },
+                    schedules: [
+                        { id: 'sch_1', date: '2026-11-28', title: '피의자 출석요구 기한', memo: '' },
+                        { id: 'sch_2', date: '2026-12-05', title: '수사결과보고서 작성 마감', memo: '' }
+                    ],
                     people: [
                         makeSamplePerson('case', '사건', '사건', { 일시: '2026-10-18', 피해금액합계: '285만원' }),
                         makeSamplePerson('complainant', '고소인', '고소인1', { 이름: '김민수', 연락처: '010-1234-5678', 피해금액: '120만원', 피해일시: '2026-10-18' }),
@@ -2667,6 +2735,12 @@
             todoCollapsed: {},
             selectedPersonId: null,
             activeRoleFieldsTab: 'case',
+            mainPanelTab: 'todo',
+            ddayTrackers: [],
+            dashboardCalendarViewDate: new Date(),
+            dashboardCalendarSelectedDate: null,
+            caseCalendarViewDate: new Date(),
+            caseCalendarSelectedDate: null,
 
             init() {
                 this.loadDatabase();
@@ -2713,6 +2787,7 @@
                 if (loadedFromEmbedded && Array.isArray(loadedFromEmbedded.cases) && loadedFromEmbedded.template) {
                     this.cases = loadedFromEmbedded.cases;
                     this.template = loadedFromEmbedded.template;
+                    this.ddayTrackers = Array.isArray(loadedFromEmbedded.ddayTrackers) ? loadedFromEmbedded.ddayTrackers : [];
                     if (!Array.isArray(this.template.globalForms)) {
                         this.template.globalForms = getDefaultMasterTemplate().globalForms;
                     }
@@ -2725,12 +2800,14 @@
                         if (!Array.isArray(cs.checklist)) cs.checklist = [];
                         cs.checklist.forEach((it, i) => { if (!it.id) it.id = 'chk_' + Date.now() + '_' + i + '_' + Math.floor(Math.random() * 1000); });
                         if (!Array.isArray(cs.autoLoadedFormIds)) cs.autoLoadedFormIds = [];
+                        if (!Array.isArray(cs.schedules)) cs.schedules = [];
                         this.migrateCaseFlatVariables(cs);
                     });
                     embeddedSavedAt = loadedFromEmbedded.savedAt || '';
                 } else {
                     this.template = getDefaultMasterTemplate();
                     this.cases = getInitialSampleCases();
+                    this.ddayTrackers = [];
                     this.syncEmbeddedBase64Tag('');
                 }
 
@@ -2777,7 +2854,8 @@
                     version: 4,
                     savedAt: savedAtTimestamp || this.getFormattedNowWithSeconds(),
                     template: this.template,
-                    cases: this.cases
+                    cases: this.cases,
+                    ddayTrackers: this.ddayTrackers
                 };
                 const encoded = encodeDB(payload);
                 const el = document.getElementById('embedded-db-b64');
@@ -2854,7 +2932,8 @@
                     version: 4,
                     savedAt: nowStamp,
                     template: this.template,
-                    cases: this.cases
+                    cases: this.cases,
+                    ddayTrackers: this.ddayTrackers
                 };
                 const encodedB64 = encodeDB(stateObj);
 
@@ -3056,6 +3135,229 @@
                 const done = list.filter(i => i.done).length;
                 const percent = Math.round((done / list.length) * 100);
                 return { done, total: list.length, percent };
+            },
+
+            /* ======================================================================
+               캘린더 / D-day — 사건별 일정(case.schedules) + 메인 통합 일정 + 기준일 카운터
+               ====================================================================== */
+            setMainPanelTab(tab) {
+                this.mainPanelTab = tab;
+                const todoBtn = document.getElementById('mainPanelTabTodo');
+                const calBtn = document.getElementById('mainPanelTabCalendar');
+                const todoBody = document.getElementById('todoPanelTabBody');
+                const calBody = document.getElementById('calendarPanelTabBody');
+                if (todoBtn) todoBtn.classList.toggle('active', tab === 'todo');
+                if (calBtn) calBtn.classList.toggle('active', tab === 'calendar');
+                if (todoBody) todoBody.style.display = tab === 'todo' ? '' : 'none';
+                if (calBody) calBody.style.display = tab === 'calendar' ? 'flex' : 'none';
+                if (tab === 'calendar') {
+                    this.renderDashboardCalendar();
+                    this.renderDdayWidget();
+                }
+            },
+
+            buildMiniCalendarHtml(viewDate, eventDateSet, selectedDateStr, onDayClickFn) {
+                const y = viewDate.getFullYear(), m = viewDate.getMonth();
+                const pad = n => String(n).padStart(2, '0');
+                const startWeekday = new Date(y, m, 1).getDay();
+                const daysInMonth = new Date(y, m + 1, 0).getDate();
+                const daysInPrevMonth = new Date(y, m, 0).getDate();
+                const todayStr = this.getFormattedNow().split(' ')[0];
+
+                const cells = [];
+                for (let i = 0; i < startWeekday; i++) {
+                    cells.push({ d: daysInPrevMonth - startWeekday + 1 + i, dateStr: '' });
+                }
+                for (let d = 1; d <= daysInMonth; d++) {
+                    cells.push({ d, dateStr: `${y}-${pad(m + 1)}-${pad(d)}` });
+                }
+                let nextD = 1;
+                while (cells.length % 7 !== 0) { cells.push({ d: nextD++, dateStr: '' }); }
+
+                const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
+                let html = '<div class="mini-cal-weekdays">' + weekdayLabels.map(w => `<span>${w}</span>`).join('') + '</div>';
+                html += '<div class="mini-cal-grid">';
+                cells.forEach(c => {
+                    if (!c.dateStr) {
+                        html += `<div class="mini-cal-day other-month">${c.d}</div>`;
+                        return;
+                    }
+                    let cls = '';
+                    if (c.dateStr === todayStr) cls += ' today';
+                    if (c.dateStr === selectedDateStr) cls += ' selected';
+                    const hasEvent = eventDateSet.has(c.dateStr);
+                    html += `<div class="mini-cal-day${cls}" onclick="${onDayClickFn}('${c.dateStr}')">${c.d}${hasEvent ? '<span class="mini-cal-dot"></span>' : ''}</div>`;
+                });
+                html += '</div>';
+                return html;
+            },
+
+            renderCaseCalendar() {
+                const current = this.getCurrentCase();
+                const container = document.getElementById('caseCalendarContainer');
+                const label = document.getElementById('caseCalMonthLabel');
+                if (!container || !current) return;
+                if (!Array.isArray(current.schedules)) current.schedules = [];
+
+                const vd = this.caseCalendarViewDate;
+                if (label) label.textContent = `${vd.getFullYear()}.${pad2(vd.getMonth() + 1)}`;
+
+                const eventDateSet = new Set(current.schedules.map(s => s.date));
+                let html = this.buildMiniCalendarHtml(vd, eventDateSet, this.caseCalendarSelectedDate, 'app.selectCaseCalendarDay');
+
+                const selDate = this.caseCalendarSelectedDate;
+                html += `<div style="display:flex; gap:0.3rem; margin-top:0.5rem;">
+                    <input type="text" id="caseSchNewTitle" placeholder="${selDate ? selDate + ' 일정 제목' : '날짜를 먼저 선택하세요'}" style="flex:1; min-width:0;" ${selDate ? '' : 'disabled'} onkeydown="if(event.key==='Enter'){event.preventDefault(); app.addCaseSchedule();}">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="app.addCaseSchedule()" ${selDate ? '' : 'disabled'}>+</button>
+                </div>`;
+
+                const sorted = [...current.schedules].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+                html += '<div class="cal-event-list">';
+                if (!sorted.length) {
+                    html += '<div style="font-size:0.7rem; color:var(--text-muted); text-align:center; padding:0.4rem;">등록된 일정이 없습니다.</div>';
+                } else {
+                    sorted.forEach(s => {
+                        html += `<div class="cal-event-row">
+                            <span style="font-size:0.64rem; color:var(--text-muted); flex-shrink:0;">${this.escapeHtml(s.date)}</span>
+                            <span class="cal-event-title" title="${this.escapeAttr(s.title)}">${this.escapeHtml(s.title)}</span>
+                            <button type="button" class="cal-event-del" onclick="app.removeCaseSchedule('${s.id}')">삭제</button>
+                        </div>`;
+                    });
+                }
+                html += '</div>';
+                container.innerHTML = html;
+            },
+
+            shiftCaseCalendarMonth(delta) {
+                const vd = this.caseCalendarViewDate;
+                this.caseCalendarViewDate = new Date(vd.getFullYear(), vd.getMonth() + delta, 1);
+                this.renderCaseCalendar();
+            },
+
+            selectCaseCalendarDay(dateStr) {
+                this.caseCalendarSelectedDate = (this.caseCalendarSelectedDate === dateStr) ? null : dateStr;
+                this.renderCaseCalendar();
+                const input = document.getElementById('caseSchNewTitle');
+                if (input && this.caseCalendarSelectedDate) input.focus();
+            },
+
+            addCaseSchedule() {
+                const current = this.getCurrentCase();
+                const dateStr = this.caseCalendarSelectedDate;
+                const input = document.getElementById('caseSchNewTitle');
+                if (!current || !dateStr || !input) return;
+                const title = input.value.trim();
+                if (!title) return;
+                if (!Array.isArray(current.schedules)) current.schedules = [];
+                current.schedules.push({ id: 'sch_' + Date.now(), date: dateStr, title, memo: '' });
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+                this.renderCaseCalendar();
+            },
+
+            removeCaseSchedule(id) {
+                const current = this.getCurrentCase();
+                if (!current) return;
+                current.schedules = (current.schedules || []).filter(s => s.id !== id);
+                current.updatedAt = this.getFormattedNow();
+                this.onStateChanged();
+                this.renderCaseCalendar();
+            },
+
+            renderDashboardCalendar() {
+                const container = document.getElementById('dashboardCalendarContainer');
+                const label = document.getElementById('dashCalMonthLabel');
+                if (!container) return;
+
+                const vd = this.dashboardCalendarViewDate;
+                if (label) label.textContent = `${vd.getFullYear()}.${pad2(vd.getMonth() + 1)}`;
+
+                const allEvents = [];
+                this.cases.forEach(c => {
+                    (c.schedules || []).forEach(s => allEvents.push({ id: s.id, date: s.date, title: s.title, caseId: c.id, caseNumber: c.caseNumber }));
+                });
+                const eventDateSet = new Set(allEvents.map(e => e.date));
+                let html = this.buildMiniCalendarHtml(vd, eventDateSet, this.dashboardCalendarSelectedDate, 'app.selectDashboardCalendarDay');
+
+                const selDate = this.dashboardCalendarSelectedDate;
+                const todayStr = this.getFormattedNow().split(' ')[0];
+                let dayEvents;
+                if (selDate) {
+                    dayEvents = allEvents.filter(e => e.date === selDate);
+                } else {
+                    dayEvents = allEvents.filter(e => e.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 8);
+                }
+
+                html += `<div style="font-size:0.66rem; color:var(--text-muted); font-weight:700; margin:0.4rem 0 0.2rem;">${selDate ? this.escapeHtml(selDate) + ' 일정' : '다가오는 일정'}</div>`;
+                html += '<div class="cal-event-list">';
+                if (!dayEvents.length) {
+                    html += `<div style="font-size:0.7rem; color:var(--text-muted); text-align:center; padding:0.4rem;">${selDate ? '이 날짜에 등록된 일정이 없습니다.' : '다가오는 일정이 없습니다.'}</div>`;
+                } else {
+                    dayEvents.forEach(e => {
+                        html += `<div class="cal-event-row">
+                            <span class="cal-event-case" onclick="app.openCaseDetail('${e.caseId}')">${this.escapeHtml(e.caseNumber || '')}</span>
+                            <span class="cal-event-title" onclick="app.openCaseDetail('${e.caseId}')" title="${this.escapeAttr(e.title)}">${this.escapeHtml(e.title)}</span>
+                            ${selDate ? '' : `<span style="font-size:0.62rem; color:var(--text-muted); flex-shrink:0;">${this.escapeHtml(e.date)}</span>`}
+                        </div>`;
+                    });
+                }
+                html += '</div>';
+                container.innerHTML = html;
+            },
+
+            shiftDashboardCalendarMonth(delta) {
+                const vd = this.dashboardCalendarViewDate;
+                this.dashboardCalendarViewDate = new Date(vd.getFullYear(), vd.getMonth() + delta, 1);
+                this.renderDashboardCalendar();
+            },
+
+            selectDashboardCalendarDay(dateStr) {
+                this.dashboardCalendarSelectedDate = (this.dashboardCalendarSelectedDate === dateStr) ? null : dateStr;
+                this.renderDashboardCalendar();
+            },
+
+            addDdayTracker() {
+                const titleInput = document.getElementById('ddayNewTitle');
+                const dateInput = document.getElementById('ddayNewDate');
+                if (!titleInput || !dateInput) return;
+                const title = titleInput.value.trim();
+                const date = dateInput.value;
+                if (!title || !date) { this.showToast('제목과 날짜를 모두 입력하세요.'); return; }
+                if (!Array.isArray(this.ddayTrackers)) this.ddayTrackers = [];
+                this.ddayTrackers.push({ id: 'dday_' + Date.now(), title, date });
+                titleInput.value = '';
+                dateInput.value = '';
+                this.onStateChanged();
+                this.renderDdayWidget();
+            },
+
+            removeDdayTracker(id) {
+                this.ddayTrackers = (this.ddayTrackers || []).filter(d => d.id !== id);
+                this.onStateChanged();
+                this.renderDdayWidget();
+            },
+
+            renderDdayWidget() {
+                const container = document.getElementById('ddayWidgetContainer');
+                if (!container) return;
+                const todayStr = this.getFormattedNow().split(' ')[0];
+                const today = new Date(todayStr + 'T00:00:00');
+                const list = this.ddayTrackers || [];
+                if (!list.length) {
+                    container.innerHTML = '<div style="font-size:0.7rem; color:var(--text-muted); text-align:center; padding:0.4rem;">등록된 D-day가 없습니다.</div>';
+                    return;
+                }
+                container.innerHTML = [...list].sort((a, b) => (a.date || '').localeCompare(b.date || '')).map(d => {
+                    const target = new Date(d.date + 'T00:00:00');
+                    const diffDays = Math.round((target - today) / 86400000);
+                    const label = diffDays === 0 ? 'D-DAY' : (diffDays > 0 ? `D-${diffDays}` : `D+${-diffDays}`);
+                    return `<div class="dday-row">
+                        <span class="dday-title" title="${this.escapeAttr(d.title)}">${this.escapeHtml(d.title)}</span>
+                        <span style="font-size:0.64rem; color:var(--text-muted);">${this.escapeHtml(d.date)}</span>
+                        <span class="dday-count">${label}</span>
+                        <button type="button" class="dday-del" onclick="app.removeDdayTracker('${d.id}')">✕</button>
+                    </div>`;
+                }).join('');
             },
 
             getStatusBadgeClass(status) {
@@ -3904,6 +4206,7 @@
                         date: ''
                     })),
                     forms: JSON.parse(JSON.stringify(this.template.forms || [])),
+                    schedules: [],
                     customValues: {},
                     people: []
                 };
@@ -3952,10 +4255,11 @@
                 document.getElementById('detailTitle').value = current.title || '';
                 document.getElementById('detailCharge').value = current.charge || '';
                 document.getElementById('detailCrimeFact').value = current.crimeFact || '';
-                document.getElementById('detailOverview').value = current.overview || '';
                 document.getElementById('detailReference').value = current.reference || '';
-                document.getElementById('detailRemarks').value = current.remarks || '';
                 document.getElementById('detailUpdatedAt').textContent = current.updatedAt || '';
+                if (!Array.isArray(current.schedules)) current.schedules = [];
+                this.caseCalendarSelectedDate = null;
+                this.renderCaseCalendar();
 
                 this.renderHeroGraphicMetrics();
                 this.renderDetailChecklist();
