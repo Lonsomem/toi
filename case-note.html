@@ -1524,7 +1524,8 @@
         .todo-panel-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.15rem; }
 
         /* --- 상단 좌측 패널 탭(할 일 / 캘린더) --- */
-        .panel-tabs { display: flex; gap: 0.3rem; padding: 0.5rem 0.6rem 0; }
+        .panel-tabs { display: flex; gap: 0.3rem; padding: 0.5rem 0.6rem 0; flex-shrink: 0; }
+        #todoPanelTabBody { display: flex; flex-direction: column; flex: 1; min-height: 0; }
         .panel-tab {
             flex: 1; border: none; background: var(--bg-subtle); color: var(--text-secondary);
             font-size: 0.78rem; font-weight: 800; padding: 0.4rem 0.3rem; border-radius: var(--radius-sm);

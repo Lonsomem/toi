@@ -179,6 +179,13 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
 - `dynamicContainerIds`에 `chargeFactListContainer`/`chargeFactEditorContainer` 추가.
 - 검증: 모달 CRUD, 0/1/다건 매칭 분기 전부 Playwright로 확인(삽입 후 `crimeFact` 내용, 확인 모달 문구, 검색창 자동 채움 포함), 퀸 저장→재로드로 `chargeFactExamples`와 삽입된 `crimeFact` 보존 확인. 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션/캘린더·D-day/종결 탭/한 화면 핏) 전부 재통과.
 
+## 13. 좌측 할 일 패널이 스크롤 안 되던 버그 (2026-11-25)
+사용자 리포트: "왼쪽 구역에 있는 할 일들 스크롤이 아예 안 생겨."
+
+- **원인**: 11절에서 좌측 패널을 "할 일/캘린더" 탭 구조로 바꾸며 `<div id="todoPanelTabBody">`로 기존 내용(`.todo-panel-head` + `#priorityTodoList.todo-scroll`)을 감쌌는데, 이 래퍼에 CSS를 안 줘서 기본값(`display:block`)으로 남아있었음. `.todo-scroll`은 `flex:1; overflow-y:auto`로 "부모가 flex 컨테이너이고 높이가 정해져 있을 때"만 스크롤 영역이 생기는데, 부모(`#todoPanelTabBody`)가 flex가 아니니 `flex:1`이 무의미해져서 **목록이 내용만큼 한없이 늘어나고(block 기본 높이), 그 늘어난 부분이 `.todo-panel`의 `overflow:hidden`에 그냥 잘려나감** — 스크롤바 자체가 안 생기고 할 일이 안 보이기만 함.
+- **수정**: `#todoPanelTabBody { display:flex; flex-direction:column; flex:1; min-height:0; }` 한 줄 추가. 이러면 패널 높이 안에서 `.todo-panel-head`(제목·탭)는 고정 높이, `#priorityTodoList`가 나머지 공간을 꽉 채우고 넘치는 부분만 내부 스크롤.
+- 검증: 체크리스트 23건으로 늘려서 `scrollHeight(1068) > clientHeight(593)` 로 스크롤 영역이 실제로 생기는지, 패널 자체 높이는 그대로인지 확인. 기존 회귀 테스트(관계인/서식/내보내기/마이그레이션/캘린더·D-day/종결 탭/범죄사실 예문/한 화면 핏) 전부 재통과.
+
 ## 6. 수정 시 체크리스트
 1. 새 동적 컨테이너 → `dynamicContainerIds`.
 2. 데이터 변경 끝에 `onStateChanged()`; 목록 갱신이 필요하면 `renderCaseList()`, 상세면 `renderCaseDetail()`/`renderDetailChecklist()`.
