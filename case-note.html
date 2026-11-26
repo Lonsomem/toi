@@ -1613,8 +1613,10 @@
         .todo-tab.active { background: #4f46e5; color: #fff; border-color: #4f46e5; }
         .todo-tab b { margin-left: 0.25rem; opacity: 0.85; }
         .todo-done-toggle { margin-left: auto; font-size: 0.7rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; cursor: pointer; }
+        /* 할 일 탭 본문: 패널 높이 안에서 늘어나야 아래 목록(.todo-scroll)이 스크롤됨 */
+        #todoPanelTabBody { flex: 1; min-height: 0; display: flex; flex-direction: column; }
         .todo-scroll {
-            flex: 1; overflow-y: auto; padding: 0.6rem;
+            flex: 1; min-height: 0; overflow-y: auto; padding: 0.6rem;
             display: flex; flex-direction: column; gap: 0.45rem;
         }
         .todo-row {
@@ -2889,6 +2891,17 @@
                 return normalizeCase(aliasStatus(Object.assign(base, clone(opts.fields || {})), template), template, now);
             }
 
+            /** 외부 목록 사건번호: 10자리 숫자(연도4+번호6)는 'YYYY-NNNNN' 로. 예) 2026011111→2026-11111, 2027001111→2027-01111.
+             *  번호 6자리 첫 자리가 0이 아니면(예: 2026123456) 잘라내지 않고 2026-123456. 그 외 형식은 그대로(앞뒤 공백만 제거) */
+            function formatExternalCaseNumber(value) {
+                const s = String(value === undefined || value === null ? '' : value).trim();
+                const m = s.match(/^(\d{4})(\d{6})$/);
+                if (!m) return s;
+                let num = m[2].replace(/^0+/, '');
+                while (num.length < 5) num = '0' + num;
+                return m[1] + '-' + num;
+            }
+
             /* ---------------- 공유 JSON (version 1) — docs/case-note.md 3절, 형식 변경 금지 ---------------- */
 
             /** 내보내기: scope 'template' = 템플릿만(cases:[]), 'all' = caseIds 로 고른 사건(없으면 전체) */
@@ -2973,7 +2986,7 @@
                 return { db: out, summary: summary };
             }
 
-            return { normalizeDB, normalizeTemplate, normalizeCase, makeCase, encodeVerified, formatNow, toShareJson, applyShareJson };
+            return { normalizeDB, normalizeTemplate, normalizeCase, makeCase, formatExternalCaseNumber, encodeVerified, formatNow, toShareJson, applyShareJson };
         })();
     </script>
 
@@ -6302,7 +6315,8 @@
                 const existingCaseNumbers = new Set(this.cases.map((c) => c.caseNumber));
                 let added = 0, skipped = 0;
                 this.externalImport.rows.forEach((row, idx) => {
-                    const caseNumber = String(row[matchKey] || '').trim();
+                    // 2026011111 → 2026-11111 (DBCore.formatExternalCaseNumber). 중복 검사도 바꾼 번호로
+                    const caseNumber = DBCore.formatExternalCaseNumber(row[matchKey]);
                     if (!caseNumber || existingCaseNumbers.has(caseNumber)) { skipped++; return; }
                     // 매핑된 값만 모은 뒤 DBCore.makeCase 로 정식 사건 생성 (ADR-0001).
                     // 외부 목록 사건은 제목 빈칸·서식 없이 시작(기존 동작 유지), 상태 별칭은 makeCase 가 처리

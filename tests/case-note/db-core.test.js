@@ -139,4 +139,14 @@ ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|https?:\/\//.t
   ok(D.makeCase(tpl, { now: NOW, fields: { status: '종결' } }).status === '종결', 'S5 설정에 있는 상태는 그대로');
 }
 
+// ---- S6: 외부 목록 사건번호 변환(formatExternalCaseNumber)
+{
+  const f = D.formatExternalCaseNumber;
+  ok(f('2026011111') === '2026-11111', 'S6 2026011111 → 2026-11111');
+  ok(f('2027001111') === '2027-01111', 'S6 2027001111 → 2027-01111');
+  ok(f(2026000001) === '2026-00001', 'S6 숫자 타입도 처리');
+  ok(f('2026123456') === '2026-123456', 'S6 번호 6자리 첫 자리가 0이 아니면 자르지 않음');
+  ok(f(' 2026-11111 ') === '2026-11111' && f('abc') === 'abc' && f(null) === '', 'S6 다른 형식은 그대로(공백만 제거)');
+}
+
 finish();
