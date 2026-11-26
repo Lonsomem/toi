@@ -149,4 +149,44 @@ ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|https?:\/\//.t
   ok(f(' 2026-11111 ') === '2026-11111' && f('abc') === 'abc' && f(null) === '', 'S6 다른 형식은 그대로(공백만 제거)');
 }
 
+// ---- S7: 외부 목록 한 건 반영(applyExternalCase) — 새 사건 / 기존 사건 빈 칸만 채움 / 관계인 병합
+{
+  const tpl = D.normalizeTemplate({});
+  ok(D.guessPersonRole('피혐의자', tpl) === 'accused' && D.guessPersonRole('피해자', tpl) === 'complainant'
+     && D.guessPersonRole('진정인', tpl) === 'complainant' && D.guessPersonRole('참고인', tpl) === 'witness', 'S7 구분값 낱말 추측');
+  ok(D.guessPersonRole('피해자', D.normalizeTemplate({ importRoleMap: { 피해자: 'witness' } })) === 'witness', 'S7 저장된 대응표가 우선');
+  ok(same(D.normalizeTemplate({}).importRoleMap, {}), 'S7 importRoleMap 기본값 {}');
+
+  const inc = { fields: { caseNumber: '2026-11111', crimeFact: '범죄사실', reference: 'memo: 메모' },
+    people: [{ role: 'accused', label: '피혐의자', values: { 이름: '불상', 연락처: '010-1', 주민번호: '820101' } },
+             { role: 'accused', label: '피혐의자', values: { 이름: '불상', 연락처: '010-2' } },
+             { role: 'witness', label: '목격자', values: { 이름: '김', 주민번호: '9001' } }] };
+  const r = D.applyExternalCase(tpl, null, clone(inc), { now: NOW });
+  const c = r.case, nameOf = (p, n) => { const f = tpl.personRoleFields[p.role].find(x => x.name === n); return f ? p.fieldValues[f.id] : (p.extraFields.find(x => x.name === n) || {}).value; };
+  const acc = c.people.filter(p => p.role === 'accused');
+  ok(r.isNew && c.caseNumber === '2026-11111' && c.crimeFact === '범죄사실' && c.title === '' && c.forms.length === 0, 'S7 새 사건 + 값 반영');
+  ok(acc.length === 2 && acc[0].slug === '피고소인1' && acc[1].slug === '피고소인2' && acc[0].label === '피혐의자', 'S7 같은 이름(불상) 2명은 따로, 식별자 자동');
+  ok(nameOf(acc[0], '연락처') === '010-1' && nameOf(acc[1], '연락처') === '010-2' && nameOf(acc[0], '주민번호') === '820101', 'S7 한글 필드에 값');
+  const w = c.people.find(p => p.role === 'witness');
+  ok(w && nameOf(w, '주민번호') === '9001' && w.extraFields.some(f => f.name === '주민번호'), 'S7 역할에 없는 필드는 추가 필드로');
+  ok(same(D.normalizeCase(clone(c), tpl, 'x'), c), 'S7 결과는 이미 정규화됨');
+
+  // 기존 사건: 작성된 칸은 유지, 빈 칸만
+  const ex = clone(c); ex.crimeFact = '손으로 쓴 범죄사실'; ex.charge = '';
+  const f1 = tpl.personRoleFields.accused.find(x => x.name === '연락처').id;
+  ex.people.find(p => p.slug === '피고소인1').fieldValues[f1] = '직접입력';
+  ex.people.find(p => p.slug === '피고소인1').fieldValues[tpl.personRoleFields.accused.find(x => x.name === '주소').id] = '';
+  const inc2 = { fields: { caseNumber: '2026-11111', crimeFact: '새 범죄사실', charge: '사기', status: '종결' },
+    people: [{ role: 'accused', label: '피혐의자', values: { 이름: '불상', 연락처: '010-9', 주소: '서울' } },
+             { role: 'complainant', label: '진정인', values: { 이름: '홍길동' } }] };
+  const before = JSON.stringify(ex);
+  const r2 = D.applyExternalCase(tpl, ex, inc2, { now: NOW });
+  const c2 = r2.case, a1 = c2.people.find(p => p.slug === '피고소인1');
+  ok(JSON.stringify(ex) === before, 'S7 입력 객체는 바꾸지 않음');
+  ok(!r2.isNew && c2.crimeFact === '손으로 쓴 범죄사실' && c2.charge === '사기' && c2.status === c.status, 'S7 기존 사건: 작성된 칸 유지, 빈 칸만 채움(상태 유지)');
+  ok(nameOf(a1, '연락처') === '직접입력' && nameOf(a1, '주소') === '서울', 'S7 같은 이름 관계인: 작성된 값 유지, 빈 칸만 채움');
+  const comp = c2.people.find(p => p.role === 'complainant');
+  ok(comp && comp.slug === '고소인1' && comp.subLabel === '진정인' && r2.addedPeople === 1 && r2.filledPeople === 1 && r2.filledFields === 1, 'S7 없는 관계인은 추가(구분값이 하위 분류면 그대로), 건수 반환');
+}
+
 finish();

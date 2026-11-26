@@ -210,9 +210,50 @@ const LEGACY = {
       return { added: app.cases.length - n0, title: c && c.title, status: c && c.status, ref: c && c.reference,
         people: c && c.people.filter(x => x.role === 'case').length, forms: c && c.forms.length, sched: c && Array.isArray(c.schedules) };
     });
-    ok(r2.added === 1 && r2.title === '외부 사건' && r2.ref === 'memo: 메모1', 'N2 외부 목록: 중복·빈 사건번호 건너뛰고 1건 추가, 매핑 값 반영');
+    ok(r2.added === 1 && r2.title === '외부 사건' && r2.ref === 'memo: 메모1', 'N2 외부 목록: 빈 사건번호 건너뛰고 1건 추가(기존 번호는 병합), 매핑 값 반영');
     ok(r2.status === '송치결정' && r2.people === 1 && r2.forms === 0 && r2.sched, `N2 외부 사건 = 정식 모양(별칭 상태 ${r2.status}, 서식 없음 유지)`);
     ok(p.errs.length === 0, 'N JS 오류 없음 ' + p.errs.join(' | '));
+    await p.close();
+  }
+
+  // ---- E: 외부 목록(원본 중첩 JSON 배열) → 실제 파일 입력 → 펼친 경로 매핑·사건번호 변환·사건관계인·기존 사건 빈 칸만 채움
+  {
+    const rec = (rno, sus, people, fact) => ({ rno, rcptCivPvsCd: '진정', susInfo: sus, victInfo: '홍길동', caseMemoCn: '메모',
+      detail: { data: { caseInfoVo: { caseRltnEncn: '사건개요', dclrEncn: fact }, objpnInfoVo: people } } });
+    const P = (trprSe, kornNm, mtelno, enrrn) => ({ trprSe, kornNm, mtelno, enrrn });
+    const file = path.join(TMP, 'ext.json');
+    fs.writeFileSync(file, JSON.stringify([
+      rec('2026011111', '불상', [P('피혐의자', '불상', '010-1234-1234', '8201012222222'), P('피혐의자', '불상', '010-2', ''), P('진정인', '홍길동', '010-3', '')], '범죄사실1'),
+      rec('2026000001', '김', [P('피혐의자', '김철수', '010-9', '')], '새 범죄사실'),
+      rec('', '없음', [], 'x')
+    ]), 'utf8');
+    const p = await open(withEmbedded('e1.html', enc(LEGACY)), () => localStorage.clear());
+    await p.evaluate(() => { app.cases[0].caseNumber = '2026-00001'; app.cases[0].crimeFact = '직접 쓴 범죄사실'; app.openExternalImportModal(); });
+    await p.setInputFiles('#eiFileInput', file);
+    const keys = await p.evaluate(() => ({ keys: app.externalImport.keys, peopleKey: app.externalImport.peopleKey,
+      sub: app.externalImport.peopleSubMap, roles: app.externalImport.roleMap }));
+    ok(keys.keys.includes('detail.data.caseInfoVo.dclrEncn') && keys.peopleKey === 'detail.data.objpnInfoVo', 'E 중첩 경로 펼침 + 사람 목록 자동 연결');
+    ok(keys.sub.trprSe === '구분' && keys.sub.kornNm === '이름' && keys.sub.mtelno === '연락처' && keys.sub.enrrn === '주민번호', 'E 사람 키 → 한글 필드 추측');
+    ok(keys.roles['피혐의자'] === 'accused' && keys.roles['진정인'] === 'complainant', 'E 구분값 → 역할 기본값');
+    await p.evaluate(() => {
+      const setSel = (k, v) => app.updateExternalMapping(k, v);
+      setSel('rno', 'caseNumber'); setSel('detail.data.caseInfoVo.dclrEncn', 'crimeFact'); setSel('caseMemoCn', 'reference');
+    });
+    await p.click('#eiMappingSection button.btn-primary');
+    const r = await p.evaluate(() => {
+      const tpl = app.template, val = (pp, n) => { const f = tpl.personRoleFields[pp.role].find(x => x.name === n); return f ? pp.fieldValues[f.id] : ''; };
+      const c1 = app.cases.find(c => c.caseNumber === '2026-11111'), c0 = app.cases.find(c => c.caseNumber === '2026-00001');
+      const acc = c1.people.filter(x => x.role === 'accused');
+      const form = app.resolveVariables('{{피고소인1.이름}}/{{피고소인1.연락처}}/{{피고소인2.연락처}}/{{고소인1.이름}}', c1);
+      return { n: app.cases.length, c1fact: c1.crimeFact, ref: c1.reference, acc: acc.length, form,
+        c0fact: c0.crimeFact, c0acc: c0.people.filter(x => x.role === 'accused').map(x => val(x, '이름')).join(','),
+        saved: tpl.importRoleMap['피혐의자'], msg: document.getElementById('eiImportMsg').textContent };
+    });
+    ok(r.n === 2 && r.c1fact === '범죄사실1' && r.ref === 'caseMemoCn: 메모' && r.acc === 2, 'E 새 사건(사건번호 변환) + 펼친 경로 값 + 관계인 ' + r.msg);
+    ok(r.form === '불상/010-1234-1234/010-2/홍길동', 'E 서식 변수로 관계인 값 사용: ' + r.form);
+    ok(r.c0fact === '직접 쓴 범죄사실' && r.c0acc === '김철수', 'E 기존 사건: 작성된 칸 유지, 관계인 추가');
+    ok(r.saved === 'accused', 'E 구분값 대응표 템플릿에 저장');
+    ok(p.errs.length === 0, 'E JS 오류 없음 ' + p.errs.join(' | '));
     await p.close();
   }
 

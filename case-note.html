@@ -2569,7 +2569,7 @@
                 <div id="eiMappingSection" class="hidden">
                     <h3 style="font-size: 0.9rem; margin-bottom: 0.3rem; color: var(--primary);">3. 가져올 항목 선택 및 매핑</h3>
                     <p style="font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                        각 키마다 사건 관리 노트의 어느 항목으로 넣을지 고르세요. <b>사건번호</b>는 반드시 하나 지정해야 하며, 이미 같은 사건번호의 사건이 있으면 건너뜁니다.
+                        각 키마다 사건 관리 노트의 어느 항목으로 넣을지 고르세요. 중첩된 값은 <code>detail.data…</code> 처럼 경로로 보입니다. <b>사건번호</b>는 반드시 하나 지정해야 하며(10자리 숫자는 <code>2026-11111</code> 형식으로 바뀜), 이미 같은 사건번호의 사건이 있으면 <b>비어 있는 칸만 채웁니다</b>(이미 작성된 내용은 그대로). 사람 목록은 <b>👥 사건관계인 목록</b>으로 연결하세요.
                     </p>
                     <div id="eiKeyMapContainer" style="display: flex; flex-direction: column; gap: 0.35rem; max-height: 280px; overflow-y: auto; border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 0.5rem;"></div>
                     <div class="row" style="margin-top: 0.6rem;">
@@ -2800,6 +2800,8 @@
                         return x;
                     });
                 t.chargeFactExamples = arr(t.chargeFactExamples).filter(isObj).map(f => withId(f, 'cfx'));
+                // 외부 목록 가져오기: 관계인 구분값(예: '피혐의자') → 역할(complainant/accused/witness/skip) 대응표(8절)
+                if (!isObj(t.importRoleMap)) t.importRoleMap = {};
                 return t;
             }
 
@@ -2889,6 +2891,101 @@
                 };
                 // 외부에서 온 값(fields.status)도 공유 JSON 과 같은 구버전 상태 별칭 규칙
                 return normalizeCase(aliasStatus(Object.assign(base, clone(opts.fields || {})), template), template, now);
+            }
+
+            /* ---------------- 외부 목록 가져오기 (docs/case-note.md 8절) ---------------- */
+
+            /** 관계인 구분값(예: '피혐의자') → 역할. 대응표(template.importRoleMap)에 있으면 그것, 없으면 낱말로 추측 */
+            function guessPersonRole(word, template) {
+                const w = str(word).trim();
+                const map = (template && isObj(template.importRoleMap)) ? template.importRoleMap : {};
+                if (map[w] && (map[w] === 'skip' || (PERSON_ROLES[map[w]] && map[w] !== 'case'))) return map[w];
+                if (/피해/.test(w)) return 'complainant';
+                if (/^피/.test(w)) return 'accused';            // 피의자·피혐의자·피고소인·피진정인·피고발인
+                if (/고소|진정|고발/.test(w)) return 'complainant';
+                return 'witness';
+            }
+
+            /** 관계인의 필드 값(이름으로 찾음): 역할 기본 필드(제외 안 된 것) → 그 사람만의 추가 필드 순 */
+            function personFieldRef(person, template, name) {
+                const removed = person.removedFieldIds || [];
+                const rf = arr(template.personRoleFields[person.role]).find(f => f.name === name && removed.indexOf(f.id) === -1);
+                if (rf) return { get: () => str(person.fieldValues[rf.id] !== undefined ? person.fieldValues[rf.id] : rf.defaultValue),
+                                 set: v => { person.fieldValues[rf.id] = v; } };
+                const ef = person.extraFields.find(f => f.name === name);
+                if (ef) return { get: () => str(ef.value), set: v => { ef.value = v; } };
+                return null;
+            }
+
+            function isBlankPerson(person, template) {
+                if (str(person.label).trim()) return false;
+                if (Object.keys(person.fieldValues).some(k => str(person.fieldValues[k]).trim())) return false;
+                return !person.extraFields.some(f => str(f.value).trim());
+            }
+
+            /** 외부 목록 한 건을 사건에 반영. existing 이 없으면 새 사건(makeCase), 있으면 **비어 있는 칸만** 채움(기존 값 유지).
+             *  incoming = { fields: {caseNumber, title, charge, ...}, people: [{ role, label(원래 구분값), values: {이름, 연락처, ...} }] }
+             *  관계인 병합: 같은 역할·같은 이름 → 그 사람의 빈 칸만 채움 / 없으면 같은 역할의 빈 관계인 / 그래도 없으면 새로 추가.
+             *  한 번 짝지어진 기존 관계인은 같은 건 안에서 다시 쓰지 않음('불상' 여러 명 구분).
+             *  반환 { case, isNew, filledFields, addedPeople, filledPeople } */
+            function applyExternalCase(template, existing, incoming, opts) {
+                opts = opts || {};
+                const now = opts.now || formatNow();
+                const fields = isObj(incoming && incoming.fields) ? incoming.fields : {};
+                const isNew = !existing;
+                let c, filledFields = 0;
+                if (isNew) {
+                    c = makeCase(template, { now: now, fields: Object.assign({ title: '', forms: [] }, fields) });
+                } else {
+                    c = normalizeCase(clone(existing), template, now);
+                    Object.keys(fields).forEach(k => {
+                        if (k === 'caseNumber') return;
+                        const v = str(fields[k]);
+                        if (!v.trim()) return;
+                        if (typeof c[k] === 'string' && c[k].trim()) return;   // 이미 작성된 칸은 건너뜀
+                        if (c[k] !== undefined && typeof c[k] !== 'string') return;
+                        c[k] = v; filledFields++;
+                    });
+                }
+                let addedPeople = 0, filledPeople = 0;
+                const used = [];
+                arr(incoming && incoming.people).filter(isObj).forEach(inp => {
+                    const role = inp.role, roleInfo = PERSON_ROLES[role];
+                    if (!roleInfo || role === 'case') return;
+                    const values = isObj(inp.values) ? inp.values : {};
+                    const name = str(values['이름']).trim();
+                    const free = p => used.indexOf(p.id) === -1 && p.role === role;
+                    let target = name ? c.people.find(p => {
+                        if (!free(p)) return false;
+                        const ref = personFieldRef(p, template, '이름');
+                        return ref && ref.get().trim() === name;
+                    }) : null;
+                    if (!target) target = c.people.find(p => free(p) && isBlankPerson(p, template));
+                    let changed = false, added = false;
+                    if (!target) {
+                        const taken = c.people.map(p => p.slug);
+                        let n = 1;
+                        while (taken.indexOf(roleInfo.label + n) !== -1) n++;
+                        target = normalizePerson(createPersonRecord(role, roleInfo.subLabels[0], roleInfo.label + n), 0);
+                        target.id = uid('person');
+                        c.people.push(target);
+                        addedPeople++; added = true;
+                    }
+                    used.push(target.id);
+                    const label = str(inp.label).trim();
+                    if (label && roleInfo.subLabels.indexOf(label) !== -1 && isBlankPerson(target, template)) target.subLabel = label;
+                    if (label && !str(target.label).trim()) { target.label = label; changed = true; }
+                    Object.keys(values).forEach(fname => {
+                        const v = str(values[fname]);
+                        if (!v.trim()) return;
+                        const ref = personFieldRef(target, template, fname);
+                        if (ref) { if (!ref.get().trim()) { ref.set(v); changed = true; } }
+                        else { target.extraFields.push({ id: uid('pfx'), name: fname, value: v }); changed = true; }
+                    });
+                    if (changed && !added) filledPeople++;
+                });
+                if (!isNew && (filledFields || addedPeople || filledPeople)) c.updatedAt = now;
+                return { case: c, isNew: isNew, filledFields: filledFields, addedPeople: addedPeople, filledPeople: filledPeople };
             }
 
             /** 외부 목록 사건번호: 10자리 숫자(연도4+번호6)는 'YYYY-NNNNN' 로. 예) 2026011111→2026-11111, 2027001111→2027-01111.
@@ -2986,7 +3083,7 @@
                 return { db: out, summary: summary };
             }
 
-            return { normalizeDB, normalizeTemplate, normalizeCase, makeCase, formatExternalCaseNumber, encodeVerified, formatNow, toShareJson, applyShareJson };
+            return { normalizeDB, normalizeTemplate, normalizeCase, makeCase, formatExternalCaseNumber, guessPersonRole, applyExternalCase, encodeVerified, formatNow, toShareJson, applyShareJson };
         })();
     </script>
 
@@ -6224,31 +6321,123 @@
                     return;
                 }
 
-                const keySet = {}; const order = [];
-                const keySamples = {}; const keyHasData = {};
-                found.rows.slice(0, 500).forEach((row) => {
-                    if (!row || typeof row !== 'object') return;
-                    Object.keys(row).forEach((k) => {
-                        if (!keySet[k]) { keySet[k] = true; order.push(k); keySamples[k] = []; }
-                        const v = row[k];
-                        if (v === null || v === undefined) return;
-                        keyHasData[k] = true;
-                        const sVal = (typeof v === 'object') ? JSON.stringify(v) : String(v);
-                        if (keySamples[k].length < 3 && keySamples[k].indexOf(sVal) === -1) keySamples[k].push(sVal);
-                    });
-                });
-
+                const scan = this.eiScanRows(found.rows);
                 this.externalImport = {
-                    rows: found.rows, keys: order, mapping: {},
-                    keySamples: keySamples, keyHasData: keyHasData, showEmptyKeys: false
+                    rows: found.rows, keys: scan.order, mapping: {},
+                    keySamples: scan.keySamples, keyHasData: scan.keyHasData, keyKinds: scan.keyKinds, showEmptyKeys: false,
+                    peopleKey: '', peopleSubKeys: [], peopleSubSamples: {}, peopleSubMap: {}, roleValues: [], roleMap: {}
                 };
-                order.forEach((k) => { this.externalImport.mapping[k] = 'skip'; });
+                scan.order.forEach((k) => { this.externalImport.mapping[k] = 'skip'; });
+                // 객체 배열(사람 목록 후보)이 하나뿐이면 자동으로 사건관계인 목록에 연결 (사용자가 바꿀 수 있음)
+                const listKeys = scan.order.filter((k) => scan.keyKinds[k] === 'list');
+                if (listKeys.length === 1) this.updateExternalMapping(listKeys[0], 'people', true);
                 this.renderExternalKeyMap();
                 document.getElementById('eiMappingSection').classList.remove('hidden');
                 this.eiShowMsg('eiLoadMsg', pathFailMsg + '가져오기 성공: ' + found.pathLabel + '에서 ' + found.rows.length + '건 발견', pathFailMsg ? 'warn' : 'ok');
             },
 
+            /** 한 건(객체)을 재귀로 펼침: 중첩 객체는 'a.b.c' 경로, 객체 배열은 'list'(사람 목록 후보), 값 배열은 쉼표로 합침 */
+            eiFlattenRow(row) {
+                const out = {};
+                (function walk(node, segs, depth) {
+                    if (node && typeof node === 'object' && !Array.isArray(node) && depth < 8) {
+                        Object.keys(node).forEach((k) => walk(node[k], segs.concat([k]), depth + 1));
+                        return;
+                    }
+                    if (!segs.length) return;
+                    const key = segs.join('.');
+                    if (Array.isArray(node) && node.some((x) => x && typeof x === 'object')) {
+                        out[key] = { kind: 'list', value: node.filter((x) => x && typeof x === 'object' && !Array.isArray(x)) };
+                    } else if (Array.isArray(node)) {
+                        out[key] = { kind: 'value', value: node.filter((x) => x !== null && x !== undefined).join(', ') };
+                    } else {
+                        out[key] = { kind: 'value', value: (node && typeof node === 'object') ? JSON.stringify(node) : node };
+                    }
+                })(row, [], 0);
+                return out;
+            },
+
+            /** 처음 500건에서 키(경로)·종류·서로 다른 샘플 값 최대 3개·값 존재 여부를 모음 */
+            eiScanRows(rows) {
+                const order = [], keySamples = {}, keyHasData = {}, keyKinds = {};
+                rows.slice(0, 500).forEach((row) => {
+                    if (!row || typeof row !== 'object') return;
+                    const flat = this.eiFlattenRow(row);
+                    Object.keys(flat).forEach((k) => {
+                        if (!keySamples[k]) { order.push(k); keySamples[k] = []; keyKinds[k] = 'value'; }
+                        const cell = flat[k];
+                        if (cell.kind === 'list') {
+                            keyKinds[k] = 'list';
+                            if (!cell.value.length) return;
+                            keyHasData[k] = true;
+                            const sVal = cell.value.length + '건 목록 (' + Object.keys(cell.value[0]).join(', ') + ')';
+                            if (keySamples[k].length < 1) keySamples[k].push(sVal);
+                            return;
+                        }
+                        const v = cell.value;
+                        if (v === null || v === undefined || v === '') return;
+                        keyHasData[k] = true;
+                        const sVal = String(v);
+                        if (keySamples[k].length < 3 && keySamples[k].indexOf(sVal) === -1) keySamples[k].push(sVal);
+                    });
+                });
+                return { order: order, keySamples: keySamples, keyHasData: keyHasData, keyKinds: keyKinds };
+            },
+
+            /** 사람 목록(peopleKey)의 각 사람을 펼친 값들. rows 전체 대상 */
+            eiPeopleOf(row) {
+                const ei = this.externalImport;
+                if (!ei.peopleKey || !row || typeof row !== 'object') return [];
+                const cell = this.eiFlattenRow(row)[ei.peopleKey];
+                if (!cell || cell.kind !== 'list') return [];
+                return cell.value.map((person) => {
+                    const flat = this.eiFlattenRow(person), vals = {};
+                    Object.keys(flat).forEach((k) => { if (flat[k].kind === 'value') vals[k] = flat[k].value; });
+                    return vals;
+                });
+            },
+
+            /** 관계인 필드로 고를 수 있는 이름: 고소인·피고소인·참고인 기본 필드 이름 합집합(템플릿 설정 기준) */
+            eiPersonFieldNames() {
+                const names = [];
+                ['complainant', 'accused', 'witness'].forEach((role) => {
+                    ((this.template.personRoleFields || {})[role] || []).forEach((f) => { if (names.indexOf(f.name) === -1) names.push(f.name); });
+                });
+                return names;
+            },
+
+            /** 사람 목록 키 이름으로 관계인 필드 추측(사용자가 바꿀 수 있음) */
+            eiGuessPersonSubKey(subKey, taken) {
+                const leaf = subKey.split('.').pop();
+                const rules = [
+                    ['구분', /trprSe|^type$|구분/i],
+                    ['이름', /kornNm|^name$|성명|이름/i],
+                    ['연락처', /mtelno|telno|^tel$|phone|연락처|전화/i],
+                    ['주민번호', /enrrn|rrn|pplno|jumin|주민/i],
+                    ['주소', /addr|주소/i]
+                ];
+                const names = this.eiPersonFieldNames().concat(['구분']);
+                for (let i = 0; i < rules.length; i++) {
+                    if (rules[i][1].test(leaf) && names.indexOf(rules[i][0]) !== -1 && !taken[rules[i][0]]) return rules[i][0];
+                }
+                return 'skip';
+            },
+
+            /** 구분 키 값의 서로 다른 값 목록 + 역할 기본값(대응표 → 낱말 추측) 다시 계산 */
+            eiRefreshRoleValues() {
+                const ei = this.externalImport;
+                const roleKey = Object.keys(ei.peopleSubMap).find((k) => ei.peopleSubMap[k] === '구분');
+                const seen = [];
+                ei.rows.forEach((row) => this.eiPeopleOf(row).forEach((vals) => {
+                    const w = roleKey ? String(vals[roleKey] === undefined || vals[roleKey] === null ? '' : vals[roleKey]).trim() : '';
+                    if (seen.indexOf(w) === -1) seen.push(w);
+                }));
+                ei.roleValues = seen;
+                seen.forEach((w) => { if (!ei.roleMap[w]) ei.roleMap[w] = DBCore.guessPersonRole(w, this.template); });
+            },
+
             renderExternalKeyMap() {
+                const ei = this.externalImport;
                 const box = document.getElementById('eiKeyMapContainer');
                 const fieldOptions = [
                     ['skip', '사용 안 함'],
@@ -6256,21 +6445,32 @@
                     ['createdAt', '접수일자'],
                     ['title', '제목'],
                     ['charge', '죄명'],
+                    ['crimeFact', '범죄사실'],
                     ['status', '상태'],
                     ['overview', '사건개요'],
                     ['reference', '참고사항 (피의자·피해자·접수단서 등)'],
                     ['remarks', '비고']
                 ];
-                const allKeys = this.externalImport.keys;
-                const emptyKeys = allKeys.filter((k) => !this.externalImport.keyHasData[k]);
-                const visibleKeys = this.externalImport.showEmptyKeys ? allKeys : allKeys.filter((k) => this.externalImport.keyHasData[k]);
+                const listOptions = [['skip', '사용 안 함'], ['people', '👥 사건관계인 목록']];
+                const allKeys = ei.keys;
+                const emptyKeys = allKeys.filter((k) => !ei.keyHasData[k]);
+                const visibleKeys = ei.showEmptyKeys ? allKeys : allKeys.filter((k) => ei.keyHasData[k]);
+                const jsArg = (k) => this.escapeAttr(k).replace(/'/g, "\\'");
+                const selectHtml = (opts, cur, onchange) => `<select onchange="${onchange}">${opts.map(([val, label]) =>
+                    `<option value="${this.escapeAttr(val)}" ${cur === val ? 'selected' : ''}>${this.escapeHtml(label)}</option>`).join('')}</select>`;
+                const rowHtml = (name, sample, sel, indent) => `
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; padding:0.3rem 0.2rem; ${indent ? 'padding-left:1.4rem;' : ''}">
+                        <b style="min-width:140px; max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${this.escapeAttr(name)}">${this.escapeHtml(name)}</b>
+                        <span style="flex:1; color:var(--text-secondary); font-size:0.76rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${this.escapeAttr(sample)}">${this.escapeHtml(sample.slice(0, 60))}</span>
+                        ${sel}
+                    </div>`;
 
                 let html = '';
                 if (emptyKeys.length) {
                     html += `
                         <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.74rem; color:var(--text-muted); padding:0.3rem 0.2rem; border-bottom:1px dashed var(--border-light); margin-bottom:0.3rem;">
                             <span>값이 비어있는(null) 키 ${emptyKeys.length}개는 숨겼습니다.</span>
-                            <button type="button" class="btn btn-ghost btn-sm" onclick="app.toggleExternalEmptyKeys()">${this.externalImport.showEmptyKeys ? '숨기기' : '모두 보기'}</button>
+                            <button type="button" class="btn btn-ghost btn-sm" onclick="app.toggleExternalEmptyKeys()">${ei.showEmptyKeys ? '숨기기' : '모두 보기'}</button>
                         </div>
                     `;
                 }
@@ -6279,18 +6479,24 @@
                     html += `<div style="color:var(--text-muted); font-size:0.8rem; padding:0.4rem;">표시할 키가 없습니다.</div>`;
                 } else {
                     html += visibleKeys.map((k) => {
-                        const samples = this.externalImport.keySamples[k] || [];
+                        const samples = ei.keySamples[k] || [];
                         const sample = samples.length ? samples.join(' / ') : '(값 없음)';
-                        const options = fieldOptions.map(([val, label]) =>
-                            `<option value="${val}" ${this.externalImport.mapping[k] === val ? 'selected' : ''}>${label}</option>`
-                        ).join('');
-                        return `
-                            <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; padding:0.3rem 0.2rem;">
-                                <b style="min-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${this.escapeAttr(k)}">${this.escapeHtml(k)}</b>
-                                <span style="flex:1; color:var(--text-secondary); font-size:0.76rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${this.escapeAttr(sample)}">${this.escapeHtml(sample.slice(0, 60))}</span>
-                                <select onchange="app.updateExternalMapping('${this.escapeAttr(k).replace(/'/g, "\\'")}', this.value)">${options}</select>
-                            </div>
-                        `;
+                        const isList = ei.keyKinds[k] === 'list';
+                        let out = rowHtml(k, sample, selectHtml(isList ? listOptions : fieldOptions, ei.mapping[k] || 'skip', `app.updateExternalMapping('${jsArg(k)}', this.value)`));
+                        if (isList && ei.peopleKey === k) {
+                            // 사람 목록 안의 키 → 관계인 필드
+                            const subOpts = [['skip', '사용 안 함'], ['구분', '구분 (역할 판단용)']].concat(this.eiPersonFieldNames().map((n) => [n, n]));
+                            out += `<div style="margin:0 0 0.4rem 0.6rem; border-left:3px solid var(--primary); padding-left:0.3rem;">
+                                <div style="font-size:0.74rem; color:var(--text-secondary); padding:0.2rem 0.2rem 0 1.4rem;">사람 목록의 각 항목 → 사건관계인 필드 (서식에서 <code>{{피고소인1.이름}}</code> 처럼 사용)</div>`;
+                            out += ei.peopleSubKeys.map((sk) => rowHtml(sk, (ei.peopleSubSamples[sk] || []).join(' / ') || '(값 없음)',
+                                selectHtml(subOpts, ei.peopleSubMap[sk] || 'skip', `app.updateExternalPeopleSubMap('${jsArg(sk)}', this.value)`), true)).join('');
+                            // 구분값 → 역할 대응표
+                            const roleOpts = [['complainant', '고소인 (고소인·진정인·고발인)'], ['accused', '피고소인 (피고소인·피진정인)'], ['witness', '참고인'], ['skip', '가져오지 않음']];
+                            out += `<div style="font-size:0.74rem; color:var(--text-secondary); padding:0.4rem 0.2rem 0 1.4rem;">구분값 → 관계인 분류 (가져올 때 저장되어 다음에도 그대로 쓰임)</div>`;
+                            out += ei.roleValues.map((w) => rowHtml(w || '(구분 없음)', '', selectHtml(roleOpts, ei.roleMap[w], `app.updateExternalRoleMap('${jsArg(w)}', this.value)`), true)).join('');
+                            out += `</div>`;
+                        }
+                        return out;
                     }).join('');
                 }
                 box.innerHTML = html;
@@ -6301,52 +6507,122 @@
                 this.renderExternalKeyMap();
             },
 
-            updateExternalMapping(key, value) {
-                this.externalImport.mapping[key] = value;
+            updateExternalMapping(key, value, skipRender) {
+                const ei = this.externalImport;
+                if (value === 'people') {
+                    // 사건관계인 목록은 하나만: 다른 키에서 해제
+                    Object.keys(ei.mapping).forEach((k) => { if (ei.mapping[k] === 'people') ei.mapping[k] = 'skip'; });
+                    ei.peopleKey = key;
+                    const subKeys = [], samples = {};
+                    ei.rows.slice(0, 500).forEach((row) => this.eiPeopleOf(row).forEach((vals) => {
+                        Object.keys(vals).forEach((sk) => {
+                            if (!samples[sk]) { subKeys.push(sk); samples[sk] = []; }
+                            const v = vals[sk];
+                            if (v === null || v === undefined || v === '') return;
+                            if (samples[sk].length < 3 && samples[sk].indexOf(String(v)) === -1) samples[sk].push(String(v));
+                        });
+                    }));
+                    ei.peopleSubKeys = subKeys; ei.peopleSubSamples = samples; ei.peopleSubMap = {};
+                    const taken = {};
+                    subKeys.forEach((sk) => {
+                        const g = this.eiGuessPersonSubKey(sk, taken);
+                        ei.peopleSubMap[sk] = g;
+                        if (g !== 'skip') taken[g] = true;
+                    });
+                    ei.roleMap = {};
+                    this.eiRefreshRoleValues();
+                } else if (ei.peopleKey === key) {
+                    ei.peopleKey = '';
+                }
+                ei.mapping[key] = value;
+                if (!skipRender) this.renderExternalKeyMap();
+            },
+
+            updateExternalPeopleSubMap(subKey, value) {
+                const ei = this.externalImport;
+                if (value === '구분') Object.keys(ei.peopleSubMap).forEach((k) => { if (ei.peopleSubMap[k] === '구분') ei.peopleSubMap[k] = 'skip'; });
+                ei.peopleSubMap[subKey] = value;
+                this.eiRefreshRoleValues();
+                this.renderExternalKeyMap();
+            },
+
+            updateExternalRoleMap(word, role) {
+                this.externalImport.roleMap[word] = role;
             },
 
             importExternalCases() {
-                const mapping = this.externalImport.mapping;
+                const ei = this.externalImport;
+                const mapping = ei.mapping;
                 const matchKey = Object.keys(mapping).find((k) => mapping[k] === 'caseNumber');
                 if (!matchKey) {
                     this.eiShowMsg('eiImportMsg', '"사건번호"로 매핑할 키를 1개 지정하세요.', 'warn');
                     return;
                 }
-                const existingCaseNumbers = new Set(this.cases.map((c) => c.caseNumber));
-                let added = 0, skipped = 0;
-                this.externalImport.rows.forEach((row, idx) => {
-                    // 2026011111 → 2026-11111 (DBCore.formatExternalCaseNumber). 중복 검사도 바꾼 번호로
-                    const caseNumber = DBCore.formatExternalCaseNumber(row[matchKey]);
-                    if (!caseNumber || existingCaseNumbers.has(caseNumber)) { skipped++; return; }
-                    // 매핑된 값만 모은 뒤 DBCore.makeCase 로 정식 사건 생성 (ADR-0001).
-                    // 외부 목록 사건은 제목 빈칸·서식 없이 시작(기존 동작 유지), 상태 별칭은 makeCase 가 처리
-                    const fields = { caseNumber: caseNumber, title: '', forms: [] };
+                // 구분값 → 역할 대응표는 템플릿에 저장해 다음 가져오기에도 사용 (빈 구분값은 저장 안 함)
+                const roleMap = ei.roleMap || {};
+                Object.keys(roleMap).forEach((w) => { if (w) this.template.importRoleMap[w] = roleMap[w]; });
+                const roleKey = Object.keys(ei.peopleSubMap || {}).find((k) => ei.peopleSubMap[k] === '구분');
+
+                const indexByNumber = {};
+                this.cases.forEach((c, i) => { if (c.caseNumber && indexByNumber[c.caseNumber] === undefined) indexByNumber[c.caseNumber] = c.id; });
+                let added = 0, merged = 0, unchanged = 0, skipped = 0, peopleAdded = 0;
+                const now = this.getFormattedNow();
+                ei.rows.forEach((row) => {
+                    if (!row || typeof row !== 'object') { skipped++; return; }
+                    const flat = this.eiFlattenRow(row);
+                    const cellVal = (k) => (flat[k] && flat[k].kind === 'value') ? flat[k].value : undefined;
+                    // 2026011111 → 2026-11111 (DBCore.formatExternalCaseNumber). 기존 사건 찾기도 바꾼 번호로
+                    const caseNumber = DBCore.formatExternalCaseNumber(cellVal(matchKey));
+                    if (!caseNumber) { skipped++; return; }
+                    // 매핑된 값만 모아서 DBCore.applyExternalCase 로 반영 (ADR-0001)
+                    const fields = { caseNumber: caseNumber };
                     const freeTextFields = { overview: true, reference: true, remarks: true };
                     Object.keys(mapping).forEach((k) => {
                         const target = mapping[k];
-                        if (!target || target === 'skip' || target === 'caseNumber') return;
-                        const val = row[k];
+                        if (!target || target === 'skip' || target === 'caseNumber' || target === 'people') return;
+                        const val = cellVal(k);
                         const strVal = (val === undefined || val === null) ? '' : String(val);
                         if (!strVal) return;
-                        if (target === 'status') {
-                            fields.status = strVal;
-                        } else if (freeTextFields[target]) {
-                            // 여러 키를 같은 항목(참고사항 등)에 매핑하면 덮어쓰지 않고 줄바꿈으로 이어붙임
-                            const line = k + ': ' + strVal;
+                        if (freeTextFields[target]) {
+                            // 여러 키를 같은 항목(참고사항 등)에 매핑하면 덮어쓰지 않고 줄바꿈으로 이어붙임 ("키 마지막 이름: 값")
+                            const line = k.split('.').pop() + ': ' + strVal;
                             fields[target] = fields[target] ? (fields[target] + '\n' + line) : line;
                         } else {
                             fields[target] = strVal;
                         }
                     });
-                    const newCase = DBCore.makeCase(this.template, { now: this.getFormattedNow(), fields: fields });
-                    this.cases.unshift(newCase);
-                    existingCaseNumbers.add(caseNumber);
-                    added++;
+                    const people = [];
+                    this.eiPeopleOf(row).forEach((vals) => {
+                        const w = roleKey ? String(vals[roleKey] === undefined || vals[roleKey] === null ? '' : vals[roleKey]).trim() : '';
+                        const role = roleMap[w] || DBCore.guessPersonRole(w, this.template);
+                        if (role === 'skip') return;
+                        const values = {};
+                        Object.keys(ei.peopleSubMap).forEach((sk) => {
+                            const f = ei.peopleSubMap[sk];
+                            if (!f || f === 'skip' || f === '구분') return;
+                            const v = vals[sk];
+                            if (v !== undefined && v !== null && String(v) !== '') values[f] = String(v);
+                        });
+                        people.push({ role: role, label: w, values: values });
+                    });
+                    const existingId = indexByNumber[caseNumber];
+                    const idx = existingId ? this.cases.findIndex((c) => c.id === existingId) : -1;
+                    const res = DBCore.applyExternalCase(this.template, idx >= 0 ? this.cases[idx] : null, { fields: fields, people: people }, { now: now });
+                    peopleAdded += res.addedPeople;
+                    if (res.isNew) {
+                        this.cases.unshift(res.case);
+                        indexByNumber[caseNumber] = res.case.id;
+                        added++;
+                    } else {
+                        this.cases[idx] = res.case;
+                        if (res.filledFields || res.addedPeople || res.filledPeople) merged++; else unchanged++;
+                    }
                 });
                 this.onStateChanged();
                 this.renderCaseList();
-                this.eiShowMsg('eiImportMsg', `완료: ${added}건 추가, ${skipped}건 건너뜀(중복 사건번호 또는 빈 값)`, 'ok');
-                this.showToast(`외부 사건목록에서 ${added}건을 새 사건으로 추가했습니다.`);
+                const msg = `완료: 새 사건 ${added}건, 기존 사건 빈 칸 채움 ${merged}건, 변경 없음 ${unchanged}건, 건너뜀 ${skipped}건(사건번호 없음) · 관계인 ${peopleAdded}명 추가`;
+                this.eiShowMsg('eiImportMsg', msg, 'ok');
+                this.showToast(`외부 사건목록: 새 사건 ${added}건, 기존 사건 ${merged}건 보완`);
             },
 
             renderExportCaseList() {
