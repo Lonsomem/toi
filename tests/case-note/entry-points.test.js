@@ -219,8 +219,8 @@ const LEGACY = {
   // ---- E: 외부 목록(원본 중첩 JSON 배열) → 실제 파일 입력 → 펼친 경로 매핑·사건번호 변환·사건관계인·기존 사건 빈 칸만 채움
   {
     const rec = (rno, sus, people, fact) => ({ rno, rcptCivPvsCd: '진정', susInfo: sus, victInfo: '홍길동', caseMemoCn: '메모',
-      etcNoise: 'x', detail: { data: { caseInfoVo: { caseRltnEncn: '사건개요', dclrEncn: fact, rcptCrmeName: '사기', otherCd: 'y' }, objpnInfoVo: people } } });
-    const P = (trprSe, kornNm, mtelno, enrrn) => ({ trprSe, kornNm, mtelno, enrrn });
+      etcNoise: 'x', detail: { data: { caseInfoVo: { caseRltnEncn: fact, dclrEncn: '사건개요', rcptCrmeName: '사기', otherCd: 'y' }, objpnInfoVo: people } } });
+    const P = (trprSe, kornNm, mtelno, enrrn) => ({ trprSe, kornNm, mtelno, enrrn, addr: '서울 어딘가', psnNoise: 'z' });
     const file = path.join(TMP, 'ext.json');
     fs.writeFileSync(file, JSON.stringify([
       rec('2026011111', '불상', [P('피혐의자', '불상', '010-1234-1234', '8201012222222'), P('피혐의자', '불상', '010-2', ''), P('진정인', '홍길동', '010-3', '')], '범죄사실1'),
@@ -234,10 +234,14 @@ const LEGACY = {
       sub: app.externalImport.peopleSubMap, roles: app.externalImport.roleMap, map: app.externalImport.mapping,
       shown: Array.from(document.querySelectorAll('#eiKeyMapContainer b')).map(b => b.textContent) }));
     ok(keys.map.rno === 'caseNumber' && keys.map.rcptCivPvsCd === 'titleClue' && keys.map['detail.data.caseInfoVo.rcptCrmeName'] === 'charge'
-       && keys.map['detail.data.caseInfoVo.dclrEncn'] === 'crimeFact' && keys.map.caseMemoCn === 'reference' && keys.map.etcNoise === 'skip', 'E 기본 매핑 자동 선택');
+       && keys.map['detail.data.caseInfoVo.caseRltnEncn'] === 'crimeFact' && keys.map['detail.data.caseInfoVo.dclrEncn'] === 'reference' && keys.map.caseMemoCn === 'reference' && keys.map.etcNoise === 'skip', 'E 기본 매핑 자동 선택');
     ok(keys.shown.indexOf('rno') !== -1 && keys.shown.indexOf('etcNoise') === -1 && keys.shown.indexOf('detail.data.caseInfoVo.otherCd') === -1, 'E 기본 매핑에 없는 키는 숨김');
     ok(keys.keys.includes('detail.data.caseInfoVo.dclrEncn') && keys.peopleKey === 'detail.data.objpnInfoVo', 'E 중첩 경로 펼침 + 사람 목록 자동 연결');
-    ok(keys.sub.trprSe === '구분' && keys.sub.kornNm === '이름' && keys.sub.mtelno === '연락처' && keys.sub.enrrn === '주민번호', 'E 사람 키 → 한글 필드 추측');
+    ok(keys.sub.trprSe === '구분' && keys.sub.kornNm === '이름' && keys.sub.mtelno === '연락처' && keys.sub.enrrn === '주민번호'
+       && keys.sub.addr === 'skip' && keys.sub.psnNoise === 'skip', 'E 사람 키 기본 매핑 4개, 나머지 사용 안 함');
+    ok(keys.shown.indexOf('kornNm') !== -1 && keys.shown.indexOf('addr') === -1 && keys.shown.indexOf('psnNoise') === -1, 'E 기본 매핑에 없는 사람 키는 숨김');
+    const shownAll = await p.evaluate(() => { app.toggleExternalPeopleKeys(); const r = Array.from(document.querySelectorAll('#eiKeyMapContainer b')).map(b => b.textContent); app.toggleExternalPeopleKeys(); return r; });
+    ok(shownAll.indexOf('addr') !== -1 && shownAll.indexOf('psnNoise') !== -1, 'E 사람 키 [모두 보기]');
     ok(keys.roles['피혐의자'] === 'accused' && keys.roles['진정인'] === 'complainant', 'E 구분값 → 역할 기본값');
     await p.evaluate(() => {
       const setSel = (k, v) => app.updateExternalMapping(k, v);

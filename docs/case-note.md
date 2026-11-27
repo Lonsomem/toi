@@ -98,13 +98,19 @@ ddayTrackers = [{id,title,date}]             // 최상위 DB 필드. 메인 화�
    - 결과 안내: 새 사건 / 기존 사건 빈 칸 채움 / 변경 없음 / 건너뜀(사건번호 없음) / 추가된 관계인 수.
    - 테스트: `db-core.test.js` S6·S7, `entry-points.test.js` E(실제 파일 입력으로 원본 모양 배열 → 경로 매핑·사건번호 변환·관계인·서식 변수·기존 사건 병합·대응표 저장). **검증 안 됨**: 사용자의 실제 내부 시스템 JSON 전체 키(사용자가 준 예시 구조로만 확인).
 7. **기본 매핑 자동 선택 + 나머지 키 숨김 + 매핑 기억** (2026-11-27, 사용자 요청: "키값이 너무 많아서 내가 분류해야 함 → 쓰던 것만 자동으로"):
-   - 기본 매핑(`DBCore` 의 `EXTERNAL_DEFAULT_MAPPING`, 사용자가 지정): `rno`→사건번호 / `rcptCivPvsCd`·`susInfo`·`victInfo`→제목 조각(접수단서·피의자·피해자) / `detail.data.caseInfoVo.rcptCrmeName`→죄명 / `…dclrEncn`→범죄사실 / `…caseRltnEncn` + `caseMemoCn`→참고사항(이 순서, 빈 줄 구분) / `detail.data.objpnInfoVo`→사건관계인.
+   - 기본 매핑(`DBCore` 의 `EXTERNAL_DEFAULT_MAPPING`, 사용자가 지정): `rno`→사건번호 / `rcptCivPvsCd`·`susInfo`·`victInfo`→제목 조각(접수단서·피의자·피해자) / `detail.data.caseInfoVo.rcptCrmeName`→죄명 / `…caseRltnEncn`→범죄사실 / `…dclrEncn`(사건개요) + `caseMemoCn`→참고사항(이 순서, 빈 줄 구분) — 8에서 정정 / `detail.data.objpnInfoVo`→사건관계인.
    - **제목** = `[접수단서] 죄명 - 피의자 / 피해자` (`DBCore.composeExternalTitle`). 값이 null·없음·빈 문자열이면 **제목 안에서만** `불상`. 죄명·범죄사실·참고사항 칸 자체엔 '불상'을 넣지 않음 — 넣으면 빈 칸이 아니게 돼서 나중에 진짜 값이 와도 "빈 칸만 채움" 규칙에 막힘(사용자 동의). 매핑 드롭다운에 '제목 조각 ①②③'과 '제목 (값 그대로)'가 따로 있음.
-   - 사건개요 칸은 상세 화면에 입력칸이 없어서(캘린더로 대체) `caseRltnEncn` 은 참고사항으로 보냄.
+   - 사건개요 칸은 상세 화면에 입력칸이 없어서(캘린더로 대체) 사건개요(`dclrEncn`)는 참고사항으로 보냄.
    - **화면**: 파일을 읽으면 기본/기억한 매핑으로 미리 선택(`DBCore.externalMappingFor`), 자동 매핑된 키만 보이고 나머지는 "N개 숨김 [모두 보기]". 사건번호 키를 못 찾으면 예전처럼 값 있는 키를 다 보여줌. 기본/기억한 키 중 파일에 없는 키는 안내 문구로만 표시하고 건너뜀.
    - **기억**: 가져오기 실행 시 `DBCore.rememberExternalMapping` — 기본 매핑과 다른 것만 `template.importMapping`(기본으로 되돌리면 지움), 사람 키 매핑은 `template.importPeopleMap` 에 통째로. 다음 파일에서 기억 → 기본 → 사용 안 함 순으로 적용. 둘 다 선택 속성(기본 `{}`).
    - 이미 있는 사건은 기존 규칙대로 **빈 칸만** 채움(제목에 값이 있으면 제목 유지).
    - 테스트: `db-core.test.js` S8, `entry-points.test.js` E(기본 매핑 자동 선택·숨김·제목 조합·기억). **검증 안 됨**: 사용자의 실제 파일(키 이름은 사용자가 말해준 대로).
+8. **매핑 정정 + 사람 키 기본 매핑** (2026-11-27, 사용자 확인):
+   - 실제 의미는 `caseRltnEncn` = **범죄사실**, `dclrEncn` = **사건개요**(7의 설명은 반대였음). 사건개요 칸은 화면에 없으므로 `dclrEncn` 은 **참고사항 맨 앞**(→ 빈 줄 → `caseMemoCn`). `EXTERNAL_DEFAULT_MAPPING` 순서도 그에 맞춤.
+   - 이미 예전 매핑으로 가져온 사건을 바로잡는 기능은 **만들지 않음**(사용자 결정 — 필요하면 그 사건을 지우고 다시 가져옴. 빈 칸만 채우는 병합이라 재가져오기로는 안 고쳐짐).
+   - 사람 목록(`objpnInfoVo`) 키 기본 매핑 `DBCore.EXTERNAL_DEFAULT_PEOPLE_MAP`: `trprSe`→구분, `kornNm`→이름, `mtelno`→연락처, `enrrn`→주민번호. **나머지 사람 키는 '사용 안 함' + 숨김**(사람 목록 아래 "N개 숨김 [모두 보기]", `toggleExternalPeopleKeys`). 키 이름 추측(`eiGuessPersonSubKey`)은 삭제.
+   - 저장 필드명은 한글 유지(서식 변수 `{{피고소인1.이름}}` 그대로). `importPeopleMap` 도 이제 **기본과 다른 것만** 기억(`DBCore.externalPeopleDefault`). 예전 버전이 통째로 저장한 값(예: 주소 추측)은 그대로 남으므로, 원치 않는 사람 키가 보이면 한 번 '사용 안 함'으로 바꿔 가져오면 됨.
+   - 테스트: `db-core.test.js` S8, `entry-points.test.js` E(사람 키 4개만 매핑·나머지 숨김·모두 보기).
 
 - 검증: Playwright로 중첩 경로 자동탐지·수동 지정, 필드 매핑, 상태 정규화, 중복 사건번호 스킵, 템플릿 체크리스트·사건공통 관계인 자동 적용, quine 저장 함수 정상 동작, **null뿐인 키 숨김/모두 보기 토글, 다중 값 샘플 표시, 여러 키의 참고사항 합산(덮어쓰지 않음), 접수일자→createdAt 매핑**까지 확인(22건). **검증 안 됨**: 사용자의 실제 내부 시스템 JSON 스키마.
 - 참고: 동일한 URL-fetch/CORS 우회/키 선별/콘솔 스크립트 개념은 독립 파일 `case-import.html`(및 `json-viewer.html`)에도 있음 — 그쪽은 이 모달과 무관하게 더 많은 옵션(URL 직접 fetch, 클립보드 자동 붙여넣기, 사건별 상세조회, 정규식 값 변환)을 가진 범용 도구로 유지됨. 지금 사용자가 원한 건 사건 관리 노트에 바로 통합된 가장 단순한 버전.

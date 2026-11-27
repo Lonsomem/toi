@@ -199,15 +199,15 @@ ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|https?:\/\//.t
   const init = D.externalMappingFor(keys, kinds, tpl);
   ok(init.mapping.rno === 'caseNumber' && init.mapping.rcptCivPvsCd === 'titleClue' && init.mapping.susInfo === 'titleSuspect'
      && init.mapping.victInfo === 'titleVictim' && init.mapping['detail.data.caseInfoVo.rcptCrmeName'] === 'charge'
-     && init.mapping['detail.data.caseInfoVo.dclrEncn'] === 'crimeFact' && init.mapping.caseMemoCn === 'reference'
-     && init.mapping['detail.data.caseInfoVo.caseRltnEncn'] === 'reference' && init.mapping['detail.data.objpnInfoVo'] === 'people'
+     && init.mapping['detail.data.caseInfoVo.caseRltnEncn'] === 'crimeFact' && init.mapping.caseMemoCn === 'reference'
+     && init.mapping['detail.data.caseInfoVo.dclrEncn'] === 'reference' && init.mapping['detail.data.objpnInfoVo'] === 'people'
      && init.mapping.etcCd === 'skip', 'S8 기본 매핑');
   ok(init.missing.length === 0, 'S8 빠진 키 없음');
   ok(same(D.externalMappingFor(['rno', 'caseMemoCn'], {}, tpl).missing.length, 7), 'S8 파일에 없는 기본 키 목록');
   ok(D.externalMappingFor(['detail.data.objpnInfoVo'], {}, tpl).mapping['detail.data.objpnInfoVo'] === 'skip', 'S8 값 키에는 사람 목록 매핑 안 함');
 
   const row = { rno: '2026011111', rcptCivPvsCd: '진정', susInfo: null, victInfo: '홍길동', caseMemoCn: '메모',
-    'detail.data.caseInfoVo.caseRltnEncn': '사건개요', 'detail.data.caseInfoVo.dclrEncn': '범죄사실', 'detail.data.caseInfoVo.rcptCrmeName': '사기' };
+    'detail.data.caseInfoVo.caseRltnEncn': '범죄사실', 'detail.data.caseInfoVo.dclrEncn': '사건개요', 'detail.data.caseInfoVo.rcptCrmeName': '사기' };
   const f = D.buildExternalFields(init.mapping, k => row[k]);
   ok(f.title === '[진정] 사기 - 불상 / 홍길동', 'S8 제목 조합, null 은 불상: ' + f.title);
   ok(f.charge === '사기' && f.crimeFact === '범죄사실' && f.reference === '사건개요\n\n메모' && f.caseNumber === undefined, 'S8 죄명·범죄사실·참고사항(사건개요→빈 줄→메모, 키 이름 없음)');
@@ -217,13 +217,15 @@ ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|https?:\/\//.t
 
   const t2 = D.normalizeTemplate({});
   const changed = Object.assign({}, init.mapping, { etcCd: 'remarks', caseMemoCn: 'skip' });
-  D.rememberExternalMapping(t2, changed, { trprSe: '구분', kornNm: '이름' });
-  ok(same(t2.importMapping, { etcCd: 'remarks', caseMemoCn: 'skip' }) && t2.importPeopleMap.kornNm === '이름', 'S8 기본과 다른 매핑만 기억');
+  D.rememberExternalMapping(t2, changed, { trprSe: '구분', kornNm: '이름', addrNm: '주소', mtelno: 'skip', etcP: 'skip' });
+  ok(same(t2.importMapping, { etcCd: 'remarks', caseMemoCn: 'skip' }) && same(t2.importPeopleMap, { addrNm: '주소', mtelno: 'skip' }), 'S8 기본과 다른 매핑만 기억(사람 키 포함)');
+  ok(D.externalPeopleDefault('trprSe') === '구분' && D.externalPeopleDefault('kornNm') === '이름' && D.externalPeopleDefault('mtelno') === '연락처'
+     && D.externalPeopleDefault('enrrn') === '주민번호' && D.externalPeopleDefault('addrNm') === 'skip', 'S8 사람 키 기본 매핑 4개, 나머지 사용 안 함');
   const again = D.externalMappingFor(keys, kinds, t2);
   ok(again.mapping.etcCd === 'remarks' && again.mapping.caseMemoCn === 'skip' && again.mapping.rno === 'caseNumber', 'S8 기억한 매핑이 기본보다 우선');
   ok(D.externalMappingFor(['rno'], {}, t2).missing.indexOf('caseMemoCn') === -1 && D.externalMappingFor(['rno'], {}, t2).missing.indexOf('etcCd') !== -1, 'S8 사용 안 함으로 바꾼 키는 빠져도 안내 안 함, 새로 고른 키는 안내');
-  D.rememberExternalMapping(t2, { caseMemoCn: 'reference' }, {});
-  ok(t2.importMapping.caseMemoCn === undefined, 'S8 기본으로 되돌리면 기억 지움');
+  D.rememberExternalMapping(t2, { caseMemoCn: 'reference' }, { mtelno: '연락처' });
+  ok(t2.importMapping.caseMemoCn === undefined && t2.importPeopleMap.mtelno === undefined, 'S8 기본으로 되돌리면 기억 지움');
 }
 
 finish();
