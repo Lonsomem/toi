@@ -189,4 +189,41 @@ ok(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|https?:\/\//.t
   ok(comp && comp.slug === '고소인1' && comp.subLabel === '진정인' && r2.addedPeople === 1 && r2.filledPeople === 1 && r2.filledFields === 1, 'S7 없는 관계인은 추가(구분값이 하위 분류면 그대로), 건수 반환');
 }
 
+// ---- S8: 외부 목록 기본 매핑·제목 조합('불상')·참고사항 빈 줄 이어붙이기·매핑 기억 (8절 7)
+{
+  const tpl = D.normalizeTemplate({});
+  ok(same(tpl.importMapping, {}) && same(tpl.importPeopleMap, {}), 'S8 importMapping/importPeopleMap 기본값 {}');
+  const keys = ['rno', 'rcptCivPvsCd', 'susInfo', 'victInfo', 'caseMemoCn', 'etcCd', 'detail.data.caseInfoVo.caseRltnEncn',
+    'detail.data.caseInfoVo.dclrEncn', 'detail.data.caseInfoVo.rcptCrmeName', 'detail.data.objpnInfoVo'];
+  const kinds = { 'detail.data.objpnInfoVo': 'list' };
+  const init = D.externalMappingFor(keys, kinds, tpl);
+  ok(init.mapping.rno === 'caseNumber' && init.mapping.rcptCivPvsCd === 'titleClue' && init.mapping.susInfo === 'titleSuspect'
+     && init.mapping.victInfo === 'titleVictim' && init.mapping['detail.data.caseInfoVo.rcptCrmeName'] === 'charge'
+     && init.mapping['detail.data.caseInfoVo.dclrEncn'] === 'crimeFact' && init.mapping.caseMemoCn === 'reference'
+     && init.mapping['detail.data.caseInfoVo.caseRltnEncn'] === 'reference' && init.mapping['detail.data.objpnInfoVo'] === 'people'
+     && init.mapping.etcCd === 'skip', 'S8 기본 매핑');
+  ok(init.missing.length === 0, 'S8 빠진 키 없음');
+  ok(same(D.externalMappingFor(['rno', 'caseMemoCn'], {}, tpl).missing.length, 7), 'S8 파일에 없는 기본 키 목록');
+  ok(D.externalMappingFor(['detail.data.objpnInfoVo'], {}, tpl).mapping['detail.data.objpnInfoVo'] === 'skip', 'S8 값 키에는 사람 목록 매핑 안 함');
+
+  const row = { rno: '2026011111', rcptCivPvsCd: '진정', susInfo: null, victInfo: '홍길동', caseMemoCn: '메모',
+    'detail.data.caseInfoVo.caseRltnEncn': '사건개요', 'detail.data.caseInfoVo.dclrEncn': '범죄사실', 'detail.data.caseInfoVo.rcptCrmeName': '사기' };
+  const f = D.buildExternalFields(init.mapping, k => row[k]);
+  ok(f.title === '[진정] 사기 - 불상 / 홍길동', 'S8 제목 조합, null 은 불상: ' + f.title);
+  ok(f.charge === '사기' && f.crimeFact === '범죄사실' && f.reference === '사건개요\n\n메모' && f.caseNumber === undefined, 'S8 죄명·범죄사실·참고사항(사건개요→빈 줄→메모, 키 이름 없음)');
+  const f2 = D.buildExternalFields(init.mapping, k => (k === 'rno' ? '1' : undefined));
+  ok(f2.title === '[불상] 불상 - 불상 / 불상' && f2.charge === undefined && f2.reference === undefined, 'S8 값이 전부 없으면 제목만 불상, 다른 칸은 비움');
+  ok(D.composeExternalTitle({ clue: ' ', charge: '절도' }) === '[불상] 절도 - 불상 / 불상', 'S8 빈 문자열도 불상');
+
+  const t2 = D.normalizeTemplate({});
+  const changed = Object.assign({}, init.mapping, { etcCd: 'remarks', caseMemoCn: 'skip' });
+  D.rememberExternalMapping(t2, changed, { trprSe: '구분', kornNm: '이름' });
+  ok(same(t2.importMapping, { etcCd: 'remarks', caseMemoCn: 'skip' }) && t2.importPeopleMap.kornNm === '이름', 'S8 기본과 다른 매핑만 기억');
+  const again = D.externalMappingFor(keys, kinds, t2);
+  ok(again.mapping.etcCd === 'remarks' && again.mapping.caseMemoCn === 'skip' && again.mapping.rno === 'caseNumber', 'S8 기억한 매핑이 기본보다 우선');
+  ok(D.externalMappingFor(['rno'], {}, t2).missing.indexOf('caseMemoCn') === -1 && D.externalMappingFor(['rno'], {}, t2).missing.indexOf('etcCd') !== -1, 'S8 사용 안 함으로 바꾼 키는 빠져도 안내 안 함, 새로 고른 키는 안내');
+  D.rememberExternalMapping(t2, { caseMemoCn: 'reference' }, {});
+  ok(t2.importMapping.caseMemoCn === undefined, 'S8 기본으로 되돌리면 기억 지움');
+}
+
 finish();

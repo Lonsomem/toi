@@ -2802,6 +2802,12 @@
                 t.chargeFactExamples = arr(t.chargeFactExamples).filter(isObj).map(f => withId(f, 'cfx'));
                 // 외부 목록 가져오기: 관계인 구분값(예: '피혐의자') → 역할(complainant/accused/witness/skip) 대응표(8절)
                 if (!isObj(t.importRoleMap)) t.importRoleMap = {};
+                // 외부 목록 가져오기: 사용자가 기본 매핑과 다르게 고른 키 → 항목, 사람 목록 키 → 관계인 필드 (8절 7)
+                ['importMapping', 'importPeopleMap'].forEach(name => {
+                    const src = isObj(t[name]) ? t[name] : {}, out = {};
+                    Object.keys(src).forEach(k => { if (typeof src[k] === 'string' && src[k]) out[k] = src[k]; });
+                    t[name] = out;
+                });
                 return t;
             }
 
@@ -2988,6 +2994,102 @@
                 return { case: c, isNew: isNew, filledFields: filledFields, addedPeople: addedPeople, filledPeople: filledPeople };
             }
 
+            /** 외부 목록 기본 매핑 (사용자 내부 시스템 키, 2026-11-27 사용자 지정, 8절 7).
+             *  순서 = 같은 칸(참고사항 등)에 여러 키를 넣을 때 이어붙이는 순서. */
+            const EXTERNAL_DEFAULT_MAPPING = [
+                ['rno', 'caseNumber'],
+                ['rcptCivPvsCd', 'titleClue'],
+                ['detail.data.caseInfoVo.rcptCrmeName', 'charge'],
+                ['susInfo', 'titleSuspect'],
+                ['victInfo', 'titleVictim'],
+                ['detail.data.caseInfoVo.dclrEncn', 'crimeFact'],
+                ['detail.data.caseInfoVo.caseRltnEncn', 'reference'],
+                ['caseMemoCn', 'reference'],
+                ['detail.data.objpnInfoVo', 'people']
+            ];
+            const EXTERNAL_TARGETS = ['skip', 'caseNumber', 'createdAt', 'title', 'titleClue', 'titleSuspect', 'titleVictim',
+                'charge', 'crimeFact', 'status', 'overview', 'reference', 'remarks', 'people'];
+            const EXTERNAL_FREE_TEXT = { overview: true, reference: true, remarks: true };
+
+            function externalDefaultTarget(key) {
+                const hit = EXTERNAL_DEFAULT_MAPPING.find(d => d[0] === key);
+                return hit ? hit[1] : 'skip';
+            }
+
+            /** 파일에서 나온 키들의 처음 매핑: 사용자가 저장한 선택(template.importMapping) → 기본 매핑 → 'skip'.
+             *  kinds[key] === 'list' 인 키는 'people'/'skip' 만, 값 키는 'people' 불가.
+             *  반환 { mapping, missing: 기본/저장 매핑에 있는데 파일에 없는 키 } */
+            function externalMappingFor(keys, kinds, template) {
+                const saved = (template && isObj(template.importMapping)) ? template.importMapping : {};
+                const mapping = {};
+                arr(keys).forEach(k => {
+                    let t = (typeof saved[k] === 'string' && EXTERNAL_TARGETS.indexOf(saved[k]) !== -1) ? saved[k] : externalDefaultTarget(k);
+                    const isList = kinds && kinds[k] === 'list';
+                    if (isList ? (t !== 'people') : (t === 'people')) t = 'skip';
+                    mapping[k] = t;
+                });
+                const expected = EXTERNAL_DEFAULT_MAPPING.map(d => d[0])
+                    .concat(Object.keys(saved).filter(k => saved[k] !== 'skip'))
+                    .filter(k => (saved[k] || externalDefaultTarget(k)) !== 'skip');
+                const missing = expected.filter((k, i) => expected.indexOf(k) === i && !mapping.hasOwnProperty(k));
+                return { mapping: mapping, missing: missing };
+            }
+
+            /** 가져오기 때 고른 매핑을 템플릿에 기억: 기본 매핑과 다른 것만 importMapping 에(같아지면 지움), 사람 키 매핑은 통째로 */
+            function rememberExternalMapping(template, mapping, peopleSubMap) {
+                if (!isObj(template.importMapping)) template.importMapping = {};
+                if (!isObj(template.importPeopleMap)) template.importPeopleMap = {};
+                Object.keys(mapping || {}).forEach(k => {
+                    const t = mapping[k];
+                    if (EXTERNAL_TARGETS.indexOf(t) === -1) return;
+                    if (t === externalDefaultTarget(k)) delete template.importMapping[k];
+                    else template.importMapping[k] = t;
+                });
+                Object.keys(peopleSubMap || {}).forEach(k => {
+                    if (typeof peopleSubMap[k] === 'string' && peopleSubMap[k]) template.importPeopleMap[k] = peopleSubMap[k];
+                });
+            }
+
+            /** 제목 = "[접수단서] 죄명 - 피의자 / 피해자". 빈 값(null·없음·빈 문자열)은 '불상' (사용자 결정, 제목 안에서만) */
+            function composeExternalTitle(parts) {
+                const v = x => { const s = (x === undefined || x === null) ? '' : String(x).trim(); return s || '불상'; };
+                parts = parts || {};
+                return '[' + v(parts.clue) + '] ' + v(parts.charge) + ' - ' + v(parts.suspect) + ' / ' + v(parts.victim);
+            }
+
+            /** 한 건의 매핑된 값 → 사건 칸(fields, 사건번호 제외). getValue(key) 는 그 건의 값.
+             *  - 사건개요·참고사항·비고: 값만, 빈 줄로 구분해 이어붙임 (기본 매핑 순서 → 나머지 키 순서)
+             *  - 제목 조각(titleClue/Suspect/Victim)이 하나라도 매핑되면 제목은 composeExternalTitle(죄명 = charge 값)
+             *  - 그 밖의 칸: 마지막 값 */
+            function buildExternalFields(mapping, getValue) {
+                const order = Object.keys(mapping || {});
+                const rank = k => { const i = EXTERNAL_DEFAULT_MAPPING.findIndex(d => d[0] === k); return i === -1 ? EXTERNAL_DEFAULT_MAPPING.length + order.indexOf(k) : i; };
+                order.sort((a, b) => rank(a) - rank(b));
+                const fields = {}, titleParts = {};
+                let composeTitle = false;
+                const partName = { titleClue: 'clue', titleSuspect: 'suspect', titleVictim: 'victim' };
+                order.forEach(k => {
+                    const target = mapping[k];
+                    if (!target || target === 'skip' || target === 'caseNumber' || target === 'people') return;
+                    const raw = getValue(k);
+                    const val = (raw === undefined || raw === null) ? '' : String(raw);
+                    if (partName[target]) {
+                        composeTitle = true;
+                        if (val.trim()) titleParts[partName[target]] = val;
+                        return;
+                    }
+                    if (!val.trim()) return;
+                    if (EXTERNAL_FREE_TEXT[target] || target === 'title') {
+                        const sep = target === 'title' ? ' ' : '\n\n';
+                        fields[target] = fields[target] ? (fields[target] + sep + val) : val;
+                    } else {
+                        fields[target] = val;
+                    }
+                });
+                if (composeTitle) fields.title = composeExternalTitle(Object.assign({ charge: fields.charge }, titleParts));
+                return fields;
+            }
+
             /** 외부 목록 사건번호: 10자리 숫자(연도4+번호6)는 'YYYY-NNNNN' 로. 예) 2026011111→2026-11111, 2027001111→2027-01111.
              *  번호 6자리 첫 자리가 0이 아니면(예: 2026123456) 잘라내지 않고 2026-123456. 그 외 형식은 그대로(앞뒤 공백만 제거) */
             function formatExternalCaseNumber(value) {
@@ -3083,7 +3185,7 @@
                 return { db: out, summary: summary };
             }
 
-            return { normalizeDB, normalizeTemplate, normalizeCase, makeCase, formatExternalCaseNumber, guessPersonRole, applyExternalCase, encodeVerified, formatNow, toShareJson, applyShareJson };
+            return { normalizeDB, normalizeTemplate, normalizeCase, makeCase, formatExternalCaseNumber, guessPersonRole, applyExternalCase, externalMappingFor, rememberExternalMapping, composeExternalTitle, buildExternalFields, encodeVerified, formatNow, toShareJson, applyShareJson };
         })();
     </script>
 
@@ -6325,15 +6427,32 @@
                 this.externalImport = {
                     rows: found.rows, keys: scan.order, mapping: {},
                     keySamples: scan.keySamples, keyHasData: scan.keyHasData, keyKinds: scan.keyKinds, showEmptyKeys: false,
-                    peopleKey: '', peopleSubKeys: [], peopleSubSamples: {}, peopleSubMap: {}, roleValues: [], roleMap: {}
+                    peopleKey: '', peopleSubKeys: [], peopleSubSamples: {}, peopleSubMap: {}, roleValues: [], roleMap: {},
+                    shownKeys: {}
                 };
-                scan.order.forEach((k) => { this.externalImport.mapping[k] = 'skip'; });
-                // 객체 배열(사람 목록 후보)이 하나뿐이면 자동으로 사건관계인 목록에 연결 (사용자가 바꿀 수 있음)
+                const ei = this.externalImport;
+                // 처음 매핑: 저장한 선택 → 기본 매핑(DBCore, 8절 7) → 사용 안 함
+                const init = DBCore.externalMappingFor(scan.order, scan.keyKinds, this.template);
+                Object.keys(init.mapping).forEach((k) => { ei.mapping[k] = init.mapping[k] === 'people' ? 'skip' : init.mapping[k]; });
+                const peopleKey = scan.order.find((k) => init.mapping[k] === 'people');
                 const listKeys = scan.order.filter((k) => scan.keyKinds[k] === 'list');
-                if (listKeys.length === 1) this.updateExternalMapping(listKeys[0], 'people', true);
+                // 기본 매핑에 사람 목록이 없고 객체 배열이 하나뿐이면 자동으로 사건관계인 목록에 연결 (사용자가 바꿀 수 있음)
+                if (peopleKey) this.updateExternalMapping(peopleKey, 'people', true);
+                else if (listKeys.length === 1 && !this.template.importMapping[listKeys[0]]) this.updateExternalMapping(listKeys[0], 'people', true);
+                // 처음부터 보이는 키 = 자동으로 매핑된 키. 나머지는 [모두 보기]로. 사건번호를 못 찾았으면 전부 보여줌
+                scan.order.forEach((k) => { if (ei.mapping[k] !== 'skip') ei.shownKeys[k] = true; });
+                const hasCaseNumber = scan.order.some((k) => ei.mapping[k] === 'caseNumber');
+                if (!hasCaseNumber) {
+                    ei.shownKeys = {};
+                    scan.order.forEach((k) => { if (scan.keyHasData[k]) ei.shownKeys[k] = true; });
+                }
                 this.renderExternalKeyMap();
                 document.getElementById('eiMappingSection').classList.remove('hidden');
-                this.eiShowMsg('eiLoadMsg', pathFailMsg + '가져오기 성공: ' + found.pathLabel + '에서 ' + found.rows.length + '건 발견', pathFailMsg ? 'warn' : 'ok');
+                let note = '';
+                if (init.missing.length) note += ' · 기본 매핑 중 파일에 없는 키: ' + init.missing.join(', ');
+                if (!hasCaseNumber) note += ' · 사건번호 키를 찾지 못했습니다 — 아래에서 직접 고르세요';
+                this.eiShowMsg('eiLoadMsg', pathFailMsg + '가져오기 성공: ' + found.pathLabel + '에서 ' + found.rows.length + '건 발견' + note,
+                    (pathFailMsg || note) ? 'warn' : 'ok');
             },
 
             /** 한 건(객체)을 재귀로 펼침: 중첩 객체는 'a.b.c' 경로, 객체 배열은 'list'(사람 목록 후보), 값 배열은 쉼표로 합침 */
@@ -6443,7 +6562,10 @@
                     ['skip', '사용 안 함'],
                     ['caseNumber', '사건번호'],
                     ['createdAt', '접수일자'],
-                    ['title', '제목'],
+                    ['titleClue', '제목 조각 ① 접수단서'],
+                    ['titleSuspect', '제목 조각 ② 피의자'],
+                    ['titleVictim', '제목 조각 ③ 피해자'],
+                    ['title', '제목 (값 그대로)'],
                     ['charge', '죄명'],
                     ['crimeFact', '범죄사실'],
                     ['status', '상태'],
@@ -6453,8 +6575,10 @@
                 ];
                 const listOptions = [['skip', '사용 안 함'], ['people', '👥 사건관계인 목록']];
                 const allKeys = ei.keys;
-                const emptyKeys = allKeys.filter((k) => !ei.keyHasData[k]);
-                const visibleKeys = ei.showEmptyKeys ? allKeys : allKeys.filter((k) => ei.keyHasData[k]);
+                // 처음 자동 매핑된 키(shownKeys)와 직접 고른 키만 보이고, 나머지는 [모두 보기]로 펼침
+                const isShown = (k) => ei.shownKeys[k] || ei.mapping[k] !== 'skip';
+                const emptyKeys = allKeys.filter((k) => !isShown(k));
+                const visibleKeys = ei.showEmptyKeys ? allKeys : allKeys.filter(isShown);
                 const jsArg = (k) => this.escapeAttr(k).replace(/'/g, "\\'");
                 const selectHtml = (opts, cur, onchange) => `<select onchange="${onchange}">${opts.map(([val, label]) =>
                     `<option value="${this.escapeAttr(val)}" ${cur === val ? 'selected' : ''}>${this.escapeHtml(label)}</option>`).join('')}</select>`;
@@ -6465,11 +6589,11 @@
                         ${sel}
                     </div>`;
 
-                let html = '';
+                let html = `<div style="font-size:0.74rem; color:var(--text-secondary); padding:0.2rem 0.2rem 0.4rem;">제목 = <b>[접수단서] 죄명 - 피의자 / 피해자</b> (빈 값은 '불상') · 사건개요·참고사항·비고에 여러 키를 넣으면 빈 줄로 구분해 이어붙임 · 바꾼 매핑은 가져올 때 기억됨</div>`;
                 if (emptyKeys.length) {
                     html += `
                         <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.74rem; color:var(--text-muted); padding:0.3rem 0.2rem; border-bottom:1px dashed var(--border-light); margin-bottom:0.3rem;">
-                            <span>값이 비어있는(null) 키 ${emptyKeys.length}개는 숨겼습니다.</span>
+                            <span>기본 매핑에 없거나 값이 비어있는 키 ${emptyKeys.length}개는 숨겼습니다.</span>
                             <button type="button" class="btn btn-ghost btn-sm" onclick="app.toggleExternalEmptyKeys()">${ei.showEmptyKeys ? '숨기기' : '모두 보기'}</button>
                         </div>
                     `;
@@ -6523,8 +6647,17 @@
                         });
                     }));
                     ei.peopleSubKeys = subKeys; ei.peopleSubSamples = samples; ei.peopleSubMap = {};
-                    const taken = {};
+                    // 지난번 가져오기에서 고른 사람 키 매핑(template.importPeopleMap) 먼저, 나머지는 키 이름으로 추측
+                    const saved = this.template.importPeopleMap || {}, taken = {};
+                    const allowed = ['skip', '구분'].concat(this.eiPersonFieldNames());
                     subKeys.forEach((sk) => {
+                        if (allowed.indexOf(saved[sk]) === -1) return;
+                        if (saved[sk] !== 'skip' && taken[saved[sk]]) return;
+                        ei.peopleSubMap[sk] = saved[sk];
+                        if (saved[sk] !== 'skip') taken[saved[sk]] = true;
+                    });
+                    subKeys.forEach((sk) => {
+                        if (ei.peopleSubMap[sk]) return;
                         const g = this.eiGuessPersonSubKey(sk, taken);
                         ei.peopleSubMap[sk] = g;
                         if (g !== 'skip') taken[g] = true;
@@ -6562,6 +6695,8 @@
                 const roleMap = ei.roleMap || {};
                 Object.keys(roleMap).forEach((w) => { if (w) this.template.importRoleMap[w] = roleMap[w]; });
                 const roleKey = Object.keys(ei.peopleSubMap || {}).find((k) => ei.peopleSubMap[k] === '구분');
+                // 고른 매핑 기억 (기본 매핑과 다른 것만, DBCore — 8절 7)
+                DBCore.rememberExternalMapping(this.template, mapping, ei.peopleKey ? ei.peopleSubMap : {});
 
                 const indexByNumber = {};
                 this.cases.forEach((c, i) => { if (c.caseNumber && indexByNumber[c.caseNumber] === undefined) indexByNumber[c.caseNumber] = c.id; });
@@ -6574,23 +6709,8 @@
                     // 2026011111 → 2026-11111 (DBCore.formatExternalCaseNumber). 기존 사건 찾기도 바꾼 번호로
                     const caseNumber = DBCore.formatExternalCaseNumber(cellVal(matchKey));
                     if (!caseNumber) { skipped++; return; }
-                    // 매핑된 값만 모아서 DBCore.applyExternalCase 로 반영 (ADR-0001)
-                    const fields = { caseNumber: caseNumber };
-                    const freeTextFields = { overview: true, reference: true, remarks: true };
-                    Object.keys(mapping).forEach((k) => {
-                        const target = mapping[k];
-                        if (!target || target === 'skip' || target === 'caseNumber' || target === 'people') return;
-                        const val = cellVal(k);
-                        const strVal = (val === undefined || val === null) ? '' : String(val);
-                        if (!strVal) return;
-                        if (freeTextFields[target]) {
-                            // 여러 키를 같은 항목(참고사항 등)에 매핑하면 덮어쓰지 않고 줄바꿈으로 이어붙임 ("키 마지막 이름: 값")
-                            const line = k.split('.').pop() + ': ' + strVal;
-                            fields[target] = fields[target] ? (fields[target] + '\n' + line) : line;
-                        } else {
-                            fields[target] = strVal;
-                        }
-                    });
+                    // 매핑된 값 → 사건 칸(제목 조합·참고사항 이어붙이기 규칙은 DBCore.buildExternalFields) → DBCore.applyExternalCase (ADR-0001)
+                    const fields = Object.assign(DBCore.buildExternalFields(mapping, cellVal), { caseNumber: caseNumber });
                     const people = [];
                     this.eiPeopleOf(row).forEach((vals) => {
                         const w = roleKey ? String(vals[roleKey] === undefined || vals[roleKey] === null ? '' : vals[roleKey]).trim() : '';
